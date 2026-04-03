@@ -19,6 +19,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   CardSwiperController _swiperController = CardSwiperController();
   List<Article> _articles = [];
+  List<String> _allLabels = [];
+  final Set<String> _selectedLabels = {};
   int _cardSwiperKey = 0;
 
   @override
@@ -32,12 +34,34 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     final oldController = _swiperController;
     _swiperController = CardSwiperController();
+    final allUnread = DatabaseService.getUnreadArticles();
+    final filtered = _selectedLabels.isEmpty
+        ? allUnread
+        : allUnread
+            .where((a) => a.topicLabels.any((l) => _selectedLabels.contains(l)))
+            .toList();
     setState(() {
-      _articles = DatabaseService.getUnreadArticles();
+      _allLabels = DatabaseService.getAllLabelObjects().map((l) => l.name).toList();
+      _articles = filtered;
       _cardSwiperKey++;
     });
-    // 리빌드 완료 후 이전 컨트롤러 해제
     WidgetsBinding.instance.addPostFrameCallback((_) => oldController.dispose());
+  }
+
+  void _toggleLabel(String label) {
+    setState(() {
+      if (_selectedLabels.contains(label)) {
+        _selectedLabels.remove(label);
+      } else {
+        _selectedLabels.add(label);
+      }
+    });
+    _loadArticles();
+  }
+
+  void _clearLabels() {
+    setState(() => _selectedLabels.clear());
+    _loadArticles();
   }
 
   @override
@@ -67,10 +91,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return true;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_articles.isEmpty) {
-      return Center(
+  Widget _buildEmptyState() {
+    return Expanded(
+      child: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
@@ -88,7 +111,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                '공유 시트에서 링크를 추가해보세요!',
+                _selectedLabels.isEmpty
+                    ? '공유 시트에서 링크를 추가해보세요!'
+                    : '선택한 라벨에 읽지 않은 아티클이 없어요',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey.withValues(alpha: 0.7),
@@ -97,19 +122,54 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
-      );
-    }
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+
+    final labelCountText = _selectedLabels.isEmpty
+        ? '${_articles.length}개의 아티클'
+        : '${_selectedLabels.join(', ')} · ${_articles.length}개의 아티클';
 
     return Column(
       children: [
-        const SizedBox(height: 16),
-        // 남은 아티클 수
+        const SizedBox(height: 12),
+        // 라벨 필터 바
+        if (_allLabels.isNotEmpty)
+          SizedBox(
+            height: 36,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                _FilterChip(
+                  label: '전체',
+                  selected: _selectedLabels.isEmpty,
+                  onTap: _clearLabels,
+                ),
+                const VerticalDivider(width: 16, indent: 6, endIndent: 6),
+                for (final label in _allLabels)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: _FilterChip(
+                      label: label,
+                      selected: _selectedLabels.contains(label),
+                      onTap: () => _toggleLabel(label),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 10),
+        // 아티클 카운트
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Row(
             children: [
               Text(
-                '${_articles.length}개의 아티클',
+                labelCountText,
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey.withValues(alpha: 0.7),
@@ -119,8 +179,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 8),
+        if (_articles.isEmpty) _buildEmptyState(),
         // 카드 스택 (화면의 70%)
-        Expanded(
+        if (_articles.isNotEmpty) Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: CardSwiper(
@@ -176,7 +237,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         // 스와이프 힌트
-        Padding(
+        if (_articles.isNotEmpty) Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -198,6 +259,47 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? colorScheme.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected
+                ? colorScheme.primary
+                : Colors.grey.withValues(alpha: 0.35),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+            color: selected ? colorScheme.onPrimary : Colors.grey.withValues(alpha: 0.8),
+          ),
+        ),
+      ),
     );
   }
 }
