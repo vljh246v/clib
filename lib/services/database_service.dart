@@ -142,6 +142,28 @@ class DatabaseService {
     }
   }
 
+  // ── 라벨 알림 설정 ──
+
+  // 라벨 알림 설정 저장
+  static Future<void> updateLabelNotification(
+    Label label, {
+    required bool enabled,
+    required List<int> days,
+    required String time,
+  }) async {
+    label.notificationEnabled = enabled;
+    label.notificationDays = days;
+    label.notificationTime = time;
+    await label.save();
+  }
+
+  // 알림 활성 라벨 목록
+  static List<Label> getLabelsWithNotification() {
+    return _labelBox.values
+        .where((l) => l.notificationEnabled && l.notificationDays.isNotEmpty)
+        .toList();
+  }
+
   // 아티클의 라벨 업데이트
   static Future<void> updateArticleLabels(
     Article article,

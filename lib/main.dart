@@ -3,6 +3,7 @@ import 'package:clib/screens/home_screen.dart';
 import 'package:clib/screens/library_screen.dart';
 import 'package:clib/screens/settings_screen.dart';
 import 'package:clib/services/database_service.dart';
+import 'package:clib/services/notification_service.dart';
 import 'package:clib/services/share_service.dart';
 import 'package:clib/theme/app_theme.dart';
 
@@ -10,6 +11,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await DatabaseService.init();
   await DatabaseService.seedData();
+  await NotificationService.init();
+  await NotificationService.rescheduleAll();
   runApp(const ClibApp());
 }
 

@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -26,6 +27,11 @@ import UIKit
       default:
         result(FlutterMethodNotImplemented)
       }
+    }
+
+    // 로컬 알림 delegate 설정
+    if #available(iOS 10.0, *) {
+      UNUserNotificationCenter.current().delegate = self
     }
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)

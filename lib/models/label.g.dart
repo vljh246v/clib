@@ -19,19 +19,29 @@ class LabelAdapter extends TypeAdapter<Label> {
     return Label()
       ..name = fields[0] as String
       ..colorValue = fields[1] as int
-      ..createdAt = fields[2] as DateTime;
+      ..createdAt = fields[2] as DateTime
+      ..notificationEnabled = fields[3] == null ? false : fields[3] as bool
+      ..notificationDays =
+          fields[4] == null ? [] : (fields[4] as List).cast<int>()
+      ..notificationTime = fields[5] == null ? '09:00' : fields[5] as String;
   }
 
   @override
   void write(BinaryWriter writer, Label obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
       ..write(obj.colorValue)
       ..writeByte(2)
-      ..write(obj.createdAt);
+      ..write(obj.createdAt)
+      ..writeByte(3)
+      ..write(obj.notificationEnabled)
+      ..writeByte(4)
+      ..write(obj.notificationDays)
+      ..writeByte(5)
+      ..write(obj.notificationTime);
   }
 
   @override

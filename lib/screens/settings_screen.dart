@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:clib/models/label.dart';
 import 'package:clib/services/database_service.dart';
+import 'package:clib/services/notification_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -23,6 +24,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Color(0xFF8D6E63), // Brown
     Color(0xFF78909C), // Blue Grey
   ];
+
+  static const _dayLabels = ['월', '화', '수', '목', '금', '토', '일'];
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +87,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               title: Text(label.name),
               subtitle: Text('${stats.total}개 아티클 · ${stats.read}개 읽음'),
-              trailing: const Icon(Icons.chevron_right, size: 20),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 알림 설정 버튼
+                  IconButton(
+                    icon: Icon(
+                      label.notificationEnabled
+                          ? Icons.notifications_active
+                          : Icons.notifications_off_outlined,
+                      color: label.notificationEnabled
+                          ? color
+                          : Colors.grey.withValues(alpha: 0.4),
+                      size: 20,
+                    ),
+                    onPressed: () => _showNotificationDialog(label),
+                  ),
+                  const Icon(Icons.chevron_right, size: 20),
+                ],
+              ),
               onTap: () => _showLabelDialog(label: label),
               onLongPress: () => _confirmDelete(label),
             );
@@ -101,10 +122,145 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         const SizedBox(height: 8),
         const Text(
-          '테마 및 알림 설정은 준비 중입니다.',
+          '테마 설정은 준비 중입니다.',
           style: TextStyle(fontSize: 14, color: Colors.grey),
         ),
       ],
+    );
+  }
+
+  /// 알림 설정 다이얼로그
+  Future<void> _showNotificationDialog(Label label) async {
+    var enabled = label.notificationEnabled;
+    var selectedDays = Set<int>.from(label.notificationDays);
+    final timeParts = label.notificationTime.split(':');
+    var selectedTime = TimeOfDay(
+      hour: int.parse(timeParts[0]),
+      minute: int.parse(timeParts[1]),
+    );
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text('${label.name} 알림'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 활성화 토글
+              SwitchListTile(
+                title: const Text('알림 받기'),
+                value: enabled,
+                contentPadding: EdgeInsets.zero,
+                onChanged: (v) => setDialogState(() => enabled = v),
+              ),
+              if (enabled) ...[
+                const SizedBox(height: 8),
+                const Text('요일', style: TextStyle(fontSize: 14)),
+                const SizedBox(height: 8),
+                // 요일 선택 칩
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: List.generate(7, (i) {
+                    final isSelected = selectedDays.contains(i);
+                    return GestureDetector(
+                      onTap: () => setDialogState(() {
+                        if (isSelected) {
+                          selectedDays.remove(i);
+                        } else {
+                          selectedDays.add(i);
+                        }
+                      }),
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? Color(label.colorValue)
+                              : Colors.transparent,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isSelected
+                                ? Color(label.colorValue)
+                                : Colors.grey.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          _dayLabels[i],
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : Colors.grey,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 16),
+                // 시간 선택
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('시간'),
+                  trailing: TextButton(
+                    onPressed: () async {
+                      final picked = await showTimePicker(
+                        context: ctx,
+                        initialTime: selectedTime,
+                      );
+                      if (picked != null) {
+                        setDialogState(() => selectedTime = picked);
+                      }
+                    },
+                    child: Text(
+                      '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                // 알림 권한 요청
+                if (enabled) {
+                  await NotificationService.requestPermission();
+                }
+
+                final timeStr =
+                    '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+
+                await DatabaseService.updateLabelNotification(
+                  label,
+                  enabled: enabled,
+                  days: selectedDays.toList()..sort(),
+                  time: timeStr,
+                );
+
+                // 알림 스케줄 업데이트
+                if (enabled) {
+                  await NotificationService.scheduleForLabel(label);
+                } else {
+                  await NotificationService.cancelForLabel(label);
+                }
+
+                if (ctx.mounted) Navigator.pop(ctx);
+                setState(() {});
+              },
+              child: const Text('저장'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -232,6 +388,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (confirmed == true) {
+      await NotificationService.cancelForLabel(label);
       await DatabaseService.deleteLabel(label);
       setState(() {});
     }

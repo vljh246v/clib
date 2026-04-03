@@ -41,6 +41,7 @@ dependencies:
   http: ^1.2.0
   html: ^0.15.0
   flutter_card_swiper: ^7.0.0
+  timezone: ^0.10.0
 
 dev_dependencies:
   flutter_test:
