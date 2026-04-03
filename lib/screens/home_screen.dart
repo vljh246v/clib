@@ -38,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final filtered = _selectedLabels.isEmpty
         ? allUnread
         : allUnread
-            .where((a) => a.topicLabels.any((l) => _selectedLabels.contains(l)))
+            .where((a) => _selectedLabels.every((l) => a.topicLabels.contains(l)))
             .toList();
     setState(() {
       _allLabels = DatabaseService.getAllLabelObjects().map((l) => l.name).toList();
