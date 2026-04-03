@@ -11,10 +11,22 @@ import UserNotifications
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    let controller = window?.rootViewController as! FlutterViewController
-    let channel = FlutterMethodChannel(name: "com.clib.clib/share", binaryMessenger: controller.binaryMessenger)
+    // 로컬 알림 delegate 설정
+    if #available(iOS 10.0, *) {
+      UNUserNotificationCenter.current().delegate = self
+    }
 
-    channel.setMethodCallHandler { [weak self] (call, result) in
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+
+    // MethodChannel 설정
+    let messenger = engineBridge.applicationRegistrar.messenger()
+    let channel = FlutterMethodChannel(name: "com.clib.clib/share", binaryMessenger: messenger)
+
+    channel.setMethodCallHandler { [weak self] (call: FlutterMethodCall, result: @escaping FlutterResult) in
       guard let self = self else { return }
 
       switch call.method {
@@ -28,17 +40,6 @@ import UserNotifications
         result(FlutterMethodNotImplemented)
       }
     }
-
-    // 로컬 알림 delegate 설정
-    if #available(iOS 10.0, *) {
-      UNUserNotificationCenter.current().delegate = self
-    }
-
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
-  }
-
-  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
-    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
   }
 
   private func getSharedURLs() -> [String] {
