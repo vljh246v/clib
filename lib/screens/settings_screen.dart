@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:clib/main.dart';
 import 'package:clib/models/label.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/services/notification_service.dart';
@@ -113,7 +114,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         const Divider(height: 40),
 
-        // ── 테마 설정 (플레이스홀더) ──
+        // ── 테마 설정 ──
         Text(
           '테마',
           style: theme.textTheme.titleMedium?.copyWith(
@@ -121,9 +122,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
-          '테마 설정은 준비 중입니다.',
-          style: TextStyle(fontSize: 14, color: Colors.grey),
+        ValueListenableBuilder<ThemeMode>(
+          valueListenable: themeModeNotifier,
+          builder: (context, mode, _) {
+            return RadioGroup<ThemeMode>(
+              value: mode,
+              onChanged: (v) => themeModeNotifier.value = v,
+              child: Column(
+                children: [
+                  RadioListTile<ThemeMode>(
+                    title: const Text('시스템 설정'),
+                    subtitle: const Text('기기 설정에 따라 자동 전환'),
+                    value: ThemeMode.system,
+                  ),
+                  RadioListTile<ThemeMode>(
+                    title: const Text('다크 모드'),
+                    value: ThemeMode.dark,
+                  ),
+                  RadioListTile<ThemeMode>(
+                    title: const Text('라이트 모드'),
+                    value: ThemeMode.light,
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       ],
     );

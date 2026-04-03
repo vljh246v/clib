@@ -15,7 +15,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final CardSwiperController _swiperController = CardSwiperController();
+  CardSwiperController _swiperController = CardSwiperController();
   List<Article> _articles = [];
   int _cardSwiperKey = 0;
 
@@ -26,6 +26,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _loadArticles() {
+    _swiperController.dispose();
+    _swiperController = CardSwiperController();
     setState(() {
       _articles = DatabaseService.getUnreadArticles();
       _cardSwiperKey++;

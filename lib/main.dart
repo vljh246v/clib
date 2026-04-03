@@ -7,6 +7,9 @@ import 'package:clib/services/notification_service.dart';
 import 'package:clib/services/share_service.dart';
 import 'package:clib/theme/app_theme.dart';
 
+/// 앱 전역 테마 모드
+final themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await DatabaseService.init();
@@ -21,13 +24,18 @@ class ClibApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Clib',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.system,
-      home: const MainScreen(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeModeNotifier,
+      builder: (context, mode, _) {
+        return MaterialApp(
+          title: 'Clib',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          darkTheme: AppTheme.dark(),
+          themeMode: mode,
+          home: const MainScreen(),
+        );
+      },
     );
   }
 }
@@ -42,10 +50,10 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
 
-  final _screens = const [
-    HomeScreen(),
-    LibraryScreen(),
-    SettingsScreen(),
+  final _screens = [
+    const HomeScreen(),
+    const LibraryScreen(),
+    const SettingsScreen(),
   ];
 
   @override

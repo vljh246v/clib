@@ -1,68 +1,30 @@
+//
+//  ShareViewController.swift
+//  ShareExtension
+//
+//  Created by jaehyeon on 4/4/26.
+//
+
 import UIKit
 import Social
-import MobileCoreServices
-import UniformTypeIdentifiers
 
-class ShareViewController: UIViewController {
+class ShareViewController: SLComposeServiceViewController {
 
-    private let appGroupId = "group.com.clib.clib"
-    private let sharedKey = "SharedURLs"
-
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        handleSharedItems()
+    override func isContentValid() -> Bool {
+        // Do validation of contentText and/or NSExtensionContext attachments here
+        return true
     }
 
-    private func handleSharedItems() {
-        guard let extensionItems = extensionContext?.inputItems as? [NSExtensionItem] else {
-            close()
-            return
-        }
-
-        for item in extensionItems {
-            guard let attachments = item.attachments else { continue }
-
-            for provider in attachments {
-                if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) {
-                    provider.loadItem(forTypeIdentifier: UTType.url.identifier, options: nil) { [weak self] (data, error) in
-                        if let url = data as? URL {
-                            self?.saveURL(url.absoluteString)
-                        }
-                        self?.close()
-                    }
-                    return
-                } else if provider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier) {
-                    provider.loadItem(forTypeIdentifier: UTType.plainText.identifier, options: nil) { [weak self] (data, error) in
-                        if let text = data as? String, let url = self?.extractURL(from: text) {
-                            self?.saveURL(url)
-                        }
-                        self?.close()
-                    }
-                    return
-                }
-            }
-        }
-        close()
+    override func didSelectPost() {
+        // This is called after the user selects Post. Do the upload of contentText and/or NSExtensionContext attachments.
+    
+        // Inform the host that we're done, so it un-blocks its UI. Note: Alternatively you could call super's -didSelectPost, which will similarly complete the extension context.
+        self.extensionContext!.completeRequest(returningItems: [], completionHandler: nil)
     }
 
-    private func extractURL(from text: String) -> String? {
-        let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
-        let matches = detector?.matches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count))
-        return matches?.first?.url?.absoluteString
+    override func configurationItems() -> [Any]! {
+        // To add configuration options via table cells at the bottom of the sheet, return an array of SLComposeSheetConfigurationItem here.
+        return []
     }
 
-    private func saveURL(_ urlString: String) {
-        guard let userDefaults = UserDefaults(suiteName: appGroupId) else { return }
-
-        var urls = userDefaults.stringArray(forKey: sharedKey) ?? []
-        urls.append(urlString)
-        userDefaults.set(urls, forKey: sharedKey)
-        userDefaults.synchronize()
-    }
-
-    private func close() {
-        DispatchQueue.main.async {
-            self.extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
-        }
-    }
 }
