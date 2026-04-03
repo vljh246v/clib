@@ -26,6 +26,18 @@ class DatabaseService {
     return _box.add(article);
   }
 
+  // 전체 아티클 목록
+  static List<Article> getAllArticles() {
+    return _box.values.toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  // 전체 통계
+  static ({int total, int read}) getOverallStats() {
+    final all = _box.values.toList();
+    return (total: all.length, read: all.where((a) => a.isRead).length);
+  }
+
   // 미읽은 아티클 목록 (홈 스와이프용)
   static List<Article> getUnreadArticles() {
     return _box.values

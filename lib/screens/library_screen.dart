@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:clib/models/label.dart';
 import 'package:clib/services/database_service.dart';
+import 'package:clib/screens/all_articles_screen.dart';
 import 'package:clib/screens/label_detail_screen.dart';
 
 class LibraryScreen extends StatefulWidget {
@@ -36,43 +37,22 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        if (labels.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 48),
-            child: Center(
-              child: Column(
-                children: [
-                  Icon(Icons.label_off_outlined,
-                      size: 48,
-                      color: Colors.grey.withValues(alpha: 0.5)),
-                  const SizedBox(height: 12),
-                  Text(
-                    '라벨이 없습니다.\n설정에서 라벨을 추가해보세요.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        color: Colors.grey.withValues(alpha: 0.7),
-                        fontSize: 14),
-                  ),
-                ],
-              ),
-            ),
-          )
-        else
-          // 2열 그리드
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1.0,
-            ),
-            itemCount: labels.length,
-            itemBuilder: (context, index) {
-              return _buildLabelCard(labels[index], theme, isDark);
-            },
+        // 2열 그리드 (전체 카드 + 라벨 카드)
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.0,
           ),
+          itemCount: labels.length + 1,
+          itemBuilder: (context, index) {
+            if (index == 0) return _buildAllCard(theme, isDark);
+            return _buildLabelCard(labels[index - 1], theme, isDark);
+          },
+        ),
       ],
     );
   }
@@ -155,6 +135,76 @@ class _LibraryScreenState extends State<LibraryScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// 전체 아티클 카드
+  Widget _buildAllCard(ThemeData theme, bool isDark) {
+    final stats = DatabaseService.getOverallStats();
+    final color = theme.colorScheme.primary;
+    final progress = stats.total > 0 ? stats.read / stats.total : 0.0;
+
+    return GestureDetector(
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AllArticlesScreen()),
+        );
+        setState(() {});
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark
+              ? color.withValues(alpha: 0.12)
+              : color.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: color.withValues(alpha: isDark ? 0.3 : 0.2),
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 56,
+              height: 56,
+              child: CustomPaint(
+                painter: _CircularProgressPainter(
+                  progress: progress,
+                  color: color,
+                  backgroundColor: color.withValues(alpha: 0.15),
+                  strokeWidth: 5,
+                ),
+                child: Center(
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: color.withValues(alpha: 0.2),
+                    child: Icon(Icons.layers, color: color, size: 18),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '전체',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${stats.read}/${stats.total}',
+              style: TextStyle(
+                color: Colors.grey.withValues(alpha: 0.7),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

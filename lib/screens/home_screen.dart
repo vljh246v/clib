@@ -48,9 +48,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final article = _articles[previousIndex];
 
     if (direction == CardSwiperDirection.right) {
-      // 오른쪽 스와이프: 읽음 처리
+      // 오른쪽 스와이프: 읽음 처리 후 목록 갱신
       HapticFeedback.mediumImpact();
       DatabaseService.markAsRead(article);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadArticles());
     } else if (direction == CardSwiperDirection.left) {
       // 왼쪽 스와이프: 나중에 (스택 아래로)
       HapticFeedback.lightImpact();
