@@ -156,16 +156,21 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
           ],
         ),
       ),
-      trailing: article.isRead
-          ? Icon(Icons.check_circle, color: color, size: 20)
-          : IconButton(
-              icon: const Icon(Icons.check_circle_outline, size: 20),
-              color: Colors.grey.withValues(alpha: 0.4),
-              onPressed: () async {
-                await DatabaseService.markAsRead(article);
-                setState(() {});
-              },
-            ),
+      trailing: IconButton(
+        icon: Icon(
+          article.isRead ? Icons.check_circle : Icons.check_circle_outline,
+          size: 20,
+        ),
+        color: article.isRead ? color : Colors.grey.withValues(alpha: 0.4),
+        onPressed: () async {
+          if (article.isRead) {
+            await DatabaseService.markAsUnread(article);
+          } else {
+            await DatabaseService.markAsRead(article);
+          }
+          setState(() {});
+        },
+      ),
       onTap: () async {
         final uri = Uri.tryParse(article.url);
         if (uri != null) {

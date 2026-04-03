@@ -60,6 +60,12 @@ class DatabaseService {
     await article.save();
   }
 
+  // 안 읽음 처리
+  static Future<void> markAsUnread(Article article) async {
+    article.isRead = false;
+    await article.save();
+  }
+
   // 모든 라벨 목록
   static List<String> getAllLabels() {
     final labels = <String>{};
