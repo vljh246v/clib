@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io' as io;
 import 'package:flutter/services.dart';
 import 'package:clib/models/article.dart';
@@ -47,7 +48,10 @@ class ShareService {
   }
 
   /// URL을 스크래핑하여 Article로 저장
-  static Future<Article?> processAndSave(String url) async {
+  static Future<Article?> processAndSave(
+    String url, {
+    List<String> labels = const [],
+  }) async {
     final ogData = await ScrapingService.scrape(url);
 
     final article = Article()
@@ -55,12 +59,20 @@ class ShareService {
       ..title = ogData.title
       ..thumbnailUrl = ogData.imageUrl
       ..platform = classifyPlatform(url)
-      ..topicLabels = []
+      ..topicLabels = List<String>.from(labels)
       ..isRead = false
       ..createdAt = DateTime.now();
 
     await DatabaseService.saveArticle(article);
     return article;
+  }
+
+  /// 안드로이드: 공유된 URL만 반환 (저장하지 않음)
+  static Future<String?> getPendingShareURL() async {
+    if (!io.Platform.isAndroid) return null;
+    final text = await getSharedTextFromIntent();
+    if (text == null) return null;
+    return extractURL(text);
   }
 
   /// 앱 시작 시 또는 포그라운드 복귀 시 호출
@@ -74,11 +86,20 @@ class ShareService {
         }
       }
     } else if (io.Platform.isIOS) {
-      final urls = await getSharedURLsFromAppGroup();
-      for (final url in urls) {
-        await processAndSave(url);
+      final items = await getSharedURLsFromAppGroup();
+      for (final item in items) {
+        // JSON 형식: {"url":"...","labels":["..."]} 또는 plain URL
+        try {
+          final map = jsonDecode(item) as Map<String, dynamic>;
+          final url = map['url'] as String;
+          final labels = (map['labels'] as List?)?.cast<String>() ?? [];
+          await processAndSave(url, labels: labels);
+        } catch (_) {
+          // 구버전 plain URL 호환
+          await processAndSave(item);
+        }
       }
-      if (urls.isNotEmpty) {
+      if (items.isNotEmpty) {
         await clearSharedURLs();
       }
     }

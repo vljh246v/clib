@@ -33,9 +33,10 @@ class MainActivity : FlutterActivity() {
             when (call.method) {
                 "getSharedText" -> {
                     val text = sharedText
-                    sharedText = null  // 한 번 읽으면 초기화
+                    sharedText = null
                     result.success(text)
                 }
+                "syncLabels" -> result.success(null) // Android는 별도 처리 불필요
                 else -> result.notImplemented()
             }
         }

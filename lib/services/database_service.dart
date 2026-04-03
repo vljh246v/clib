@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'dart:io' as io;
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:clib/models/article.dart';
 import 'package:clib/models/label.dart';
@@ -6,6 +7,7 @@ import 'package:clib/models/label.dart';
 class DatabaseService {
   static const _boxName = 'articles';
   static const _labelBoxName = 'labels';
+  static const _channel = MethodChannel('com.clib.clib/share');
 
   static Future<void> init() async {
     await Hive.initFlutter();
@@ -84,6 +86,7 @@ class DatabaseService {
       ..colorValue = color.toARGB32()
       ..createdAt = DateTime.now();
     await _labelBox.add(label);
+    await syncLabelsToAppGroup();
     return label;
   }
 
@@ -118,6 +121,7 @@ class DatabaseService {
     }
 
     await label.save();
+    await syncLabelsToAppGroup();
   }
 
   // 라벨 삭제
@@ -129,6 +133,20 @@ class DatabaseService {
       }
     }
     await label.delete();
+    await syncLabelsToAppGroup();
+  }
+
+  // iOS Share Extension용 라벨 동기화
+  static Future<void> syncLabelsToAppGroup() async {
+    if (!io.Platform.isIOS) return;
+    try {
+      final payload = _labelBox.values
+          .map((l) => {'name': l.name, 'colorValue': l.colorValue})
+          .toList();
+      await _channel.invokeMethod('syncLabels', payload);
+    } on PlatformException {
+      // 무시
+    }
   }
 
   // 라벨 이름으로 Label 객체 찾기

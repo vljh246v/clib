@@ -31,10 +31,15 @@ import UserNotifications
 
       switch call.method {
       case "getSharedURLs":
-        let urls = self.getSharedURLs()
-        result(urls)
+        let items = self.getSharedItems()
+        result(items)
       case "clearSharedURLs":
         self.clearSharedURLs()
+        result(nil)
+      case "syncLabels":
+        if let labels = call.arguments as? [[String: Any]] {
+          self.syncLabels(labels)
+        }
         result(nil)
       default:
         result(FlutterMethodNotImplemented)
@@ -42,7 +47,7 @@ import UserNotifications
     }
   }
 
-  private func getSharedURLs() -> [String] {
+  private func getSharedItems() -> [String] {
     guard let userDefaults = UserDefaults(suiteName: appGroupId) else { return [] }
     return userDefaults.stringArray(forKey: sharedKey) ?? []
   }
@@ -51,5 +56,14 @@ import UserNotifications
     guard let userDefaults = UserDefaults(suiteName: appGroupId) else { return }
     userDefaults.removeObject(forKey: sharedKey)
     userDefaults.synchronize()
+  }
+
+  private func syncLabels(_ labels: [[String: Any]]) {
+    guard let userDefaults = UserDefaults(suiteName: appGroupId) else { return }
+    if let data = try? JSONSerialization.data(withJSONObject: labels),
+       let jsonString = String(data: data, encoding: .utf8) {
+      userDefaults.set(jsonString, forKey: "SharedLabels")
+      userDefaults.synchronize()
+    }
   }
 }

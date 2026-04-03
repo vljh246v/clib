@@ -1,3 +1,4 @@
+import 'dart:io' as io;
 import 'package:flutter/material.dart';
 import 'package:clib/screens/home_screen.dart';
 import 'package:clib/screens/library_screen.dart';
@@ -6,6 +7,7 @@ import 'package:clib/services/database_service.dart';
 import 'package:clib/services/notification_service.dart';
 import 'package:clib/services/share_service.dart';
 import 'package:clib/theme/app_theme.dart';
+import 'package:clib/widgets/share_label_sheet.dart';
 
 /// 앱 전역 테마 모드
 final themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
@@ -14,6 +16,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await DatabaseService.init();
   await DatabaseService.seedData();
+  await DatabaseService.syncLabelsToAppGroup();
   await NotificationService.init();
   await NotificationService.rescheduleAll();
   runApp(const ClibApp());
@@ -60,8 +63,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // 앱 시작 시 대기 중인 공유 URL 처리
-    ShareService.checkPendingShares();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkPendingShares());
   }
 
   @override
@@ -72,9 +74,21 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // 포그라운드 복귀 시 iOS Share Extension에서 저장된 URL 확인
     if (state == AppLifecycleState.resumed) {
-      ShareService.checkPendingShares();
+      _checkPendingShares();
+    }
+  }
+
+  Future<void> _checkPendingShares() async {
+    if (io.Platform.isAndroid) {
+      // Android: URL 감지 후 라벨 선택 시트 표시
+      final url = await ShareService.getPendingShareURL();
+      if (url != null && mounted) {
+        await ShareLabelSheet.show(context, url: url);
+      }
+    } else if (io.Platform.isIOS) {
+      // iOS: Share Extension에서 이미 라벨 포함 저장됨
+      await ShareService.checkPendingShares();
     }
   }
 
