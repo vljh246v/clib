@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:clib/models/article.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/theme/app_theme.dart';
@@ -140,6 +141,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
 
                 return GestureDetector(
+                  onTap: () async {
+                    final uri = Uri.tryParse(_articles[index].url);
+                    if (uri != null) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
+                  },
                   onLongPress: () async {
                     HapticFeedback.heavyImpact();
                     await LabelEditSheet.show(
