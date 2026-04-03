@@ -18,11 +18,14 @@ class LabelDetailScreen extends StatefulWidget {
 class _LabelDetailScreenState extends State<LabelDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isSelecting = false;
+  final Set<dynamic> _selectedKeys = {};
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() => setState(() => _selectedKeys.clear()));
   }
 
   @override
@@ -31,38 +34,135 @@ class _LabelDetailScreenState extends State<LabelDetailScreen>
     super.dispose();
   }
 
-  List<Article> _getArticles() {
-    return DatabaseService.getArticlesByLabel(widget.label.name);
+  List<Article> _getFilteredArticles(bool? isReadFilter) {
+    var articles = DatabaseService.getArticlesByLabel(widget.label.name);
+    if (isReadFilter != null) {
+      articles = articles.where((a) => a.isRead == isReadFilter).toList();
+    }
+    return articles;
+  }
+
+  void _toggleSelectMode() {
+    setState(() {
+      _isSelecting = !_isSelecting;
+      _selectedKeys.clear();
+    });
+  }
+
+  void _selectAll(List<Article> articles) {
+    setState(() {
+      if (_selectedKeys.length == articles.length) {
+        _selectedKeys.clear();
+      } else {
+        _selectedKeys
+          ..clear()
+          ..addAll(articles.map((a) => a.key));
+      }
+    });
+  }
+
+  Future<void> _bulkMarkRead(bool isRead) async {
+    final articles = DatabaseService.getArticlesByLabel(widget.label.name)
+        .where((a) => _selectedKeys.contains(a.key))
+        .toList();
+    for (final a in articles) {
+      if (isRead) {
+        await DatabaseService.markAsRead(a);
+      } else {
+        await DatabaseService.markAsUnread(a);
+      }
+    }
+    setState(() {
+      _isSelecting = false;
+      _selectedKeys.clear();
+    });
+  }
+
+  Future<void> _bulkDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('아티클 삭제'),
+        content: Text('선택한 ${_selectedKeys.length}개 아티클을 삭제할까요?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final articles = DatabaseService.getArticlesByLabel(widget.label.name)
+        .where((a) => _selectedKeys.contains(a.key))
+        .toList();
+    for (final a in articles) {
+      await DatabaseService.deleteArticle(a);
+    }
+    setState(() {
+      _isSelecting = false;
+      _selectedKeys.clear();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final color = Color(widget.label.colorValue);
     final stats = DatabaseService.getLabelStats(widget.label.name);
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final bool? filterMap = [null, false, true][_tabController.index];
+    final currentArticles = _getFilteredArticles(filterMap);
+    final allSelected = _selectedKeys.length == currentArticles.length &&
+        currentArticles.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 14,
-              backgroundColor: color,
-              child: Text(
-                widget.label.name[0],
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
+        title: _isSelecting
+            ? Text('${_selectedKeys.length}개 선택됨')
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircleAvatar(
+                    radius: 14,
+                    backgroundColor: color,
+                    child: Text(
+                      widget.label.name[0],
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(widget.label.name),
+                ],
               ),
-            ),
-            const SizedBox(width: 8),
-            Text(widget.label.name),
-          ],
-        ),
+        actions: _isSelecting
+            ? [
+                Checkbox(
+                  value: allSelected,
+                  tristate: false,
+                  onChanged: (_) => _selectAll(currentArticles),
+                ),
+                TextButton(
+                  onPressed: _toggleSelectMode,
+                  child: const Text('취소'),
+                ),
+              ]
+            : [
+                IconButton(
+                  icon: const Icon(Icons.checklist),
+                  tooltip: '선택',
+                  onPressed: _toggleSelectMode,
+                ),
+              ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: color,
@@ -82,15 +182,48 @@ class _LabelDetailScreenState extends State<LabelDetailScreen>
           _buildArticleList(true, isDark, color),
         ],
       ),
+      bottomNavigationBar: _isSelecting && _selectedKeys.isNotEmpty
+          ? SafeArea(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.check_circle_outline, size: 18),
+                        label: const Text('안 읽음'),
+                        onPressed: () => _bulkMarkRead(false),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.check_circle, size: 18),
+                        label: const Text('읽음'),
+                        onPressed: () => _bulkMarkRead(true),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                            backgroundColor: Colors.red),
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        label: const Text('삭제'),
+                        onPressed: _bulkDelete,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : null,
     );
   }
 
-  /// 아티클 리스트 (isReadFilter: null=전체, true=읽음, false=안읽음)
   Widget _buildArticleList(bool? isReadFilter, bool isDark, Color labelColor) {
-    var articles = _getArticles();
-    if (isReadFilter != null) {
-      articles = articles.where((a) => a.isRead == isReadFilter).toList();
-    }
+    final articles = _getFilteredArticles(isReadFilter);
 
     if (articles.isEmpty) {
       return Center(
@@ -107,9 +240,7 @@ class _LabelDetailScreenState extends State<LabelDetailScreen>
                       ? '읽은 아티클이 없습니다.'
                       : '안 읽은 아티클이 없습니다.',
               style: TextStyle(
-                color: Colors.grey.withValues(alpha: 0.7),
-                fontSize: 14,
-              ),
+                  color: Colors.grey.withValues(alpha: 0.7), fontSize: 14),
             ),
           ],
         ),
@@ -117,17 +248,15 @@ class _LabelDetailScreenState extends State<LabelDetailScreen>
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       itemCount: articles.length,
-      separatorBuilder: (_, _) => const Divider(height: 1),
-      itemBuilder: (context, index) {
-        final article = articles[index];
-        return _buildArticleItem(article, isDark, labelColor);
-      },
+      separatorBuilder: (_, _) =>
+          const Divider(height: 1, indent: 16, endIndent: 16),
+      itemBuilder: (context, index) =>
+          _buildArticleItem(articles[index], isDark, labelColor),
     );
   }
 
-  /// 아티클 리스트 아이템
   Widget _buildArticleItem(Article article, bool isDark, Color labelColor) {
     final meta = platformMeta(article.platform);
     final createdDaysAgo = DateTime.now().difference(article.createdAt).inDays;
@@ -136,105 +265,138 @@ class _LabelDetailScreenState extends State<LabelDetailScreen>
         : createdDaysAgo == 1
             ? '어제'
             : '$createdDaysAgo일 전';
+    final isSelected = _selectedKeys.contains(article.key);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      child: Row(
-        children: [
-          // 읽음 토글
-          IconButton(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            icon: Icon(
-              article.isRead ? Icons.check_circle : Icons.check_circle_outline,
-              size: 22,
+    return InkWell(
+      onTap: _isSelecting
+          ? () => setState(() {
+                if (isSelected) {
+                  _selectedKeys.remove(article.key);
+                } else {
+                  _selectedKeys.add(article.key);
+                }
+              })
+          : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        child: Row(
+          children: [
+            // 선택 모드: 체크박스 / 일반 모드: 읽음 토글
+            if (_isSelecting)
+              Checkbox(
+                value: isSelected,
+                onChanged: (_) => setState(() {
+                  if (isSelected) {
+                    _selectedKeys.remove(article.key);
+                  } else {
+                    _selectedKeys.add(article.key);
+                  }
+                }),
+              )
+            else
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints:
+                    const BoxConstraints(minWidth: 32, minHeight: 32),
+                icon: Icon(
+                  article.isRead
+                      ? Icons.check_circle
+                      : Icons.check_circle_outline,
+                  size: 22,
+                ),
+                color: article.isRead
+                    ? labelColor
+                    : Colors.grey.withValues(alpha: 0.4),
+                onPressed: () async {
+                  if (article.isRead) {
+                    await DatabaseService.markAsUnread(article);
+                  } else {
+                    await DatabaseService.markAsRead(article);
+                  }
+                  setState(() {});
+                },
+              ),
+            const SizedBox(width: 8),
+            // 썸네일
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                width: 52,
+                height: 52,
+                child: article.thumbnailUrl != null
+                    ? Image.network(
+                        article.thumbnailUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => _thumbnailPlaceholder(meta),
+                      )
+                    : _thumbnailPlaceholder(meta),
+              ),
             ),
-            color: article.isRead ? labelColor : Colors.grey.withValues(alpha: 0.4),
-            onPressed: () async {
-              if (article.isRead) {
-                await DatabaseService.markAsUnread(article);
-              } else {
-                await DatabaseService.markAsRead(article);
-              }
-              setState(() {});
-            },
-          ),
-          const SizedBox(width: 8),
-          // 썸네일
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: SizedBox(
-              width: 52,
-              height: 52,
-              child: article.thumbnailUrl != null
-                  ? Image.network(
-                      article.thumbnailUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => _thumbnailPlaceholder(meta),
-                    )
-                  : _thumbnailPlaceholder(meta),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // 제목 + 부제
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  article.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: article.isRead
-                        ? Colors.grey.withValues(alpha: 0.6)
-                        : null,
-                    decoration:
-                        article.isRead ? TextDecoration.lineThrough : null,
+            const SizedBox(width: 12),
+            // 제목 + 부제
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    article.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: article.isRead
+                          ? Colors.grey.withValues(alpha: 0.6)
+                          : null,
+                      decoration:
+                          article.isRead ? TextDecoration.lineThrough : null,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(meta.icon, size: 11, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Text(meta.label,
-                        style: const TextStyle(
-                            fontSize: 11, color: Colors.grey)),
-                    const SizedBox(width: 8),
-                    Text(dateText,
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey.withValues(alpha: 0.6))),
-                  ],
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(meta.icon, size: 11, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Text(meta.label,
+                          style: const TextStyle(
+                              fontSize: 11, color: Colors.grey)),
+                      const SizedBox(width: 8),
+                      Text(dateText,
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.withValues(alpha: 0.6))),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          // 링크 이동
-          IconButton(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            icon: Icon(Icons.open_in_new,
-                size: 18, color: Colors.grey.withValues(alpha: 0.5)),
-            onPressed: () async {
-              final uri = Uri.tryParse(article.url);
-              if (uri != null) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-          ),
-          // 삭제
-          IconButton(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            icon: Icon(Icons.delete_outline,
-                size: 18, color: Colors.grey.withValues(alpha: 0.5)),
-            onPressed: () => _confirmDeleteArticle(article),
-          ),
-        ],
+            // 일반 모드에서만 링크·삭제 버튼 표시
+            if (!_isSelecting) ...[
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints:
+                    const BoxConstraints(minWidth: 32, minHeight: 32),
+                icon: Icon(Icons.open_in_new,
+                    size: 18, color: Colors.grey.withValues(alpha: 0.5)),
+                onPressed: () async {
+                  final uri = Uri.tryParse(article.url);
+                  if (uri != null) {
+                    await launchUrl(uri,
+                        mode: LaunchMode.externalApplication);
+                  }
+                },
+              ),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints:
+                    const BoxConstraints(minWidth: 32, minHeight: 32),
+                icon: Icon(Icons.delete_outline,
+                    size: 18, color: Colors.grey.withValues(alpha: 0.5)),
+                onPressed: () => _confirmDeleteArticle(article),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
