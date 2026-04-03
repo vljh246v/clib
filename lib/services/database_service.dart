@@ -151,10 +151,13 @@ class DatabaseService {
     await article.save();
   }
 
-  // 기초 데이터 삽입 (테스트용)
+  // 기초 데이터 삽입 (테스트용, 항상 초기화)
   static Future<void> seedData() async {
+    await _box.clear();
+    await _labelBox.clear();
+
     // 라벨 시드
-    if (_labelBox.isEmpty) {
+    {
       final defaultLabels = {
         'Flutter': const Color(0xFF42A5F5),
         '개발': const Color(0xFF66BB6A),
@@ -171,8 +174,6 @@ class DatabaseService {
         await _labelBox.add(label);
       }
     }
-
-    if (_box.isNotEmpty) return;
 
     final seeds = [
       Article()

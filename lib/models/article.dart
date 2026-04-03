@@ -12,6 +12,22 @@ enum Platform {
   blog,
   @HiveField(3)
   etc,
+  @HiveField(4)
+  x,
+  @HiveField(5)
+  tiktok,
+  @HiveField(6)
+  facebook,
+  @HiveField(7)
+  linkedin,
+  @HiveField(8)
+  github,
+  @HiveField(9)
+  reddit,
+  @HiveField(10)
+  naverBlog,
+  @HiveField(11)
+  threads,
 }
 
 @HiveType(typeId: 0)
@@ -47,11 +63,26 @@ Platform classifyPlatform(String url) {
     return Platform.youtube;
   } else if (host.contains('instagram.com')) {
     return Platform.instagram;
+  } else if (host.contains('x.com') || host.contains('twitter.com')) {
+    return Platform.x;
+  } else if (host.contains('tiktok.com')) {
+    return Platform.tiktok;
+  } else if (host.contains('facebook.com') || host.contains('fb.com')) {
+    return Platform.facebook;
+  } else if (host.contains('linkedin.com')) {
+    return Platform.linkedin;
+  } else if (host.contains('github.com') || host.contains('github.io')) {
+    return Platform.github;
+  } else if (host.contains('reddit.com')) {
+    return Platform.reddit;
+  } else if (host.contains('threads.net')) {
+    return Platform.threads;
+  } else if (host.contains('blog.naver.com') || host.contains('m.blog.naver.com')) {
+    return Platform.naverBlog;
   } else if (host.contains('tistory.com') ||
       host.contains('velog.io') ||
       host.contains('medium.com') ||
-      host.contains('brunch.co.kr') ||
-      host.contains('naver.com')) {
+      host.contains('brunch.co.kr')) {
     return Platform.blog;
   }
   return Platform.etc;

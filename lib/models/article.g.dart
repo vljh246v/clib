@@ -72,6 +72,22 @@ class PlatformAdapter extends TypeAdapter<Platform> {
         return Platform.blog;
       case 3:
         return Platform.etc;
+      case 4:
+        return Platform.x;
+      case 5:
+        return Platform.tiktok;
+      case 6:
+        return Platform.facebook;
+      case 7:
+        return Platform.linkedin;
+      case 8:
+        return Platform.github;
+      case 9:
+        return Platform.reddit;
+      case 10:
+        return Platform.naverBlog;
+      case 11:
+        return Platform.threads;
       default:
         return Platform.youtube;
     }
@@ -91,6 +107,30 @@ class PlatformAdapter extends TypeAdapter<Platform> {
         break;
       case Platform.etc:
         writer.writeByte(3);
+        break;
+      case Platform.x:
+        writer.writeByte(4);
+        break;
+      case Platform.tiktok:
+        writer.writeByte(5);
+        break;
+      case Platform.facebook:
+        writer.writeByte(6);
+        break;
+      case Platform.linkedin:
+        writer.writeByte(7);
+        break;
+      case Platform.github:
+        writer.writeByte(8);
+        break;
+      case Platform.reddit:
+        writer.writeByte(9);
+        break;
+      case Platform.naverBlog:
+        writer.writeByte(10);
+        break;
+      case Platform.threads:
+        writer.writeByte(11);
         break;
     }
   }

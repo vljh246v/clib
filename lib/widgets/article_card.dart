@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:clib/models/article.dart';
+import 'package:clib/models/platform_meta.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/theme/app_theme.dart';
 
@@ -8,31 +9,8 @@ class ArticleCard extends StatelessWidget {
 
   const ArticleCard({super.key, required this.article});
 
-  String get _platformLabel {
-    switch (article.platform) {
-      case Platform.youtube:
-        return 'YouTube';
-      case Platform.instagram:
-        return 'Instagram';
-      case Platform.blog:
-        return 'Blog';
-      case Platform.etc:
-        return 'Web';
-    }
-  }
-
-  IconData get _platformIcon {
-    switch (article.platform) {
-      case Platform.youtube:
-        return Icons.play_circle_fill;
-      case Platform.instagram:
-        return Icons.camera_alt;
-      case Platform.blog:
-        return Icons.article;
-      case Platform.etc:
-        return Icons.language;
-    }
-  }
+  String get _platformLabel => platformMeta(article.platform).label;
+  IconData get _platformIcon => platformMeta(article.platform).icon;
 
   @override
   Widget build(BuildContext context) {
@@ -116,8 +94,8 @@ class ArticleCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      // 라벨 칩 (최대 2개)
-                      ...article.topicLabels.take(2).map((name) {
+                      // 라벨 칩
+                      ...article.topicLabels.map((name) {
                         final label = DatabaseService.getLabelByName(name);
                         final color = label != null
                             ? Color(label.colorValue)

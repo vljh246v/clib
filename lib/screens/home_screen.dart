@@ -17,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final CardSwiperController _swiperController = CardSwiperController();
   List<Article> _articles = [];
+  int _cardSwiperKey = 0;
 
   @override
   void initState() {
@@ -27,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _loadArticles() {
     setState(() {
       _articles = DatabaseService.getUnreadArticles();
+      _cardSwiperKey++;
     });
   }
 
@@ -112,6 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: CardSwiper(
+              key: ValueKey(_cardSwiperKey),
               controller: _swiperController,
               cardsCount: _articles.length,
               numberOfCardsDisplayed: _articles.length < 3 ? _articles.length : 3,
@@ -134,13 +137,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
 
                 return GestureDetector(
-                  onLongPress: () {
+                  onLongPress: () async {
                     HapticFeedback.heavyImpact();
-                    LabelEditSheet.show(
+                    await LabelEditSheet.show(
                       context,
                       article: _articles[index],
-                      onChanged: () => setState(() {}),
                     );
+                    _loadArticles();
                   },
                   child: Container(
                     decoration: BoxDecoration(
