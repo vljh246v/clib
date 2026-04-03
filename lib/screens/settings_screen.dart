@@ -126,8 +126,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           valueListenable: themeModeNotifier,
           builder: (context, mode, _) {
             return RadioGroup<ThemeMode>(
-              value: mode,
-              onChanged: (v) => themeModeNotifier.value = v,
+              groupValue: mode,
+              onChanged: (v) {
+                if (v != null) themeModeNotifier.value = v;
+              },
               child: Column(
                 children: [
                   RadioListTile<ThemeMode>(
