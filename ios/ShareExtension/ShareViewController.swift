@@ -7,10 +7,17 @@ class ShareViewController: UIViewController {
     private let sharedKey = "SharedURLs"
     private let labelsKey = "SharedLabels"
 
+    private let defaultColors: [Int] = [
+        0xFF42A5F5, 0xFF66BB6A, 0xFF5C6BC0, 0xFFAB47BC,
+        0xFFEF5350, 0xFFFFCA28, 0xFF26C6DA, 0xFF8D6E63,
+    ]
+
     private var sharedURL: String?
     private var labels: [(name: String, colorValue: Int)] = []
+    private var newLabelsCreated: [(name: String, colorValue: Int)] = []
     private var selectedLabels: Set<String> = []
     private var chipButtons: [UIButton] = []
+    private var chipsContainerHeightConstraint: NSLayoutConstraint?
 
     // MARK: - UI
 
@@ -174,25 +181,9 @@ class ShareViewController: UIViewController {
     }
 
     private func buildChips() {
-        chipButtons.forEach { $0.removeFromSuperview() }
+        chipsContainer.subviews.forEach { $0.removeFromSuperview() }
         chipButtons = []
-
-        if labels.isEmpty {
-            let emptyLabel = UILabel()
-            emptyLabel.text = "앱에서 라벨을 추가하면 여기서 선택할 수 있어요"
-            emptyLabel.font = .systemFont(ofSize: 13)
-            emptyLabel.textColor = .tertiaryLabel
-            emptyLabel.numberOfLines = 2
-            emptyLabel.translatesAutoresizingMaskIntoConstraints = false
-            chipsContainer.addSubview(emptyLabel)
-            NSLayoutConstraint.activate([
-                emptyLabel.topAnchor.constraint(equalTo: chipsContainer.topAnchor),
-                emptyLabel.bottomAnchor.constraint(equalTo: chipsContainer.bottomAnchor),
-                emptyLabel.leadingAnchor.constraint(equalTo: chipsContainer.leadingAnchor),
-                emptyLabel.trailingAnchor.constraint(equalTo: chipsContainer.trailingAnchor),
-            ])
-            return
-        }
+        chipsContainerHeightConstraint?.isActive = false
 
         // Flow layout
         let chipHeight: CGFloat = 34
@@ -222,10 +213,38 @@ class ShareViewController: UIViewController {
             currentX += btnWidth + hSpacing
         }
 
-        // 고정 높이
+        // 새 라벨 추가 버튼
+        let addBtn = makeAddLabelButton()
+        addBtn.sizeToFit()
+        let addBtnWidth = max(addBtn.intrinsicContentSize.width + 24, 80)
+
+        if currentX + addBtnWidth > maxWidth && currentX > 0 {
+            currentX = 0
+            currentY += chipHeight + vSpacing
+            totalHeight += chipHeight + vSpacing
+        }
+
+        addBtn.frame = CGRect(x: currentX, y: currentY, width: addBtnWidth, height: chipHeight)
+        chipsContainer.addSubview(addBtn)
+
         let heightConstraint = chipsContainer.heightAnchor.constraint(equalToConstant: totalHeight)
         heightConstraint.priority = .defaultHigh
         heightConstraint.isActive = true
+        chipsContainerHeightConstraint = heightConstraint
+    }
+
+    private func makeAddLabelButton() -> UIButton {
+        let btn = UIButton(type: .custom)
+        btn.setTitle("+ 새 라벨", for: .normal)
+        btn.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
+        btn.layer.cornerRadius = 17
+        btn.layer.masksToBounds = true
+        btn.layer.borderWidth = 1.5
+        btn.layer.borderColor = UIColor.systemGray3.cgColor
+        btn.setTitleColor(.systemGray, for: .normal)
+        btn.backgroundColor = .clear
+        btn.addTarget(self, action: #selector(addLabelTapped), for: .touchUpInside)
+        return btn
     }
 
     private func makeChipButton(for labelData: (name: String, colorValue: Int)) -> UIButton {
@@ -249,6 +268,53 @@ class ShareViewController: UIViewController {
 
     // MARK: - Actions
 
+    @objc private func addLabelTapped() {
+        let alert = UIAlertController(title: "새 라벨 추가", message: nil, preferredStyle: .alert)
+        alert.addTextField { tf in
+            tf.placeholder = "라벨 이름 (예: Flutter, 디자인)"
+            tf.autocapitalizationType = .none
+        }
+        alert.addAction(UIAlertAction(title: "취소", style: .cancel))
+        alert.addAction(UIAlertAction(title: "추가", style: .default) { [weak self] _ in
+            guard let self = self,
+                  let name = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespaces),
+                  !name.isEmpty else { return }
+
+            // 중복 체크
+            if self.labels.contains(where: { $0.name == name }) {
+                self.selectedLabels.insert(name)
+                self.buildChips()
+                self.updateChipSelection()
+                return
+            }
+
+            // 색상 자동 배정 (기존 라벨 수 기반 순환)
+            let colorValue = self.defaultColors[self.labels.count % self.defaultColors.count]
+            let newLabel = (name: name, colorValue: colorValue)
+            self.labels.append(newLabel)
+            self.newLabelsCreated.append(newLabel)
+            self.selectedLabels.insert(name)
+            self.buildChips()
+            self.updateChipSelection()
+        })
+        present(alert, animated: true)
+    }
+
+    private func updateChipSelection() {
+        for btn in chipButtons {
+            guard btn.tag < labels.count else { continue }
+            let name = labels[btn.tag].name
+            let color = UIColor(argb: labels[btn.tag].colorValue)
+            if selectedLabels.contains(name) {
+                btn.isSelected = true
+                btn.backgroundColor = color
+            } else {
+                btn.isSelected = false
+                btn.backgroundColor = .clear
+            }
+        }
+    }
+
     @objc private func chipTapped(_ sender: UIButton) {
         let name = labels[sender.tag].name
         let color = UIColor(argb: labels[sender.tag].colorValue)
@@ -270,10 +336,13 @@ class ShareViewController: UIViewController {
             return
         }
 
-        let payload: [String: Any] = [
+        var payload: [String: Any] = [
             "url": url,
             "labels": Array(selectedLabels)
         ]
+        if !newLabelsCreated.isEmpty {
+            payload["newLabels"] = newLabelsCreated.map { ["name": $0.name, "colorValue": $0.colorValue] }
+        }
 
         if let data = try? JSONSerialization.data(withJSONObject: payload),
            let jsonString = String(data: data, encoding: .utf8),

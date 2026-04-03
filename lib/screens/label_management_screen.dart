@@ -95,11 +95,17 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
                         ),
                         onPressed: () => _showNotificationDialog(label),
                       ),
-                      const Icon(Icons.chevron_right, size: 20),
+                      IconButton(
+                        icon: Icon(
+                          Icons.delete_outline,
+                          color: Colors.grey.withValues(alpha: 0.6),
+                          size: 20,
+                        ),
+                        onPressed: () => _confirmDelete(label),
+                      ),
                     ],
                   ),
                   onTap: () => _showLabelDialog(label: label),
-                  onLongPress: () => _confirmDelete(label),
                 );
               },
             ),

@@ -93,6 +93,17 @@ class ShareService {
           final map = jsonDecode(item) as Map<String, dynamic>;
           final url = map['url'] as String;
           final labels = (map['labels'] as List?)?.cast<String>() ?? [];
+          // Share Extension에서 생성한 신규 라벨을 Hive에 저장
+          final newLabels = (map['newLabels'] as List?)?.cast<Map>() ?? [];
+          for (final nl in newLabels) {
+            final name = nl['name'] as String;
+            final colorValue = nl['colorValue'] as int;
+            final exists = DatabaseService.getAllLabelObjects()
+                .any((l) => l.name == name);
+            if (!exists) {
+              await DatabaseService.createLabel(name, Color(colorValue));
+            }
+          }
           await processAndSave(url, labels: labels);
         } catch (_) {
           // 구버전 plain URL 호환

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:clib/models/label.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/services/share_service.dart';
 
@@ -24,8 +25,107 @@ class ShareLabelSheet extends StatefulWidget {
 }
 
 class _ShareLabelSheetState extends State<ShareLabelSheet> {
+  static const _colorOptions = [
+    Color(0xFF42A5F5),
+    Color(0xFF66BB6A),
+    Color(0xFF5C6BC0),
+    Color(0xFFAB47BC),
+    Color(0xFFEF5350),
+    Color(0xFFFFCA28),
+    Color(0xFF26C6DA),
+    Color(0xFF8D6E63),
+  ];
+
   final Set<String> _selected = {};
   bool _saving = false;
+
+  Future<void> _showAddLabelDialog() async {
+    final nameController = TextEditingController();
+    var selectedColor = _colorOptions.first;
+
+    final created = await showDialog<Label>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('새 라벨 추가'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: '라벨 이름',
+                  hintText: '예: Flutter, 디자인',
+                  border: OutlineInputBorder(),
+                ),
+                autofocus: true,
+              ),
+              const SizedBox(height: 16),
+              const Text('색상', style: TextStyle(fontSize: 14)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _colorOptions.map((color) {
+                  final isSelected = selectedColor.toARGB32() == color.toARGB32();
+                  return GestureDetector(
+                    onTap: () => setDialogState(() => selectedColor = color),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: isSelected
+                            ? Border.all(color: Colors.white, width: 3)
+                            : null,
+                        boxShadow: isSelected
+                            ? [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 8)]
+                            : null,
+                      ),
+                      child: isSelected
+                          ? const Icon(Icons.check, color: Colors.white, size: 18)
+                          : null,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final name = nameController.text.trim();
+                if (name.isEmpty) return;
+                try {
+                  await DatabaseService.createLabel(name, selectedColor);
+                  final label = DatabaseService.getAllLabelObjects()
+                      .firstWhere((l) => l.name == name);
+                  if (ctx.mounted) Navigator.pop(ctx, label);
+                } catch (e) {
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(content: Text(e.toString())),
+                    );
+                  }
+                }
+              },
+              child: const Text('추가'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (created != null) {
+      setState(() => _selected.add(created.name));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,45 +178,52 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
             ),
           ),
           const SizedBox(height: 10),
-          if (labels.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(
-                '설정에서 라벨을 추가하면 여기서 선택할 수 있어요',
-                style: TextStyle(
-                  color: Colors.grey.withValues(alpha: 0.7),
-                  fontSize: 13,
-                ),
-              ),
-            )
-          else
+          if (labels.isNotEmpty)
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: labels.map((label) {
-                final isSelected = _selected.contains(label.name);
-                final color = Color(label.colorValue);
-                return FilterChip(
-                  label: Text(label.name),
-                  selected: isSelected,
-                  selectedColor: color.withValues(alpha: 0.3),
-                  checkmarkColor: color,
-                  side: BorderSide(
-                    color: isSelected
-                        ? color
-                        : Colors.grey.withValues(alpha: 0.3),
-                  ),
-                  onSelected: (v) {
-                    setState(() {
-                      if (v) {
-                        _selected.add(label.name);
-                      } else {
-                        _selected.remove(label.name);
-                      }
-                    });
-                  },
-                );
-              }).toList(),
+              children: [
+                ...labels.map((label) {
+                  final isSelected = _selected.contains(label.name);
+                  final color = Color(label.colorValue);
+                  return FilterChip(
+                    label: Text(label.name),
+                    selected: isSelected,
+                    selectedColor: color.withValues(alpha: 0.3),
+                    checkmarkColor: color,
+                    side: BorderSide(
+                      color: isSelected
+                          ? color
+                          : Colors.grey.withValues(alpha: 0.3),
+                    ),
+                    onSelected: (v) {
+                      setState(() {
+                        if (v) {
+                          _selected.add(label.name);
+                        } else {
+                          _selected.remove(label.name);
+                        }
+                      });
+                    },
+                  );
+                }),
+                ActionChip(
+                  avatar: const Icon(Icons.add, size: 16),
+                  label: const Text('새 라벨'),
+                  side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+                  onPressed: _showAddLabelDialog,
+                ),
+              ],
+            ),
+          if (labels.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: ActionChip(
+                avatar: const Icon(Icons.add, size: 16),
+                label: const Text('새 라벨'),
+                side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+                onPressed: _showAddLabelDialog,
+              ),
             ),
           const SizedBox(height: 20),
           Row(

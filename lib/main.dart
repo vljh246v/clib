@@ -15,7 +15,6 @@ final themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await DatabaseService.init();
-  await DatabaseService.seedData();
   await DatabaseService.syncLabelsToAppGroup();
   await NotificationService.init();
   await NotificationService.rescheduleAll();
