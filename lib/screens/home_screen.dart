@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:clib/main.dart';
 import 'package:clib/models/article.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/theme/app_theme.dart';
@@ -24,6 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadArticles();
+    articlesChangedNotifier.addListener(_loadArticles);
   }
 
   void _loadArticles() {
@@ -40,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    articlesChangedNotifier.removeListener(_loadArticles);
     _swiperController.dispose();
     super.dispose();
   }

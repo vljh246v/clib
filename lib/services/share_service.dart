@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io' as io;
 import 'package:flutter/services.dart';
+import 'package:clib/main.dart';
 import 'package:clib/models/article.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/services/scraping_service.dart';
@@ -64,6 +65,7 @@ class ShareService {
       ..createdAt = DateTime.now();
 
     await DatabaseService.saveArticle(article);
+    articlesChangedNotifier.value++;
     return article;
   }
 

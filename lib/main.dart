@@ -12,6 +12,9 @@ import 'package:clib/widgets/share_label_sheet.dart';
 /// 앱 전역 테마 모드
 final themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
 
+/// 아티클 추가/삭제 시 HomeScreen에 알리는 notifier
+final articlesChangedNotifier = ValueNotifier<int>(0);
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await DatabaseService.init();
