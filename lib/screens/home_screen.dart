@@ -27,12 +27,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _loadArticles() {
-    _swiperController.dispose();
+    if (!mounted) return;
+    final oldController = _swiperController;
     _swiperController = CardSwiperController();
     setState(() {
       _articles = DatabaseService.getUnreadArticles();
       _cardSwiperKey++;
     });
+    // 리빌드 완료 후 이전 컨트롤러 해제
+    WidgetsBinding.instance.addPostFrameCallback((_) => oldController.dispose());
   }
 
   @override
