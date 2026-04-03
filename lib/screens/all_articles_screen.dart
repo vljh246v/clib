@@ -108,84 +108,139 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
             ? '어제'
             : '$createdDaysAgo일 전';
 
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(vertical: 8),
-      leading: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: SizedBox(
-          width: 56,
-          height: 56,
-          child: article.thumbnailUrl != null
-              ? Image.network(
-                  article.thumbnailUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => _thumbnailPlaceholder(meta),
-                )
-              : _thumbnailPlaceholder(meta),
-        ),
-      ),
-      title: Text(
-        article.title,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: article.isRead ? Colors.grey.withValues(alpha: 0.6) : null,
-          decoration: article.isRead ? TextDecoration.lineThrough : null,
-        ),
-      ),
-      subtitle: Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: Row(
-          children: [
-            Icon(meta.icon, size: 12, color: Colors.grey),
-            const SizedBox(width: 4),
-            Text(
-              meta.label,
-              style: const TextStyle(fontSize: 11, color: Colors.grey),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      child: Row(
+        children: [
+          // 읽음 토글
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            icon: Icon(
+              article.isRead ? Icons.check_circle : Icons.check_circle_outline,
+              size: 22,
             ),
-            const SizedBox(width: 8),
-            Text(
-              dateText,
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.grey.withValues(alpha: 0.6),
-              ),
+            color: article.isRead ? color : Colors.grey.withValues(alpha: 0.4),
+            onPressed: () async {
+              if (article.isRead) {
+                await DatabaseService.markAsUnread(article);
+              } else {
+                await DatabaseService.markAsRead(article);
+              }
+              setState(() {});
+            },
+          ),
+          const SizedBox(width: 8),
+          // 썸네일
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: SizedBox(
+              width: 52,
+              height: 52,
+              child: article.thumbnailUrl != null
+                  ? Image.network(
+                      article.thumbnailUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => _thumbnailPlaceholder(meta),
+                    )
+                  : _thumbnailPlaceholder(meta),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 12),
+          // 제목 + 부제
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  article.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: article.isRead
+                        ? Colors.grey.withValues(alpha: 0.6)
+                        : null,
+                    decoration:
+                        article.isRead ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(meta.icon, size: 11, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Text(meta.label,
+                        style: const TextStyle(
+                            fontSize: 11, color: Colors.grey)),
+                    const SizedBox(width: 8),
+                    Text(dateText,
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.withValues(alpha: 0.6))),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // 링크 이동
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            icon: Icon(Icons.open_in_new,
+                size: 18, color: Colors.grey.withValues(alpha: 0.5)),
+            onPressed: () async {
+              final uri = Uri.tryParse(article.url);
+              if (uri != null) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+          ),
+          // 삭제
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            icon: Icon(Icons.delete_outline,
+                size: 18, color: Colors.grey.withValues(alpha: 0.5)),
+            onPressed: () => _confirmDeleteArticle(article),
+          ),
+        ],
       ),
-      trailing: IconButton(
-        icon: Icon(
-          article.isRead ? Icons.check_circle : Icons.check_circle_outline,
-          size: 20,
-        ),
-        color: article.isRead ? color : Colors.grey.withValues(alpha: 0.4),
-        onPressed: () async {
-          if (article.isRead) {
-            await DatabaseService.markAsUnread(article);
-          } else {
-            await DatabaseService.markAsRead(article);
-          }
-          setState(() {});
-        },
-      ),
-      onTap: () async {
-        final uri = Uri.tryParse(article.url);
-        if (uri != null) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        }
-      },
     );
+  }
+
+  Future<void> _confirmDeleteArticle(Article article) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('아티클 삭제'),
+        content: const Text('이 아티클을 삭제할까요?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await DatabaseService.deleteArticle(article);
+      setState(() {});
+    }
   }
 
   Widget _thumbnailPlaceholder(({String label, IconData icon}) meta) {
     return Container(
       color: Colors.grey.withValues(alpha: 0.15),
       child: Center(
-        child:
-            Icon(meta.icon, size: 24, color: Colors.grey.withValues(alpha: 0.5)),
+        child: Icon(meta.icon,
+            size: 24, color: Colors.grey.withValues(alpha: 0.5)),
       ),
     );
   }

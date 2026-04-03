@@ -66,6 +66,11 @@ class DatabaseService {
     await article.save();
   }
 
+  // 아티클 삭제
+  static Future<void> deleteArticle(Article article) async {
+    await article.delete();
+  }
+
   // 모든 라벨 목록
   static List<String> getAllLabels() {
     final labels = <String>{};
