@@ -45,14 +45,42 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.label_off_outlined,
-                      size: 48, color: Colors.grey.withValues(alpha: 0.4)),
-                  const SizedBox(height: 12),
                   Text(
-                    '라벨이 없습니다.\n+ 버튼으로 추가해보세요.',
-                    textAlign: TextAlign.center,
+                    '라벨을 만들어 아티클을 분류해보세요',
                     style: TextStyle(
                         color: Colors.grey.withValues(alpha: 0.7), fontSize: 14),
+                  ),
+                  const SizedBox(height: 20),
+                  GestureDetector(
+                    onTap: () => _showLabelDialog(),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: Colors.grey.withValues(alpha: 0.35),
+                          width: 1.5,
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add,
+                              size: 18,
+                              color: Colors.grey.withValues(alpha: 0.6)),
+                          const SizedBox(width: 8),
+                          Text(
+                            '신규 라벨 추가',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
