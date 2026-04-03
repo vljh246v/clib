@@ -9,6 +9,7 @@ import 'package:clib/theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await DatabaseService.init();
+  await DatabaseService.seedData();
   runApp(const ClibApp());
 }
 

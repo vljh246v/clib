@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:clib/models/article.dart';
+import 'package:clib/services/database_service.dart';
 import 'package:clib/theme/app_theme.dart';
 
 class ArticleCard extends StatelessWidget {
@@ -85,29 +86,64 @@ class ArticleCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 플랫폼 뱃지
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: AppColors.deepIndigo.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(_platformIcon, size: 14, color: Colors.white70),
-                        const SizedBox(width: 4),
-                        Text(
-                          _platformLabel,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                  // 플랫폼 뱃지 + 라벨 칩
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      // 플랫폼 뱃지
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: AppColors.deepIndigo.withValues(alpha: 0.8),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      ],
-                    ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(_platformIcon,
+                                size: 14, color: Colors.white70),
+                            const SizedBox(width: 4),
+                            Text(
+                              _platformLabel,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // 라벨 칩 (최대 2개)
+                      ...article.topicLabels.take(2).map((name) {
+                        final label = DatabaseService.getLabelByName(name);
+                        final color = label != null
+                            ? Color(label.colorValue)
+                            : Colors.grey;
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: color.withValues(alpha: 0.6),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: Text(
+                            name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
                   ),
                   const SizedBox(height: 10),
                   // 제목

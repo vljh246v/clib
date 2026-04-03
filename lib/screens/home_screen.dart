@@ -5,6 +5,7 @@ import 'package:clib/models/article.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/theme/app_theme.dart';
 import 'package:clib/widgets/article_card.dart';
+import 'package:clib/widgets/label_edit_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -132,14 +133,24 @@ class _HomeScreenState extends State<HomeScreen> {
                       .withValues(alpha: (percentThresholdX.abs() / 100).clamp(0, 1));
                 }
 
-                return Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    border: borderColor != null
-                        ? Border.all(color: borderColor, width: 3)
-                        : null,
+                return GestureDetector(
+                  onLongPress: () {
+                    HapticFeedback.heavyImpact();
+                    LabelEditSheet.show(
+                      context,
+                      article: _articles[index],
+                      onChanged: () => setState(() {}),
+                    );
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      border: borderColor != null
+                          ? Border.all(color: borderColor, width: 3)
+                          : null,
+                    ),
+                    child: ArticleCard(article: _articles[index]),
                   ),
-                  child: ArticleCard(article: _articles[index]),
                 );
               },
             ),
