@@ -4,6 +4,7 @@ import 'package:clib/models/article.dart';
 import 'package:clib/models/label.dart';
 import 'package:clib/models/platform_meta.dart';
 import 'package:clib/services/database_service.dart';
+import 'package:clib/theme/design_tokens.dart';
 
 /// 라벨 상세 화면 — 해당 라벨의 아티클 리스트 + 읽음/안읽음 필터
 class LabelDetailScreen extends StatefulWidget {
@@ -79,6 +80,7 @@ class _LabelDetailScreenState extends State<LabelDetailScreen>
   }
 
   Future<void> _bulkDelete() async {
+    final theme = Theme.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -90,7 +92,8 @@ class _LabelDetailScreenState extends State<LabelDetailScreen>
             child: const Text('취소'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+                backgroundColor: theme.colorScheme.error),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('삭제'),
           ),
@@ -115,7 +118,7 @@ class _LabelDetailScreenState extends State<LabelDetailScreen>
   Widget build(BuildContext context) {
     final color = Color(widget.label.colorValue);
     final stats = DatabaseService.getLabelStats(widget.label.name);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
 
     final bool? filterMap = [null, false, true][_tabController.index];
     final currentArticles = _getFilteredArticles(filterMap);
@@ -140,7 +143,7 @@ class _LabelDetailScreenState extends State<LabelDetailScreen>
                           fontWeight: FontWeight.bold),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: Spacing.sm),
                   Text(widget.label.name),
                 ],
               ),
@@ -177,42 +180,67 @@ class _LabelDetailScreenState extends State<LabelDetailScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildArticleList(null, isDark, color),
-          _buildArticleList(false, isDark, color),
-          _buildArticleList(true, isDark, color),
+          _buildArticleList(null, color),
+          _buildArticleList(false, color),
+          _buildArticleList(true, color),
         ],
       ),
       bottomNavigationBar: _isSelecting && _selectedKeys.isNotEmpty
           ? SafeArea(
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: Spacing.lg, vertical: Spacing.sm),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.check_circle_outline, size: 18),
-                        label: const Text('안 읽음'),
-                        onPressed: () => _bulkMarkRead(false),
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.bookmark_add, size: 18),
+                            label: const Text('북마크'),
+                            onPressed: () => _bulkToggleBookmark(true),
+                          ),
+                        ),
+                        const SizedBox(width: Spacing.sm),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.bookmark_remove, size: 18),
+                            label: const Text('북마크 해제'),
+                            onPressed: () => _bulkToggleBookmark(false),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.check_circle, size: 18),
-                        label: const Text('읽음'),
-                        onPressed: () => _bulkMarkRead(true),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                            backgroundColor: Colors.red),
-                        icon: const Icon(Icons.delete_outline, size: 18),
-                        label: const Text('삭제'),
-                        onPressed: _bulkDelete,
-                      ),
+                    const SizedBox(height: Spacing.sm),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.check_circle_outline, size: 18),
+                            label: const Text('안 읽음'),
+                            onPressed: () => _bulkMarkRead(false),
+                          ),
+                        ),
+                        const SizedBox(width: Spacing.sm),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.check_circle, size: 18),
+                            label: const Text('읽음'),
+                            onPressed: () => _bulkMarkRead(true),
+                          ),
+                        ),
+                        const SizedBox(width: Spacing.sm),
+                        Expanded(
+                          child: FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                                backgroundColor: theme.colorScheme.error),
+                            icon: const Icon(Icons.delete_outline, size: 18),
+                            label: const Text('삭제'),
+                            onPressed: _bulkDelete,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -222,36 +250,45 @@ class _LabelDetailScreenState extends State<LabelDetailScreen>
     );
   }
 
-  Widget _buildArticleList(bool? isReadFilter, bool isDark, Color labelColor) {
+  Widget _buildArticleList(bool? isReadFilter, Color labelColor) {
     final articles = _getFilteredArticles(isReadFilter);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     if (articles.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.article_outlined,
-                size: 48, color: Colors.grey.withValues(alpha: 0.4)),
-            const SizedBox(height: 12),
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: labelColor.withValues(alpha: 0.06),
+              ),
+              child: Icon(Icons.article_outlined,
+                  size: 40,
+                  color: labelColor.withValues(alpha: 0.4)),
+            ),
+            const SizedBox(height: Spacing.lg),
             Text(
               isReadFilter == null
                   ? '아티클이 없습니다.'
                   : isReadFilter
                       ? '읽은 아티클이 없습니다.'
                       : '안 읽은 아티클이 없습니다.',
-              style: TextStyle(
-                  color: Colors.grey.withValues(alpha: 0.7), fontSize: 14),
+              style: theme.textTheme.bodySmall,
             ),
           ],
         ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(
+          vertical: Spacing.sm, horizontal: Spacing.lg),
       itemCount: articles.length,
-      separatorBuilder: (_, _) =>
-          const Divider(height: 1, indent: 16, endIndent: 16),
       itemBuilder: (context, index) =>
           _buildArticleItem(articles[index], isDark, labelColor),
     );
@@ -259,6 +296,7 @@ class _LabelDetailScreenState extends State<LabelDetailScreen>
 
   Widget _buildArticleItem(Article article, bool isDark, Color labelColor) {
     final meta = platformMeta(article.platform);
+    final theme = Theme.of(context);
     final createdDaysAgo = DateTime.now().difference(article.createdAt).inDays;
     final dateText = createdDaysAgo == 0
         ? '오늘'
@@ -267,34 +305,40 @@ class _LabelDetailScreenState extends State<LabelDetailScreen>
             : '$createdDaysAgo일 전';
     final isSelected = _selectedKeys.contains(article.key);
 
-    return InkWell(
-      onTap: _isSelecting
-          ? () => setState(() {
-                if (isSelected) {
-                  _selectedKeys.remove(article.key);
-                } else {
-                  _selectedKeys.add(article.key);
+    return Container(
+      margin: const EdgeInsets.only(bottom: Spacing.sm),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: Radii.borderLg,
+        boxShadow: AppShadows.card(isDark),
+      ),
+      child: InkWell(
+        borderRadius: Radii.borderLg,
+        onTap: _isSelecting
+            ? () => setState(() {
+                  if (isSelected) {
+                    _selectedKeys.remove(article.key);
+                  } else {
+                    _selectedKeys.add(article.key);
+                  }
+                })
+            : () async {
+                final uri = Uri.tryParse(article.url);
+                if (uri != null) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
                 }
-              })
-          : () async {
-              final uri = Uri.tryParse(article.url);
-              if (uri != null) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-      onLongPress: _isSelecting
-          ? null
-          : () => _showArticleActions(article, labelColor),
-      child: Opacity(
-        opacity: article.isRead ? 0.5 : 1.0,
+              },
+        onLongPress: _isSelecting
+            ? null
+            : () => _showArticleActions(article, labelColor),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+          padding: const EdgeInsets.symmetric(
+              vertical: Spacing.md, horizontal: Spacing.lg),
           child: Row(
             children: [
-              // 선택 모드: 체크박스
               if (_isSelecting)
                 Padding(
-                  padding: const EdgeInsets.only(right: 12),
+                  padding: const EdgeInsets.only(right: Spacing.md),
                   child: SizedBox(
                     width: 24,
                     height: 24,
@@ -310,23 +354,22 @@ class _LabelDetailScreenState extends State<LabelDetailScreen>
                     ),
                   ),
                 ),
-              // 썸네일
               ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: Radii.borderMd,
                 child: SizedBox(
-                  width: 56,
-                  height: 56,
+                  width: 60,
+                  height: 60,
                   child: article.thumbnailUrl != null
                       ? Image.network(
                           article.thumbnailUrl!,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => _thumbnailPlaceholder(meta),
+                          errorBuilder: (_, _, _) =>
+                              _thumbnailPlaceholder(meta, theme),
                         )
-                      : _thumbnailPlaceholder(meta),
+                      : _thumbnailPlaceholder(meta, theme),
                 ),
               ),
-              const SizedBox(width: 12),
-              // 제목 + 부제
+              const SizedBox(width: Spacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -335,31 +378,48 @@ class _LabelDetailScreenState extends State<LabelDetailScreen>
                       article.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 14,
+                      style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w500,
+                        color: article.isRead
+                            ? theme.colorScheme.onSurfaceVariant
+                            : null,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: Spacing.xs),
                     Row(
                       children: [
-                        Icon(meta.icon, size: 11, color: Colors.grey),
+                        Icon(meta.icon, size: 11,
+                            color: theme.colorScheme.onSurfaceVariant),
                         const SizedBox(width: 4),
                         Text(meta.label,
-                            style: const TextStyle(
-                                fontSize: 11, color: Colors.grey)),
-                        const SizedBox(width: 8),
+                            style: theme.textTheme.labelSmall),
+                        const SizedBox(width: Spacing.sm),
                         Text(dateText,
-                            style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey.withValues(alpha: 0.6))),
+                            style: theme.textTheme.labelSmall),
                         if (article.isRead) ...[
-                          const SizedBox(width: 8),
+                          const SizedBox(width: Spacing.sm),
                           Icon(Icons.check_circle, size: 12,
+                              color: labelColor.withValues(alpha: 0.6)),
+                        ],
+                        if (article.isBookmarked) ...[
+                          const SizedBox(width: Spacing.sm),
+                          Icon(Icons.bookmark, size: 12,
                               color: labelColor.withValues(alpha: 0.6)),
                         ],
                       ],
                     ),
+                    if (article.memo != null) ...[
+                      const SizedBox(height: Spacing.xs),
+                      Text(
+                        article.memo!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontStyle: FontStyle.italic,
+                          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -374,10 +434,46 @@ class _LabelDetailScreenState extends State<LabelDetailScreen>
     final theme = Theme.of(context);
     showModalBottomSheet(
       context: context,
+      backgroundColor: theme.colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xl)),
+      ),
       builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            const SizedBox(height: Spacing.sm),
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(2.5),
+              ),
+            ),
+            const SizedBox(height: Spacing.sm),
+            ListTile(
+              leading: Icon(
+                article.isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+              ),
+              title: Text(article.isBookmarked ? '북마크 해제' : '북마크'),
+              onTap: () async {
+                Navigator.pop(ctx);
+                await DatabaseService.toggleBookmark(article);
+                setState(() {});
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_note),
+              title: Text(article.memo != null ? '메모 편집' : '메모 추가'),
+              subtitle: article.memo != null
+                  ? Text(article.memo!, maxLines: 1, overflow: TextOverflow.ellipsis)
+                  : null,
+              onTap: () {
+                Navigator.pop(ctx);
+                _showMemoDialog(article);
+              },
+            ),
             ListTile(
               leading: Icon(
                 article.isRead ? Icons.visibility_off : Icons.visibility,
@@ -420,7 +516,8 @@ class _LabelDetailScreenState extends State<LabelDetailScreen>
                         child: const Text('취소'),
                       ),
                       FilledButton(
-                        style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                        style: FilledButton.styleFrom(
+                            backgroundColor: theme.colorScheme.error),
                         onPressed: () => Navigator.pop(ctx2, true),
                         child: const Text('삭제'),
                       ),
@@ -439,12 +536,128 @@ class _LabelDetailScreenState extends State<LabelDetailScreen>
     );
   }
 
-  Widget _thumbnailPlaceholder(({String label, IconData icon}) meta) {
+  void _showMemoDialog(Article article) {
+    final controller = TextEditingController(text: article.memo);
+    final theme = Theme.of(context);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: theme.colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xl)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom,
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: Spacing.md),
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(2.5),
+                ),
+              ),
+              const SizedBox(height: Spacing.lg),
+              Text('메모', style: theme.textTheme.titleSmall),
+              const SizedBox(height: Spacing.lg),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Spacing.xxl),
+                child: TextField(
+                  controller: controller,
+                  maxLength: 100,
+                  maxLines: 1,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: '한 줄 메모를 입력하세요',
+                    counterText: '',
+                    filled: true,
+                    fillColor: theme.colorScheme.surfaceContainerHighest,
+                    border: OutlineInputBorder(
+                      borderRadius: Radii.borderMd,
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: Spacing.lg,
+                      vertical: Spacing.md,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: Spacing.lg),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(Spacing.xxl, 0, Spacing.xxl, Spacing.lg),
+                child: Row(
+                  children: [
+                    if (article.memo != null) ...[
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: theme.colorScheme.error,
+                            side: BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.3)),
+                            shape: RoundedRectangleBorder(borderRadius: Radii.borderMd),
+                          ),
+                          onPressed: () async {
+                            await DatabaseService.updateMemo(article, null);
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            setState(() {});
+                          },
+                          child: const Text('삭제'),
+                        ),
+                      ),
+                      const SizedBox(width: Spacing.sm),
+                    ],
+                    Expanded(
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: theme.colorScheme.secondary,
+                          foregroundColor: theme.colorScheme.onSecondary,
+                          shape: RoundedRectangleBorder(borderRadius: Radii.borderMd),
+                        ),
+                        onPressed: () async {
+                          await DatabaseService.updateMemo(article, controller.text);
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          setState(() {});
+                        },
+                        child: const Text('저장'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _bulkToggleBookmark(bool bookmark) async {
+    final articles = DatabaseService.getArticlesByLabel(widget.label.name)
+        .where((a) => _selectedKeys.contains(a.key))
+        .toList();
+    for (final a in articles) {
+      a.isBookmarked = bookmark;
+      await a.save();
+    }
+    setState(() {
+      _isSelecting = false;
+      _selectedKeys.clear();
+    });
+  }
+
+  Widget _thumbnailPlaceholder(
+      ({String label, IconData icon}) meta, ThemeData theme) {
     return Container(
-      color: Colors.grey.withValues(alpha: 0.15),
+      color: theme.colorScheme.surfaceContainerHighest,
       child: Center(
         child: Icon(meta.icon,
-            size: 24, color: Colors.grey.withValues(alpha: 0.5)),
+            size: 24, color: theme.colorScheme.onSurfaceVariant),
       ),
     );
   }

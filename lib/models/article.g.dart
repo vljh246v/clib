@@ -23,13 +23,15 @@ class ArticleAdapter extends TypeAdapter<Article> {
       ..platform = fields[3] as Platform
       ..topicLabels = (fields[4] as List).cast<String>()
       ..isRead = fields[5] as bool
-      ..createdAt = fields[6] as DateTime;
+      ..createdAt = fields[6] as DateTime
+      ..isBookmarked = fields[7] == null ? false : fields[7] as bool
+      ..memo = fields[8] as String?;
   }
 
   @override
   void write(BinaryWriter writer, Article obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.url)
       ..writeByte(1)
@@ -43,7 +45,11 @@ class ArticleAdapter extends TypeAdapter<Article> {
       ..writeByte(5)
       ..write(obj.isRead)
       ..writeByte(6)
-      ..write(obj.createdAt);
+      ..write(obj.createdAt)
+      ..writeByte(7)
+      ..write(obj.isBookmarked)
+      ..writeByte(8)
+      ..write(obj.memo);
   }
 
   @override

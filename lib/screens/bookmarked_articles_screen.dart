@@ -5,15 +5,16 @@ import 'package:clib/models/platform_meta.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/theme/design_tokens.dart';
 
-/// 전체 아티클 화면 — 읽음/안읽음 필터 탭
-class AllArticlesScreen extends StatefulWidget {
-  const AllArticlesScreen({super.key});
+/// 북마크된 아티클 화면
+class BookmarkedArticlesScreen extends StatefulWidget {
+  const BookmarkedArticlesScreen({super.key});
 
   @override
-  State<AllArticlesScreen> createState() => _AllArticlesScreenState();
+  State<BookmarkedArticlesScreen> createState() =>
+      _BookmarkedArticlesScreenState();
 }
 
-class _AllArticlesScreenState extends State<AllArticlesScreen>
+class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isSelecting = false;
@@ -33,7 +34,7 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
   }
 
   List<Article> _getFilteredArticles(bool? isReadFilter) {
-    var articles = DatabaseService.getAllArticles();
+    var articles = DatabaseService.getBookmarkedArticles();
     if (isReadFilter != null) {
       articles = articles.where((a) => a.isRead == isReadFilter).toList();
     }
@@ -60,7 +61,7 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
   }
 
   Future<void> _bulkMarkRead(bool isRead) async {
-    final articles = DatabaseService.getAllArticles()
+    final articles = DatabaseService.getBookmarkedArticles()
         .where((a) => _selectedKeys.contains(a.key))
         .toList();
     for (final a in articles) {
@@ -76,12 +77,26 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
     });
   }
 
+  Future<void> _bulkToggleBookmark(bool bookmark) async {
+    final articles = DatabaseService.getBookmarkedArticles()
+        .where((a) => _selectedKeys.contains(a.key))
+        .toList();
+    for (final a in articles) {
+      a.isBookmarked = bookmark;
+      await a.save();
+    }
+    setState(() {
+      _isSelecting = false;
+      _selectedKeys.clear();
+    });
+  }
+
   Future<void> _bulkDelete() async {
     final theme = Theme.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('아티클 삭���'),
+        title: const Text('아티클 삭제'),
         content: Text('선택한 ${_selectedKeys.length}개 아티클을 삭제할까요?'),
         actions: [
           TextButton(
@@ -99,7 +114,7 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
     );
     if (confirmed != true) return;
 
-    final articles = DatabaseService.getAllArticles()
+    final articles = DatabaseService.getBookmarkedArticles()
         .where((a) => _selectedKeys.contains(a.key))
         .toList();
     for (final a in articles) {
@@ -113,9 +128,9 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
 
   @override
   Widget build(BuildContext context) {
-    final stats = DatabaseService.getOverallStats();
+    final stats = DatabaseService.getBookmarkStats();
     final theme = Theme.of(context);
-    final color = theme.colorScheme.primary;
+    final color = theme.colorScheme.secondary;
 
     final bool? filterMap = [null, false, true][_tabController.index];
     final currentArticles = _getFilteredArticles(filterMap);
@@ -126,7 +141,7 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
       appBar: AppBar(
         title: _isSelecting
             ? Text('${_selectedKeys.length}개 선택됨')
-            : const Text('전체 아티클'),
+            : const Text('북마크'),
         actions: _isSelecting
             ? [
                 Checkbox(
@@ -246,17 +261,17 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
                 shape: BoxShape.circle,
                 color: theme.colorScheme.secondary.withValues(alpha: 0.06),
               ),
-              child: Icon(Icons.article_outlined,
+              child: Icon(Icons.bookmark_border,
                   size: 40,
                   color: theme.colorScheme.secondary.withValues(alpha: 0.4)),
             ),
             const SizedBox(height: Spacing.lg),
             Text(
               isReadFilter == null
-                  ? '아티클이 없습니다.'
+                  ? '북마크한 아티클이 없습니다.'
                   : isReadFilter
-                      ? '읽은 아티클이 없습니다.'
-                      : '안 읽은 아티클이 없습니다.',
+                      ? '읽은 북마크가 없습니다.'
+                      : '안 읽은 북마크가 없습니다.',
               style: theme.textTheme.bodySmall,
             ),
           ],
@@ -380,11 +395,9 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
                           Icon(Icons.check_circle, size: 12,
                               color: theme.colorScheme.secondary.withValues(alpha: 0.6)),
                         ],
-                        if (article.isBookmarked) ...[
-                          const SizedBox(width: Spacing.sm),
-                          Icon(Icons.bookmark, size: 12,
-                              color: theme.colorScheme.secondary.withValues(alpha: 0.6)),
-                        ],
+                        const SizedBox(width: Spacing.sm),
+                        Icon(Icons.bookmark, size: 12,
+                            color: theme.colorScheme.secondary.withValues(alpha: 0.6)),
                       ],
                     ),
                     if (article.memo != null) ...[
@@ -614,20 +627,6 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
         ),
       ),
     );
-  }
-
-  Future<void> _bulkToggleBookmark(bool bookmark) async {
-    final articles = DatabaseService.getAllArticles()
-        .where((a) => _selectedKeys.contains(a.key))
-        .toList();
-    for (final a in articles) {
-      a.isBookmarked = bookmark;
-      await a.save();
-    }
-    setState(() {
-      _isSelecting = false;
-      _selectedKeys.clear();
-    });
   }
 
   Widget _thumbnailPlaceholder(

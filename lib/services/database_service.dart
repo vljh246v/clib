@@ -66,6 +66,32 @@ class DatabaseService {
     await article.save();
   }
 
+  // 북마크 토글
+  static Future<void> toggleBookmark(Article article) async {
+    article.isBookmarked = !article.isBookmarked;
+    await article.save();
+  }
+
+  // 메모 업데이트
+  static Future<void> updateMemo(Article article, String? memo) async {
+    article.memo = (memo != null && memo.trim().isEmpty) ? null : memo?.trim();
+    await article.save();
+  }
+
+  // 북마크된 아티클 목록
+  static List<Article> getBookmarkedArticles() {
+    return _box.values
+        .where((a) => a.isBookmarked)
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  // 북마크 통계
+  static ({int total, int read}) getBookmarkStats() {
+    final articles = _box.values.where((a) => a.isBookmarked).toList();
+    return (total: articles.length, read: articles.where((a) => a.isRead).length);
+  }
+
   // 아티클 삭제
   static Future<void> deleteArticle(Article article) async {
     await article.delete();

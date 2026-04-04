@@ -6,6 +6,7 @@ import 'package:clib/main.dart';
 import 'package:clib/models/article.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/theme/app_theme.dart';
+import 'package:clib/theme/design_tokens.dart';
 import 'package:clib/widgets/article_card.dart';
 import 'package:clib/widgets/label_edit_sheet.dart';
 
@@ -97,33 +98,210 @@ class _HomeScreenState extends State<HomeScreen> {
     return true;
   }
 
-  Widget _buildEmptyState() {
-    return Expanded(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
+  void _showCardActions(Article article) {
+    final theme = Theme.of(context);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: theme.colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xl)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: Spacing.sm),
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(2.5),
+              ),
+            ),
+            const SizedBox(height: Spacing.sm),
+            ListTile(
+              leading: Icon(
+                article.isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+              ),
+              title: Text(article.isBookmarked ? '북마크 해제' : '북마크'),
+              onTap: () async {
+                Navigator.pop(ctx);
+                await DatabaseService.toggleBookmark(article);
+                _loadArticles();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_note),
+              title: Text(article.memo != null ? '메모 편집' : '메모 추가'),
+              subtitle: article.memo != null
+                  ? Text(article.memo!, maxLines: 1, overflow: TextOverflow.ellipsis)
+                  : null,
+              onTap: () {
+                Navigator.pop(ctx);
+                _showMemoDialog(article);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.label_outline),
+              title: const Text('라벨 편집'),
+              onTap: () async {
+                Navigator.pop(ctx);
+                await LabelEditSheet.show(context, article: article);
+                _loadArticles();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.open_in_new),
+              title: const Text('브라우저에서 열기'),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final uri = Uri.tryParse(article.url);
+                if (uri != null) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showMemoDialog(Article article) {
+    final controller = TextEditingController(text: article.memo);
+    final theme = Theme.of(context);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: theme.colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xl)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom,
+        ),
+        child: SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.layers_clear,
-                size: 64,
-                color: Colors.grey.withValues(alpha: 0.5),
+              const SizedBox(height: Spacing.md),
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(2.5),
+                ),
               ),
-              const SizedBox(height: 16),
-              const Text(
+              const SizedBox(height: Spacing.lg),
+              Text('메모', style: theme.textTheme.titleSmall),
+              const SizedBox(height: Spacing.lg),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Spacing.xxl),
+                child: TextField(
+                  controller: controller,
+                  maxLength: 100,
+                  maxLines: 1,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: '한 줄 메모를 입력하세요',
+                    counterText: '',
+                    filled: true,
+                    fillColor: theme.colorScheme.surfaceContainerHighest,
+                    border: OutlineInputBorder(
+                      borderRadius: Radii.borderMd,
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: Spacing.lg,
+                      vertical: Spacing.md,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: Spacing.lg),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(Spacing.xxl, 0, Spacing.xxl, Spacing.lg),
+                child: Row(
+                  children: [
+                    if (article.memo != null) ...[
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: theme.colorScheme.error,
+                            side: BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.3)),
+                            shape: RoundedRectangleBorder(borderRadius: Radii.borderMd),
+                          ),
+                          onPressed: () async {
+                            await DatabaseService.updateMemo(article, null);
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            _loadArticles();
+                          },
+                          child: const Text('삭제'),
+                        ),
+                      ),
+                      const SizedBox(width: Spacing.sm),
+                    ],
+                    Expanded(
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: theme.colorScheme.secondary,
+                          foregroundColor: theme.colorScheme.onSecondary,
+                          shape: RoundedRectangleBorder(borderRadius: Radii.borderMd),
+                        ),
+                        onPressed: () async {
+                          await DatabaseService.updateMemo(article, controller.text);
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          _loadArticles();
+                        },
+                        child: const Text('저장'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    final theme = Theme.of(context);
+    return Expanded(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(Spacing.xxxl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.colorScheme.secondary.withValues(alpha: 0.06),
+                ),
+                child: Icon(
+                  Icons.inbox_outlined,
+                  size: 56,
+                  color: theme.colorScheme.secondary.withValues(alpha: 0.4),
+                ),
+              ),
+              const SizedBox(height: Spacing.xl),
+              Text(
                 '스와이프할 아티클이 없습니다',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                style: theme.textTheme.titleSmall,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: Spacing.sm),
               Text(
                 _selectedLabels.isEmpty
                     ? '공유 시트에서 링크를 추가해보세요!'
                     : '선택한 라벨에 읽지 않은 아티클이 없어요',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.withValues(alpha: 0.7),
-                ),
+                style: theme.textTheme.bodySmall,
               ),
             ],
           ),
@@ -166,7 +344,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           Container(
                             width: 1,
                             height: 20,
-                            color: Colors.grey.withValues(alpha: 0.35),
+                            color: Theme.of(context).dividerColor,
                           ),
                           const SizedBox(width: 8),
                         ],
@@ -203,15 +381,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             height: 26,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.grey.withValues(alpha: 0.4),
-                                width: 1.2,
-                              ),
+                              color: Theme.of(context).colorScheme.surfaceContainerHighest,
                             ),
                             child: Icon(
                               Icons.keyboard_arrow_down,
                               size: 16,
-                              color: Colors.grey.withValues(alpha: 0.7),
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ),
@@ -255,10 +430,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text(
                 labelCountText,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.withValues(alpha: 0.7),
-                ),
+                style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
           ),
@@ -289,10 +461,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     // 스와이프 방향에 따른 테두리 색상
                     Color? borderColor;
                     if (percentThresholdX > 20) {
-                      borderColor = AppColors.neonGreen
+                      borderColor = AppColors.swipeRead
                           .withValues(alpha: (percentThresholdX / 100).clamp(0, 1));
                     } else if (percentThresholdX < -20) {
-                      borderColor = AppColors.softCoral
+                      borderColor = AppColors.swipeSkip
                           .withValues(alpha: (percentThresholdX.abs() / 100).clamp(0, 1));
                     }
 
@@ -303,19 +475,15 @@ class _HomeScreenState extends State<HomeScreen> {
                           await launchUrl(uri, mode: LaunchMode.externalApplication);
                         }
                       },
-                      onLongPress: () async {
+                      onLongPress: () {
                         HapticFeedback.heavyImpact();
-                        await LabelEditSheet.show(
-                          context,
-                          article: _articles[index],
-                        );
-                        _loadArticles();
+                        _showCardActions(_articles[index]);
                       },
                       child: Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(20),
                           border: borderColor != null
-                              ? Border.all(color: borderColor, width: 3)
+                              ? Border.all(color: borderColor, width: 2.5)
                               : null,
                         ),
                         child: ArticleCard(article: _articles[index]),
@@ -345,27 +513,33 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final accent = theme.colorScheme.secondary;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        duration: AppDurations.fast,
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
         decoration: BoxDecoration(
-          color: selected ? colorScheme.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
+          color: selected
+              ? accent.withValues(alpha: 0.12)
+              : Colors.transparent,
+          borderRadius: Radii.borderFull,
           border: Border.all(
             color: selected
-                ? colorScheme.primary
-                : Colors.grey.withValues(alpha: 0.35),
+                ? accent
+                : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 13,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-            color: selected ? colorScheme.onPrimary : Colors.grey.withValues(alpha: 0.8),
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+            color: selected
+                ? accent
+                : theme.colorScheme.onSurfaceVariant,
           ),
         ),
       ),

@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:clib/models/label.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/screens/all_articles_screen.dart';
+import 'package:clib/screens/bookmarked_articles_screen.dart';
 import 'package:clib/screens/label_detail_screen.dart';
+import 'package:clib/theme/design_tokens.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -20,37 +22,28 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(Spacing.lg),
       children: [
-        const Text(
-          '보관함',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        // 전체 통계 요약
+        Text('보관함', style: theme.textTheme.displaySmall),
+        const SizedBox(height: Spacing.sm),
         _buildOverallStats(labels, theme, isDark),
-        const SizedBox(height: 20),
-        Text(
-          '라벨별 현황',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 12),
-        // 2열 그리드 (전체 카드 + 라벨 카드)
+        const SizedBox(height: Spacing.xl),
+        Text('라벨별 현황', style: theme.textTheme.titleMedium),
+        const SizedBox(height: Spacing.md),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1.0,
+            mainAxisSpacing: Spacing.md,
+            crossAxisSpacing: Spacing.md,
+            childAspectRatio: 0.95,
           ),
-          itemCount: labels.length + 1,
+          itemCount: labels.length + 2,
           itemBuilder: (context, index) {
             if (index == 0) return _buildAllCard(theme, isDark);
-            return _buildLabelCard(labels[index - 1], theme, isDark);
+            if (index == 1) return _buildBookmarkCard(theme, isDark);
+            return _buildLabelCard(labels[index - 2], theme, isDark);
           },
         ),
       ],
@@ -58,8 +51,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   /// 전체 통계 요약 카드
-  Widget _buildOverallStats(
-      List<Label> labels, ThemeData theme, bool isDark) {
+  Widget _buildOverallStats(List<Label> labels, ThemeData theme, bool isDark) {
     var totalArticles = 0;
     var totalRead = 0;
     for (final label in labels) {
@@ -70,81 +62,76 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final progress = totalArticles > 0 ? totalRead / totalArticles : 0.0;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.05)
-            : Colors.black.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(16),
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: Radii.borderLg,
       ),
-      child: Row(
-        children: [
-          // 큰 원형 프로그레스
-          SizedBox(
-            width: 72,
-            height: 72,
-            child: CustomPaint(
-              painter: _CircularProgressPainter(
-                progress: progress,
-                color: theme.colorScheme.secondary,
-                backgroundColor: isDark
-                    ? Colors.white.withValues(alpha: 0.1)
-                    : Colors.black.withValues(alpha: 0.08),
-                strokeWidth: 6,
-              ),
-              child: Center(
-                child: Text(
-                  '${(progress * 100).round()}%',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.secondary,
-                  ),
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            Container(width: 4, color: theme.colorScheme.secondary),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(Spacing.xl),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 72,
+                      height: 72,
+                      child: CustomPaint(
+                        painter: _CircularProgressPainter(
+                          progress: progress,
+                          color: theme.colorScheme.secondary,
+                          backgroundColor: theme.colorScheme.secondary.withValues(
+                            alpha: 0.12,
+                          ),
+                          strokeWidth: 5,
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${(progress * 100).round()}%',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              color: theme.colorScheme.secondary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: Spacing.xl),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text('전체 읽기 현황', style: theme.textTheme.titleSmall),
+                          const SizedBox(height: Spacing.xs),
+                          Text(
+                            '$totalRead / $totalArticles 아티클 읽음',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                          const SizedBox(height: 2),
+                          Text('${labels.length}개 라벨', style: theme.textTheme.labelSmall),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '전체 읽기 현황',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '$totalRead / $totalArticles 아티클 읽음',
-                  style: TextStyle(
-                    color: Colors.grey.withValues(alpha: 0.8),
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${labels.length}개 라벨',
-                  style: TextStyle(
-                    color: Colors.grey.withValues(alpha: 0.6),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _statBadge(String text, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
+        color: color.withValues(alpha: 0.08),
+        borderRadius: Radii.borderSm,
       ),
       child: Text(
         text,
@@ -174,19 +161,23 @@ class _LibraryScreenState extends State<LibraryScreen> {
         setState(() {});
       },
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Spacing.lg),
         decoration: BoxDecoration(
-          color: isDark
-              ? color.withValues(alpha: 0.12)
-              : color.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: color.withValues(alpha: isDark ? 0.3 : 0.2),
-          ),
+          color: theme.colorScheme.surface,
+          borderRadius: Radii.borderLg,
+          boxShadow: AppShadows.card(isDark),
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // 상단 컬러 바
+            Container(
+              height: 3,
+              margin: const EdgeInsets.only(bottom: Spacing.md),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: Radii.borderFull,
+              ),
+            ),
             SizedBox(
               width: 56,
               height: 56,
@@ -194,8 +185,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 painter: _CircularProgressPainter(
                   progress: progress,
                   color: color,
-                  backgroundColor: color.withValues(alpha: 0.15),
-                  strokeWidth: 5,
+                  backgroundColor: color.withValues(alpha: 0.12),
+                  strokeWidth: 4,
                 ),
                 child: Center(
                   child: Text(
@@ -209,26 +200,85 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: Spacing.sm),
             Text(
               '전체',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-                color: color,
-              ),
+              style: theme.textTheme.titleSmall?.copyWith(color: color),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: Spacing.sm),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _statBadge('전체 ${stats.total}', Colors.grey.withValues(alpha: 0.7)),
+                _statBadge(
+                  '전체 ${stats.total}',
+                  theme.colorScheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 6),
                 _statBadge(
                   '안읽음 $unread',
-                  unread > 0
-                      ? color.withValues(alpha: 0.8)
-                      : Colors.grey.withValues(alpha: 0.5),
+                  unread > 0 ? color : theme.colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 북마크 카드 (그리드 아이템)
+  Widget _buildBookmarkCard(ThemeData theme, bool isDark) {
+    final stats = DatabaseService.getBookmarkStats();
+    final color = theme.colorScheme.secondary;
+    final unread = stats.total - stats.read;
+
+    return GestureDetector(
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const BookmarkedArticlesScreen()),
+        );
+        setState(() {});
+      },
+      child: Container(
+        padding: const EdgeInsets.all(Spacing.lg),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: Radii.borderLg,
+          boxShadow: AppShadows.card(isDark),
+        ),
+        child: Column(
+          children: [
+            Container(
+              height: 3,
+              margin: const EdgeInsets.only(bottom: Spacing.md),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: Radii.borderFull,
+              ),
+            ),
+            SizedBox(
+              width: 56,
+              height: 56,
+              child: Icon(Icons.bookmark_rounded, size: 32, color: color),
+            ),
+            const SizedBox(height: Spacing.sm),
+            Text(
+              '북마크',
+              style: theme.textTheme.titleSmall?.copyWith(color: color),
+            ),
+            const SizedBox(height: Spacing.sm),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _statBadge(
+                  '전체 ${stats.total}',
+                  theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                _statBadge(
+                  '안읽음 $unread',
+                  unread > 0 ? color : theme.colorScheme.onSurfaceVariant,
                 ),
               ],
             ),
@@ -243,7 +293,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final stats = DatabaseService.getLabelStats(label.name);
     final color = Color(label.colorValue);
     final progress = stats.total > 0 ? stats.read / stats.total : 0.0;
-
     final unread = stats.total - stats.read;
     final percent = stats.total > 0 ? (progress * 100).round() : 0;
 
@@ -251,30 +300,28 @@ class _LibraryScreenState extends State<LibraryScreen> {
       onTap: () async {
         await Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => LabelDetailScreen(label: label),
-          ),
+          MaterialPageRoute(builder: (_) => LabelDetailScreen(label: label)),
         );
-        // 돌아오면 상태 갱신 (읽음 처리 등 반영)
         setState(() {});
       },
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Spacing.lg),
         decoration: BoxDecoration(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.05)
-              : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.08)
-                : Colors.black.withValues(alpha: 0.06),
-          ),
+          color: theme.colorScheme.surface,
+          borderRadius: Radii.borderLg,
+          boxShadow: AppShadows.card(isDark),
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 원형 프로그레스 + 퍼센트
+            // 상단 라벨 컬러 바
+            Container(
+              height: 3,
+              margin: const EdgeInsets.only(bottom: Spacing.md),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: Radii.borderFull,
+              ),
+            ),
             SizedBox(
               width: 56,
               height: 56,
@@ -282,8 +329,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 painter: _CircularProgressPainter(
                   progress: progress,
                   color: color,
-                  backgroundColor: color.withValues(alpha: 0.15),
-                  strokeWidth: 5,
+                  backgroundColor: color.withValues(alpha: 0.12),
+                  strokeWidth: 4,
                 ),
                 child: Center(
                   child: Text(
@@ -297,29 +344,25 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 10),
-            // 라벨명
+            const SizedBox(height: Spacing.sm),
             Text(
               label.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
+              style: theme.textTheme.titleSmall,
             ),
-            const SizedBox(height: 6),
-            // 통계 수치
+            const SizedBox(height: Spacing.sm),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _statBadge('전체 ${stats.total}', Colors.grey.withValues(alpha: 0.7)),
+                _statBadge(
+                  '전체 ${stats.total}',
+                  theme.colorScheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 6),
                 _statBadge(
                   '안읽음 $unread',
-                  unread > 0
-                      ? color.withValues(alpha: 0.8)
-                      : Colors.grey.withValues(alpha: 0.5),
+                  unread > 0 ? color : theme.colorScheme.onSurfaceVariant,
                 ),
               ],
             ),
@@ -349,7 +392,6 @@ class _CircularProgressPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.shortestSide - strokeWidth) / 2;
 
-    // 배경 원
     final bgPaint = Paint()
       ..color = backgroundColor
       ..style = PaintingStyle.stroke
@@ -357,7 +399,6 @@ class _CircularProgressPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     canvas.drawCircle(center, radius, bgPaint);
 
-    // 프로그레스 호
     if (progress > 0) {
       final fgPaint = Paint()
         ..color = color

@@ -7,6 +7,7 @@ import 'package:clib/services/database_service.dart';
 import 'package:clib/services/notification_service.dart';
 import 'package:clib/services/share_service.dart';
 import 'package:clib/theme/app_theme.dart';
+import 'package:clib/theme/design_tokens.dart';
 import 'package:clib/widgets/share_label_sheet.dart';
 
 /// 앱 전역 테마 모드
@@ -96,25 +97,92 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
       body: SafeArea(child: _screens[_currentIndex]),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.layers),
-            label: '홈',
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: Radii.borderFull,
+            boxShadow: AppShadows.navigation(isDark),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.grid_view),
-            label: '보관함',
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _NavItem(
+                icon: Icons.layers_rounded,
+                selected: _currentIndex == 0,
+                onTap: () => setState(() => _currentIndex = 0),
+              ),
+              _NavItem(
+                icon: Icons.grid_view_rounded,
+                selected: _currentIndex == 1,
+                onTap: () => setState(() => _currentIndex = 1),
+              ),
+              _NavItem(
+                icon: Icons.settings_rounded,
+                selected: _currentIndex == 2,
+                onTap: () => setState(() => _currentIndex = 2),
+              ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: '설정',
-          ),
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _NavItem({
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final selectedColor = theme.colorScheme.secondary;
+    final unselectedColor = theme.colorScheme.onSurfaceVariant;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: SizedBox(
+        width: 56,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedScale(
+              scale: selected ? 1.1 : 1.0,
+              duration: AppDurations.fast,
+              child: Icon(
+                icon,
+                size: 24,
+                color: selected ? selectedColor : unselectedColor,
+              ),
+            ),
+            const SizedBox(height: 4),
+            AnimatedContainer(
+              duration: AppDurations.fast,
+              width: selected ? 5 : 0,
+              height: selected ? 5 : 0,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: selected ? selectedColor : Colors.transparent,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

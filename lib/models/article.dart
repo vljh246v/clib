@@ -52,6 +52,12 @@ class Article extends HiveObject {
 
   @HiveField(6)
   late DateTime createdAt;
+
+  @HiveField(7, defaultValue: false)
+  bool isBookmarked = false;
+
+  @HiveField(8)
+  String? memo;
 }
 
 Platform classifyPlatform(String url) {

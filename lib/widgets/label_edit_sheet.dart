@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:clib/models/article.dart';
 import 'package:clib/models/platform_meta.dart';
 import 'package:clib/services/database_service.dart';
+import 'package:clib/theme/design_tokens.dart';
 
 /// 아티클의 플랫폼 + 라벨을 편집하는 바텀시트
 class LabelEditSheet extends StatefulWidget {
@@ -22,8 +23,9 @@ class LabelEditSheet extends StatefulWidget {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xl)),
       ),
       builder: (_) => LabelEditSheet(article: article, onChanged: onChanged),
     );
@@ -56,10 +58,10 @@ class _LabelEditSheetState extends State<LabelEditSheet> {
 
     return Padding(
       padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        left: Spacing.xxl,
+        right: Spacing.xxl,
+        top: Spacing.xxl,
+        bottom: MediaQuery.of(context).viewInsets.bottom + Spacing.xxl,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -68,41 +70,34 @@ class _LabelEditSheetState extends State<LabelEditSheet> {
           // 핸들 바
           Center(
             child: Container(
-              width: 40,
+              width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2),
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(2.5),
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: Spacing.lg),
           Text(
             '아티클 편집',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: theme.textTheme.titleMedium,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: Spacing.xs),
           Text(
             widget.article.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+            style: theme.textTheme.bodySmall,
           ),
 
           // ── 플랫폼 선택 ──
-          const SizedBox(height: 20),
-          Text(
-            '플랫폼',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
+          const SizedBox(height: Spacing.xl),
+          Text('플랫폼', style: theme.textTheme.labelLarge),
+          const SizedBox(height: Spacing.sm),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: Spacing.sm,
+            runSpacing: Spacing.sm,
             children: _platformOptions.map((opt) {
               final (value, label, icon) = opt;
               final isSelected = _platform == value;
@@ -116,40 +111,35 @@ class _LabelEditSheetState extends State<LabelEditSheet> {
           ),
 
           // ── 라벨 선택 ──
-          const SizedBox(height: 20),
-          Text(
-            '라벨',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
+          const SizedBox(height: Spacing.xl),
+          Text('라벨', style: theme.textTheme.labelLarge),
+          const SizedBox(height: Spacing.sm),
           if (labels.isEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: Spacing.lg),
               child: Center(
                 child: Text(
                   '설정에서 라벨을 먼저 추가해주세요',
-                  style: TextStyle(color: Colors.grey.withValues(alpha: 0.7)),
+                  style: theme.textTheme.bodySmall,
                 ),
               ),
             )
           else
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: Spacing.sm,
+              runSpacing: Spacing.sm,
               children: labels.map((label) {
                 final isSelected = _selected.contains(label.name);
                 final color = Color(label.colorValue);
                 return FilterChip(
                   label: Text(label.name),
                   selected: isSelected,
-                  selectedColor: color.withValues(alpha: 0.3),
+                  selectedColor: color.withValues(alpha: 0.15),
                   checkmarkColor: color,
                   side: BorderSide(
                     color: isSelected
                         ? color
-                        : Colors.grey.withValues(alpha: 0.3),
+                        : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
                   ),
                   onSelected: (selected) {
                     setState(() {
@@ -164,10 +154,17 @@ class _LabelEditSheetState extends State<LabelEditSheet> {
               }).toList(),
             ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: Spacing.xl),
           SizedBox(
             width: double.infinity,
             child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: theme.colorScheme.secondary,
+                foregroundColor: theme.colorScheme.onSecondary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: Radii.borderMd,
+                ),
+              ),
               onPressed: _save,
               child: const Text('저장'),
             ),

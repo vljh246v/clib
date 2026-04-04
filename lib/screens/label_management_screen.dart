@@ -1,7 +1,9 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:clib/models/label.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/services/notification_service.dart';
+import 'package:clib/theme/design_tokens.dart';
 
 class LabelManagementScreen extends StatefulWidget {
   const LabelManagementScreen({super.key});
@@ -11,24 +13,13 @@ class LabelManagementScreen extends StatefulWidget {
 }
 
 class _LabelManagementScreenState extends State<LabelManagementScreen> {
-  static const _colorOptions = [
-    Color(0xFF42A5F5),
-    Color(0xFF66BB6A),
-    Color(0xFF5C6BC0),
-    Color(0xFFAB47BC),
-    Color(0xFFEF5350),
-    Color(0xFFFFCA28),
-    Color(0xFF26C6DA),
-    Color(0xFFFF7043),
-    Color(0xFF8D6E63),
-    Color(0xFF78909C),
-  ];
-
   static const _dayLabels = ['월', '화', '수', '목', '금', '토', '일'];
 
   @override
   Widget build(BuildContext context) {
     final labels = DatabaseService.getAllLabelObjects();
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -45,37 +36,46 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  Container(
+                    width: 96,
+                    height: 96,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: theme.colorScheme.secondary.withValues(alpha: 0.06),
+                    ),
+                    child: Icon(Icons.label_outline,
+                        size: 40,
+                        color: theme.colorScheme.secondary.withValues(alpha: 0.4)),
+                  ),
+                  const SizedBox(height: Spacing.lg),
                   Text(
                     '라벨을 만들어 아티클을 분류해보세요',
-                    style: TextStyle(
-                        color: Colors.grey.withValues(alpha: 0.7), fontSize: 14),
+                    style: theme.textTheme.bodySmall,
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: Spacing.xl),
                   GestureDetector(
                     onTap: () => _showLabelDialog(),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 12),
+                          horizontal: Spacing.xl, vertical: Spacing.md),
                       decoration: BoxDecoration(
                         border: Border.all(
-                          color: Colors.grey.withValues(alpha: 0.35),
+                          color: theme.colorScheme.secondary.withValues(alpha: 0.4),
                           width: 1.5,
                         ),
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: Radii.borderFull,
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.add,
                               size: 18,
-                              color: Colors.grey.withValues(alpha: 0.6)),
-                          const SizedBox(width: 8),
+                              color: theme.colorScheme.secondary),
+                          const SizedBox(width: Spacing.sm),
                           Text(
                             '신규 라벨 추가',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.grey.withValues(alpha: 0.7),
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              color: theme.colorScheme.secondary,
                             ),
                           ),
                         ],
@@ -85,57 +85,78 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
                 ],
               ),
             )
-          : ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: labels.length,
-              separatorBuilder: (_, _) => const Divider(height: 1, indent: 72),
-              itemBuilder: (context, index) {
-                final label = labels[index];
-                final stats = DatabaseService.getLabelStats(label.name);
-                final color = Color(label.colorValue);
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: color,
-                    radius: 18,
-                    child: Text(
-                      label.name[0],
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+          : Padding(
+              padding: const EdgeInsets.all(Spacing.lg),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: Radii.borderLg,
+                  boxShadow: AppShadows.card(isDark),
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.zero,
+                  itemCount: labels.length,
+                  separatorBuilder: (_, _) => Divider(
+                    height: 1,
+                    indent: 56,
+                    color: theme.dividerColor,
                   ),
-                  title: Text(label.name),
-                  subtitle: Text('${stats.total}개 아티클 · ${stats.read}개 읽음'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          label.notificationEnabled
-                              ? Icons.notifications_active
-                              : Icons.notifications_off_outlined,
-                          color: label.notificationEnabled
-                              ? color
-                              : Colors.grey.withValues(alpha: 0.4),
-                          size: 20,
+                  itemBuilder: (context, index) {
+                    final label = labels[index];
+                    final stats = DatabaseService.getLabelStats(label.name);
+                    final color = Color(label.colorValue);
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: color,
+                        radius: 18,
+                        child: Text(
+                          label.name[0],
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        onPressed: () => _showNotificationDialog(label),
                       ),
-                      IconButton(
-                        icon: Icon(
-                          Icons.delete_outline,
-                          color: Colors.grey.withValues(alpha: 0.6),
-                          size: 20,
-                        ),
-                        onPressed: () => _confirmDelete(label),
+                      title: Text(label.name,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          )),
+                      subtitle: Text(
+                        '${stats.total}개 아티클 · ${stats.read}개 읽음',
+                        style: theme.textTheme.labelSmall,
                       ),
-                    ],
-                  ),
-                  onTap: () => _showLabelDialog(label: label),
-                );
-              },
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              label.notificationEnabled
+                                  ? Icons.notifications_active
+                                  : Icons.notifications_off_outlined,
+                              color: label.notificationEnabled
+                                  ? color
+                                  : theme.colorScheme.onSurfaceVariant,
+                              size: 20,
+                            ),
+                            onPressed: () => _showNotificationDialog(label),
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              Icons.delete_outline,
+                              color: theme.colorScheme.onSurfaceVariant,
+                              size: 20,
+                            ),
+                            onPressed: () => _confirmDelete(label),
+                          ),
+                        ],
+                      ),
+                      onTap: () => _showLabelDialog(label: label),
+                    );
+                  },
+                ),
+              ),
             ),
     );
   }
@@ -148,6 +169,7 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
       hour: int.parse(timeParts[0]),
       minute: int.parse(timeParts[1]),
     );
+    final theme = Theme.of(context);
 
     await showDialog(
       context: context,
@@ -165,14 +187,15 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
                 onChanged: (v) => setDialogState(() => enabled = v),
               ),
               if (enabled) ...[
-                const SizedBox(height: 8),
-                const Text('요일', style: TextStyle(fontSize: 14)),
-                const SizedBox(height: 8),
+                const SizedBox(height: Spacing.sm),
+                Text('요일', style: theme.textTheme.labelLarge),
+                const SizedBox(height: Spacing.sm),
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
                   children: List.generate(7, (i) {
                     final isSelected = selectedDays.contains(i);
+                    final labelColor = Color(label.colorValue);
                     return GestureDetector(
                       onTap: () => setDialogState(() {
                         if (isSelected) {
@@ -186,20 +209,22 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
                         height: 38,
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? Color(label.colorValue)
+                              ? labelColor
                               : Colors.transparent,
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: isSelected
-                                ? Color(label.colorValue)
-                                : Colors.grey.withValues(alpha: 0.4),
+                                ? labelColor
+                                : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
                           ),
                         ),
                         alignment: Alignment.center,
                         child: Text(
                           _dayLabels[i],
                           style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.grey,
+                            color: isSelected
+                                ? Colors.white
+                                : theme.colorScheme.onSurfaceVariant,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
@@ -208,23 +233,88 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
                     );
                   }),
                 ),
-                const SizedBox(height: 16),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('시간'),
-                  trailing: TextButton(
-                    onPressed: () async {
-                      final picked = await showTimePicker(
-                        context: ctx,
-                        initialTime: selectedTime,
-                      );
-                      if (picked != null) {
-                        setDialogState(() => selectedTime = picked);
-                      }
-                    },
-                    child: Text(
-                      '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
-                      style: const TextStyle(fontSize: 16),
+                const SizedBox(height: Spacing.lg),
+                GestureDetector(
+                  onTap: () async {
+                    var tempTime = DateTime(2000, 1, 1, selectedTime.hour, selectedTime.minute);
+                    await showModalBottomSheet(
+                      context: ctx,
+                      backgroundColor: theme.colorScheme.surface,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xl)),
+                      ),
+                      builder: (sheetCtx) => SafeArea(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(height: Spacing.md),
+                            Container(
+                              width: 36,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
+                                borderRadius: BorderRadius.circular(2.5),
+                              ),
+                            ),
+                            const SizedBox(height: Spacing.lg),
+                            Text('시간 선택', style: theme.textTheme.titleSmall),
+                            SizedBox(
+                              height: 200,
+                              child: CupertinoDatePicker(
+                                mode: CupertinoDatePickerMode.time,
+                                initialDateTime: tempTime,
+                                use24hFormat: true,
+                                onDateTimeChanged: (dt) => tempTime = dt,
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(Spacing.xxl, 0, Spacing.xxl, Spacing.lg),
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: FilledButton(
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: theme.colorScheme.secondary,
+                                    foregroundColor: theme.colorScheme.onSecondary,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: Radii.borderMd,
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    Navigator.pop(sheetCtx);
+                                  },
+                                  child: const Text('확인'),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                    setDialogState(() {
+                      selectedTime = TimeOfDay(hour: tempTime.hour, minute: tempTime.minute);
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: Spacing.lg, vertical: Spacing.md),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: Radii.borderMd,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.access_time, size: 20, color: theme.colorScheme.onSurfaceVariant),
+                        const SizedBox(width: Spacing.md),
+                        Text('시간', style: theme.textTheme.bodyMedium),
+                        const Spacer(),
+                        Text(
+                          '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: theme.colorScheme.secondary,
+                          ),
+                        ),
+                        const SizedBox(width: Spacing.xs),
+                        Icon(Icons.chevron_right, size: 18, color: theme.colorScheme.onSurfaceVariant),
+                      ],
                     ),
                   ),
                 ),
@@ -237,6 +327,10 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
               child: const Text('취소'),
             ),
             FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: theme.colorScheme.secondary,
+                foregroundColor: theme.colorScheme.onSecondary,
+              ),
               onPressed: () async {
                 if (enabled) {
                   await NotificationService.requestPermission();
@@ -269,7 +363,8 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
     final isEdit = label != null;
     final nameController = TextEditingController(text: label?.name ?? '');
     var selectedColor =
-        label != null ? Color(label.colorValue) : _colorOptions.first;
+        label != null ? Color(label.colorValue) : LabelColors.presets.first;
+    final theme = Theme.of(context);
 
     await showDialog(
       context: context,
@@ -289,13 +384,13 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
                 ),
                 autofocus: true,
               ),
-              const SizedBox(height: 16),
-              const Text('색상', style: TextStyle(fontSize: 14)),
-              const SizedBox(height: 8),
+              const SizedBox(height: Spacing.lg),
+              Text('색상', style: theme.textTheme.labelLarge),
+              const SizedBox(height: Spacing.sm),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _colorOptions.map((color) {
+                spacing: Spacing.sm,
+                runSpacing: Spacing.sm,
+                children: LabelColors.presets.map((color) {
                   final isSelected =
                       selectedColor.toARGB32() == color.toARGB32();
                   return GestureDetector(
@@ -308,12 +403,12 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
                         color: color,
                         shape: BoxShape.circle,
                         border: isSelected
-                            ? Border.all(color: Colors.white, width: 3)
+                            ? Border.all(color: Colors.white, width: 2)
                             : null,
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
-                                    color: color.withValues(alpha: 0.5),
+                                    color: color.withValues(alpha: 0.4),
                                     blurRadius: 8)
                               ]
                             : null,
@@ -334,6 +429,10 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
               child: const Text('취소'),
             ),
             FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: theme.colorScheme.secondary,
+                foregroundColor: theme.colorScheme.onSecondary,
+              ),
               onPressed: () async {
                 final name = nameController.text.trim();
                 if (name.isEmpty) return;
@@ -366,6 +465,7 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
   }
 
   Future<void> _confirmDelete(Label label) async {
+    final theme = Theme.of(context);
     final stats = DatabaseService.getLabelStats(label.name);
     final confirmed = await showDialog<bool>(
       context: context,
@@ -381,7 +481,8 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
             child: const Text('취소'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+                backgroundColor: theme.colorScheme.error),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('삭제'),
           ),

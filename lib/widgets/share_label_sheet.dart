@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:clib/models/label.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/services/share_service.dart';
+import 'package:clib/theme/design_tokens.dart';
 
 /// Android 공유 인텐트 수신 시 라벨 선택 후 저장하는 바텀시트
 class ShareLabelSheet extends StatefulWidget {
@@ -13,8 +14,9 @@ class ShareLabelSheet extends StatefulWidget {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xl)),
       ),
       builder: (_) => ShareLabelSheet(url: url),
     );
@@ -25,23 +27,13 @@ class ShareLabelSheet extends StatefulWidget {
 }
 
 class _ShareLabelSheetState extends State<ShareLabelSheet> {
-  static const _colorOptions = [
-    Color(0xFF42A5F5),
-    Color(0xFF66BB6A),
-    Color(0xFF5C6BC0),
-    Color(0xFFAB47BC),
-    Color(0xFFEF5350),
-    Color(0xFFFFCA28),
-    Color(0xFF26C6DA),
-    Color(0xFF8D6E63),
-  ];
-
   final Set<String> _selected = {};
   bool _saving = false;
 
   Future<void> _showAddLabelDialog() async {
     final nameController = TextEditingController();
-    var selectedColor = _colorOptions.first;
+    var selectedColor = LabelColors.presets.first;
+    final theme = Theme.of(context);
 
     final created = await showDialog<Label>(
       context: context,
@@ -61,13 +53,13 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
                 ),
                 autofocus: true,
               ),
-              const SizedBox(height: 16),
-              const Text('색상', style: TextStyle(fontSize: 14)),
-              const SizedBox(height: 8),
+              const SizedBox(height: Spacing.lg),
+              Text('색상', style: theme.textTheme.labelLarge),
+              const SizedBox(height: Spacing.sm),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _colorOptions.map((color) {
+                spacing: Spacing.sm,
+                runSpacing: Spacing.sm,
+                children: LabelColors.presets.map((color) {
                   final isSelected = selectedColor.toARGB32() == color.toARGB32();
                   return GestureDetector(
                     onTap: () => setDialogState(() => selectedColor = color),
@@ -78,10 +70,10 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
                         color: color,
                         shape: BoxShape.circle,
                         border: isSelected
-                            ? Border.all(color: Colors.white, width: 3)
+                            ? Border.all(color: Colors.white, width: 2)
                             : null,
                         boxShadow: isSelected
-                            ? [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 8)]
+                            ? [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 8)]
                             : null,
                       ),
                       child: isSelected
@@ -99,6 +91,10 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
               child: const Text('취소'),
             ),
             FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: theme.colorScheme.secondary,
+                foregroundColor: theme.colorScheme.onSecondary,
+              ),
               onPressed: () async {
                 final name = nameController.text.trim();
                 if (name.isEmpty) return;
@@ -134,10 +130,10 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
 
     return Padding(
       padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        left: Spacing.xxl,
+        right: Spacing.xxl,
+        top: Spacing.xxl,
+        bottom: MediaQuery.of(context).viewInsets.bottom + Spacing.xxl,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -146,42 +142,35 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
           // 핸들 바
           Center(
             child: Container(
-              width: 40,
+              width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2),
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(2.5),
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: Spacing.lg),
           Text(
             'Clib에 저장',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: theme.textTheme.titleMedium,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: Spacing.xs),
           Text(
             widget.url,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+            style: theme.textTheme.bodySmall,
           ),
-          const SizedBox(height: 16),
-          const Divider(height: 1),
-          const SizedBox(height: 16),
-          Text(
-            '라벨',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 10),
+          const SizedBox(height: Spacing.lg),
+          Divider(height: 1, color: theme.dividerColor),
+          const SizedBox(height: Spacing.lg),
+          Text('라벨', style: theme.textTheme.labelLarge),
+          const SizedBox(height: Spacing.md),
           if (labels.isNotEmpty)
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: Spacing.sm,
+              runSpacing: Spacing.sm,
               children: [
                 ...labels.map((label) {
                   final isSelected = _selected.contains(label.name);
@@ -189,12 +178,12 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
                   return FilterChip(
                     label: Text(label.name),
                     selected: isSelected,
-                    selectedColor: color.withValues(alpha: 0.3),
+                    selectedColor: color.withValues(alpha: 0.15),
                     checkmarkColor: color,
                     side: BorderSide(
                       color: isSelected
                           ? color
-                          : Colors.grey.withValues(alpha: 0.3),
+                          : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
                     ),
                     onSelected: (v) {
                       setState(() {
@@ -210,33 +199,52 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
                 ActionChip(
                   avatar: const Icon(Icons.add, size: 16),
                   label: const Text('새 라벨'),
-                  side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+                  side: BorderSide(
+                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
+                  ),
                   onPressed: _showAddLabelDialog,
                 ),
               ],
             ),
           if (labels.isEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: Spacing.sm),
               child: ActionChip(
                 avatar: const Icon(Icons.add, size: 16),
                 label: const Text('새 라벨'),
-                side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+                side: BorderSide(
+                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
+                ),
                 onPressed: _showAddLabelDialog,
               ),
             ),
-          const SizedBox(height: 20),
+          const SizedBox(height: Spacing.xl),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: Radii.borderMd,
+                    ),
+                  ),
                   onPressed: () => Navigator.pop(context),
                   child: const Text('취소'),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: Spacing.md),
               Expanded(
                 child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: theme.colorScheme.secondary,
+                    foregroundColor: theme.colorScheme.onSecondary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: Radii.borderMd,
+                    ),
+                  ),
                   onPressed: _saving ? null : _save,
                   child: _saving
                       ? const SizedBox(

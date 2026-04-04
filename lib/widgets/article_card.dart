@@ -3,6 +3,7 @@ import 'package:clib/models/article.dart';
 import 'package:clib/models/platform_meta.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/theme/app_theme.dart';
+import 'package:clib/theme/design_tokens.dart';
 
 class ArticleCard extends StatelessWidget {
   final Article article;
@@ -14,19 +15,15 @@ class ArticleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        borderRadius: Radii.borderXl,
+        boxShadow: AppShadows.swipeCard(isDark),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: Radii.borderXl,
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -48,18 +45,33 @@ class ArticleCard extends StatelessWidget {
                   end: Alignment.bottomCenter,
                   colors: [
                     Colors.transparent,
-                    Colors.black.withValues(alpha: 0.8),
+                    Colors.black.withValues(alpha: 0.75),
                   ],
-                  stops: const [0.4, 1.0],
+                  stops: const [0.35, 0.95],
                 ),
               ),
             ),
 
+            // 북마크 아이콘
+            if (article.isBookmarked)
+              Positioned(
+                top: Spacing.lg,
+                right: Spacing.lg,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    borderRadius: Radii.borderSm,
+                  ),
+                  child: const Icon(Icons.bookmark, size: 16, color: Colors.white70),
+                ),
+              ),
+
             // 제목 + 플랫폼 뱃지
             Positioned(
-              left: 20,
-              right: 20,
-              bottom: 24,
+              left: Spacing.xl,
+              right: Spacing.xl,
+              bottom: Spacing.xxl,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -69,13 +81,13 @@ class ArticleCard extends StatelessWidget {
                     spacing: 6,
                     runSpacing: 6,
                     children: [
-                      // 플랫폼 뱃지
+                      // 플랫폼 뱃지 (frosted-glass 스타일)
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: AppColors.deepIndigo.withValues(alpha: 0.8),
-                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.black.withValues(alpha: 0.3),
+                          borderRadius: Radii.borderMd,
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -105,7 +117,7 @@ class ArticleCard extends StatelessWidget {
                               horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: color.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: Radii.borderSm,
                             border: Border.all(
                               color: color.withValues(alpha: 0.6),
                               width: 0.5,
@@ -134,6 +146,9 @@ class ArticleCard extends StatelessWidget {
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       height: 1.3,
+                      shadows: [
+                        Shadow(blurRadius: 8, color: Colors.black26),
+                      ],
                     ),
                   ),
                 ],
@@ -151,7 +166,7 @@ class ArticleCard extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppColors.deepIndigo, Color(0xFF2D2D6B)],
+          colors: [AppColors.warmCharcoal, Color(0xFF3D3D4A)],
         ),
       ),
       child: const Center(
