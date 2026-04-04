@@ -1,4 +1,5 @@
 import 'dart:io' as io;
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:clib/models/article.dart';
@@ -30,6 +31,21 @@ class DatabaseService {
 
   static Future<void> setOnboardingComplete() async {
     await _prefsBox.put('hasSeenOnboarding', true);
+  }
+
+  // 테마 모드 저장/로드 (0=system, 1=light, 2=dark)
+  static ThemeMode get savedThemeMode {
+    final v = _prefsBox.get('themeMode', defaultValue: 0) as int;
+    switch (v) {
+      case 1: return ThemeMode.light;
+      case 2: return ThemeMode.dark;
+      default: return ThemeMode.system;
+    }
+  }
+
+  static Future<void> saveThemeMode(ThemeMode mode) async {
+    final v = mode == ThemeMode.light ? 1 : mode == ThemeMode.dark ? 2 : 0;
+    await _prefsBox.put('themeMode', v);
   }
 
   // 아티클 저장

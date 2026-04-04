@@ -23,6 +23,7 @@ void main() async {
   await DatabaseService.syncLabelsToAppGroup();
   await NotificationService.init();
   await NotificationService.rescheduleAll();
+  themeModeNotifier.value = DatabaseService.savedThemeMode;
   runApp(const ClibApp());
 }
 

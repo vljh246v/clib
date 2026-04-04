@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:clib/main.dart';
+import 'package:clib/services/database_service.dart';
 import 'package:clib/theme/design_tokens.dart';
 
 class ThemeSettingsScreen extends StatelessWidget {
@@ -26,7 +27,10 @@ class ThemeSettingsScreen extends StatelessWidget {
               child: RadioGroup<ThemeMode>(
                 groupValue: mode,
                 onChanged: (v) {
-                  if (v != null) themeModeNotifier.value = v;
+                  if (v != null) {
+                    themeModeNotifier.value = v;
+                    DatabaseService.saveThemeMode(v);
+                  }
                 },
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
