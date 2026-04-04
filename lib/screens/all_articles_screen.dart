@@ -81,7 +81,7 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('아티클 삭���'),
+        title: const Text('아티클 삭제'),
         content: Text('선택한 ${_selectedKeys.length}개 아티클을 삭제할까요?'),
         actions: [
           TextButton(
@@ -90,7 +90,8 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-                backgroundColor: theme.colorScheme.error),
+              backgroundColor: theme.colorScheme.error,
+            ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('삭제'),
           ),
@@ -119,7 +120,8 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
 
     final bool? filterMap = [null, false, true][_tabController.index];
     final currentArticles = _getFilteredArticles(filterMap);
-    final allSelected = _selectedKeys.length == currentArticles.length &&
+    final allSelected =
+        _selectedKeys.length == currentArticles.length &&
         currentArticles.isNotEmpty;
 
     return Scaffold(
@@ -169,7 +171,9 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
           ? SafeArea(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: Spacing.lg, vertical: Spacing.sm),
+                  horizontal: Spacing.lg,
+                  vertical: Spacing.sm,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -197,7 +201,10 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            icon: const Icon(Icons.check_circle_outline, size: 18),
+                            icon: const Icon(
+                              Icons.check_circle_outline,
+                              size: 18,
+                            ),
                             label: const Text('안 읽음'),
                             onPressed: () => _bulkMarkRead(false),
                           ),
@@ -214,7 +221,8 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
                         Expanded(
                           child: FilledButton.icon(
                             style: FilledButton.styleFrom(
-                                backgroundColor: theme.colorScheme.error),
+                              backgroundColor: theme.colorScheme.error,
+                            ),
                             icon: const Icon(Icons.delete_outline, size: 18),
                             label: const Text('삭제'),
                             onPressed: _bulkDelete,
@@ -246,17 +254,19 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
                 shape: BoxShape.circle,
                 color: theme.colorScheme.secondary.withValues(alpha: 0.06),
               ),
-              child: Icon(Icons.article_outlined,
-                  size: 40,
-                  color: theme.colorScheme.secondary.withValues(alpha: 0.4)),
+              child: Icon(
+                Icons.article_outlined,
+                size: 40,
+                color: theme.colorScheme.secondary.withValues(alpha: 0.4),
+              ),
             ),
             const SizedBox(height: Spacing.lg),
             Text(
               isReadFilter == null
                   ? '아티클이 없습니다.'
                   : isReadFilter
-                      ? '읽은 아티클이 없습니다.'
-                      : '안 읽은 아티클이 없습니다.',
+                  ? '읽은 아티클이 없습니다.'
+                  : '안 읽은 아티클이 없습니다.',
               style: theme.textTheme.bodySmall,
             ),
           ],
@@ -266,7 +276,9 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
 
     return ListView.builder(
       padding: const EdgeInsets.symmetric(
-          vertical: Spacing.sm, horizontal: Spacing.lg),
+        vertical: Spacing.sm,
+        horizontal: Spacing.lg,
+      ),
       itemCount: articles.length,
       itemBuilder: (context, index) => _buildArticleItem(articles[index]),
     );
@@ -280,8 +292,8 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
     final dateText = createdDaysAgo == 0
         ? '오늘'
         : createdDaysAgo == 1
-            ? '어제'
-            : '$createdDaysAgo일 전';
+        ? '어제'
+        : '$createdDaysAgo일 전';
     final isSelected = _selectedKeys.contains(article.key);
 
     return Container(
@@ -295,24 +307,24 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
         borderRadius: Radii.borderLg,
         onTap: _isSelecting
             ? () => setState(() {
-                  if (isSelected) {
-                    _selectedKeys.remove(article.key);
-                  } else {
-                    _selectedKeys.add(article.key);
-                  }
-                })
+                if (isSelected) {
+                  _selectedKeys.remove(article.key);
+                } else {
+                  _selectedKeys.add(article.key);
+                }
+              })
             : () async {
                 final uri = Uri.tryParse(article.url);
                 if (uri != null) {
                   await launchUrl(uri, mode: LaunchMode.externalApplication);
                 }
               },
-        onLongPress: _isSelecting
-            ? null
-            : () => _showArticleActions(article),
+        onLongPress: _isSelecting ? null : () => _showArticleActions(article),
         child: Padding(
           padding: const EdgeInsets.symmetric(
-              vertical: Spacing.md, horizontal: Spacing.lg),
+            vertical: Spacing.md,
+            horizontal: Spacing.lg,
+          ),
           child: Row(
             children: [
               if (_isSelecting)
@@ -367,23 +379,34 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
                     const SizedBox(height: Spacing.xs),
                     Row(
                       children: [
-                        Icon(meta.icon, size: 11,
-                            color: theme.colorScheme.onSurfaceVariant),
+                        Icon(
+                          meta.icon,
+                          size: 11,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                         const SizedBox(width: 4),
-                        Text(meta.label,
-                            style: theme.textTheme.labelSmall),
+                        Text(meta.label, style: theme.textTheme.labelSmall),
                         const SizedBox(width: Spacing.sm),
-                        Text(dateText,
-                            style: theme.textTheme.labelSmall),
+                        Text(dateText, style: theme.textTheme.labelSmall),
                         if (article.isRead) ...[
                           const SizedBox(width: Spacing.sm),
-                          Icon(Icons.check_circle, size: 12,
-                              color: theme.colorScheme.secondary.withValues(alpha: 0.6)),
+                          Icon(
+                            Icons.check_circle,
+                            size: 12,
+                            color: theme.colorScheme.secondary.withValues(
+                              alpha: 0.6,
+                            ),
+                          ),
                         ],
                         if (article.isBookmarked) ...[
                           const SizedBox(width: Spacing.sm),
-                          Icon(Icons.bookmark, size: 12,
-                              color: theme.colorScheme.secondary.withValues(alpha: 0.6)),
+                          Icon(
+                            Icons.bookmark,
+                            size: 12,
+                            color: theme.colorScheme.secondary.withValues(
+                              alpha: 0.6,
+                            ),
+                          ),
                         ],
                       ],
                     ),
@@ -395,7 +418,9 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.labelSmall?.copyWith(
                           fontStyle: FontStyle.italic,
-                          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                          color: theme.colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.7,
+                          ),
                         ),
                       ),
                     ],
@@ -426,7 +451,9 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.25,
+                ),
                 borderRadius: BorderRadius.circular(2.5),
               ),
             ),
@@ -446,7 +473,11 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
               leading: const Icon(Icons.edit_note),
               title: Text(article.memo != null ? '메모 편집' : '메모 추가'),
               subtitle: article.memo != null
-                  ? Text(article.memo!, maxLines: 1, overflow: TextOverflow.ellipsis)
+                  ? Text(
+                      article.memo!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )
                   : null,
               onTap: () {
                 Navigator.pop(ctx);
@@ -480,8 +511,14 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
               },
             ),
             ListTile(
-              leading: Icon(Icons.delete_outline, color: theme.colorScheme.error),
-              title: Text('삭제', style: TextStyle(color: theme.colorScheme.error)),
+              leading: Icon(
+                Icons.delete_outline,
+                color: theme.colorScheme.error,
+              ),
+              title: Text(
+                '삭제',
+                style: TextStyle(color: theme.colorScheme.error),
+              ),
               onTap: () async {
                 Navigator.pop(ctx);
                 final confirmed = await showDialog<bool>(
@@ -496,7 +533,8 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
                       ),
                       FilledButton(
                         style: FilledButton.styleFrom(
-                            backgroundColor: theme.colorScheme.error),
+                          backgroundColor: theme.colorScheme.error,
+                        ),
                         onPressed: () => Navigator.pop(ctx2, true),
                         child: const Text('삭제'),
                       ),
@@ -526,9 +564,7 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
         borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xl)),
       ),
       builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom,
-        ),
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
         child: SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -538,7 +574,9 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.25,
+                  ),
                   borderRadius: BorderRadius.circular(2.5),
                 ),
               ),
@@ -570,7 +608,12 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
               ),
               const SizedBox(height: Spacing.lg),
               Padding(
-                padding: const EdgeInsets.fromLTRB(Spacing.xxl, 0, Spacing.xxl, Spacing.lg),
+                padding: const EdgeInsets.fromLTRB(
+                  Spacing.xxl,
+                  0,
+                  Spacing.xxl,
+                  Spacing.lg,
+                ),
                 child: Row(
                   children: [
                     if (article.memo != null) ...[
@@ -578,8 +621,14 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
                         child: OutlinedButton(
                           style: OutlinedButton.styleFrom(
                             foregroundColor: theme.colorScheme.error,
-                            side: BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.3)),
-                            shape: RoundedRectangleBorder(borderRadius: Radii.borderMd),
+                            side: BorderSide(
+                              color: theme.colorScheme.error.withValues(
+                                alpha: 0.3,
+                              ),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: Radii.borderMd,
+                            ),
                           ),
                           onPressed: () async {
                             await DatabaseService.updateMemo(article, null);
@@ -596,10 +645,15 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
                         style: FilledButton.styleFrom(
                           backgroundColor: theme.colorScheme.secondary,
                           foregroundColor: theme.colorScheme.onSecondary,
-                          shape: RoundedRectangleBorder(borderRadius: Radii.borderMd),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: Radii.borderMd,
+                          ),
                         ),
                         onPressed: () async {
-                          await DatabaseService.updateMemo(article, controller.text);
+                          await DatabaseService.updateMemo(
+                            article,
+                            controller.text,
+                          );
                           if (ctx.mounted) Navigator.pop(ctx);
                           setState(() {});
                         },
@@ -631,12 +685,17 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
   }
 
   Widget _thumbnailPlaceholder(
-      ({String label, IconData icon}) meta, ThemeData theme) {
+    ({String label, IconData icon}) meta,
+    ThemeData theme,
+  ) {
     return Container(
       color: theme.colorScheme.surfaceContainerHighest,
       child: Center(
-        child: Icon(meta.icon,
-            size: 24, color: theme.colorScheme.onSurfaceVariant),
+        child: Icon(
+          meta.icon,
+          size: 24,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
       ),
     );
   }
