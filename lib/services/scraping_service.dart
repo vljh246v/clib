@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html_parser;
 
@@ -28,7 +30,27 @@ class ScrapingService {
         return OpenGraphData(title: url);
       }
 
-      final document = html_parser.parse(response.body);
+      // Content-Type 헤더에서 charset 확인, 없으면 UTF-8로 디코딩
+      final contentType = response.headers['content-type'] ?? '';
+      final charsetMatch =
+          RegExp(r'charset=([^\s;]+)', caseSensitive: false).firstMatch(contentType);
+      final charset = charsetMatch?.group(1)?.toLowerCase() ?? 'utf-8';
+
+      String body;
+      if (charset == 'utf-8' || charset == 'utf8') {
+        body = utf8.decode(response.bodyBytes, allowMalformed: true);
+      } else if (charset == 'euc-kr' || charset == 'euckr') {
+        // EUC-KR은 dart 기본 미지원이므로 Latin-1 fallback 후 UTF-8 재시도
+        try {
+          body = utf8.decode(response.bodyBytes, allowMalformed: true);
+        } catch (_) {
+          body = latin1.decode(response.bodyBytes);
+        }
+      } else {
+        body = utf8.decode(response.bodyBytes, allowMalformed: true);
+      }
+
+      final document = html_parser.parse(body);
       final metaTags = document.getElementsByTagName('meta');
 
       String? ogTitle;
