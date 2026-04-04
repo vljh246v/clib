@@ -97,6 +97,33 @@ class _HomeScreenState extends State<HomeScreen> {
     return true;
   }
 
+  static const _hintShadows = [
+    Shadow(color: Colors.black54, blurRadius: 6),
+    Shadow(color: Colors.black38, blurRadius: 12),
+  ];
+
+  Widget _shadowText(String text, Color color) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+        color: color,
+        shadows: _hintShadows,
+      ),
+    );
+  }
+
+  Widget _shadowIcon(IconData icon, Color color) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Icon(icon, size: 22, color: Colors.black38),
+        Icon(icon, size: 20, color: color),
+      ],
+    );
+  }
+
   Widget _buildEmptyState() {
     return Expanded(
       child: Center(
@@ -191,6 +218,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     // 확장 버튼
                     GestureDetector(
+                      behavior: HitTestBehavior.opaque,
                       onTap: () => setState(() => _isExpanded = !_isExpanded),
                       child: Padding(
                         padding: const EdgeInsets.only(left: 12, right: 16),
@@ -224,19 +252,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
                 child: _isExpanded
-                    ? Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            for (final label in _allLabels)
-                              _FilterChip(
-                                label: label,
-                                selected: _selectedLabels.contains(label),
-                                onTap: () => _toggleLabel(label),
-                              ),
-                          ],
+                    ? ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 160),
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              for (final label in _allLabels)
+                                _FilterChip(
+                                  label: label,
+                                  selected: _selectedLabels.contains(label),
+                                  onTap: () => _toggleLabel(label),
+                                ),
+                            ],
+                          ),
                         ),
                       )
                     : const SizedBox.shrink(),
@@ -261,82 +292,97 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 8),
         if (_articles.isEmpty) _buildEmptyState(),
-        // 카드 스택 (화면의 70%)
+        // 카드 스택
         if (_articles.isNotEmpty) Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: CardSwiper(
-              key: ValueKey(_cardSwiperKey),
-              controller: _swiperController,
-              cardsCount: _articles.length,
-              numberOfCardsDisplayed: _articles.length < 3 ? _articles.length : 3,
-              backCardOffset: const Offset(0, -30),
-              padding: const EdgeInsets.only(bottom: 24),
-              isLoop: _articles.length > 1,
-              allowedSwipeDirection: const AllowedSwipeDirection.symmetric(
-                horizontal: true,
-              ),
-              onSwipe: _onSwipe,
-              cardBuilder: (context, index, percentThresholdX, percentThresholdY) {
-                if (index >= _articles.length) return const SizedBox.shrink();
-                // 스와이프 방향에 따른 테두리 색상
-                Color? borderColor;
-                if (percentThresholdX > 20) {
-                  borderColor = AppColors.neonGreen
-                      .withValues(alpha: (percentThresholdX / 100).clamp(0, 1));
-                } else if (percentThresholdX < -20) {
-                  borderColor = AppColors.softCoral
-                      .withValues(alpha: (percentThresholdX.abs() / 100).clamp(0, 1));
-                }
-
-                return GestureDetector(
-                  onTap: () async {
-                    final uri = Uri.tryParse(_articles[index].url);
-                    if (uri != null) {
-                      await launchUrl(uri, mode: LaunchMode.externalApplication);
-                    }
-                  },
-                  onLongPress: () async {
-                    HapticFeedback.heavyImpact();
-                    await LabelEditSheet.show(
-                      context,
-                      article: _articles[index],
-                    );
-                    _loadArticles();
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      border: borderColor != null
-                          ? Border.all(color: borderColor, width: 3)
-                          : null,
-                    ),
-                    child: ArticleCard(article: _articles[index]),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-        // 스와이프 힌트
-        if (_articles.isNotEmpty) Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Stack(
             children: [
-              Icon(Icons.arrow_back, size: 16, color: AppColors.softCoral.withValues(alpha: 0.6)),
-              const SizedBox(width: 4),
-              Text(
-                '나중에',
-                style: TextStyle(fontSize: 12, color: AppColors.softCoral.withValues(alpha: 0.6)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: CardSwiper(
+                  key: ValueKey(_cardSwiperKey),
+                  controller: _swiperController,
+                  cardsCount: _articles.length,
+                  numberOfCardsDisplayed: _articles.length < 3 ? _articles.length : 3,
+                  backCardOffset: const Offset(0, -30),
+                  padding: const EdgeInsets.only(bottom: 24),
+                  isLoop: _articles.length > 1,
+                  allowedSwipeDirection: const AllowedSwipeDirection.symmetric(
+                    horizontal: true,
+                  ),
+                  onSwipe: _onSwipe,
+                  cardBuilder: (context, index, percentThresholdX, percentThresholdY) {
+                    if (index >= _articles.length) return const SizedBox.shrink();
+                    // 스와이프 방향에 따른 테두리 색상
+                    Color? borderColor;
+                    if (percentThresholdX > 20) {
+                      borderColor = AppColors.neonGreen
+                          .withValues(alpha: (percentThresholdX / 100).clamp(0, 1));
+                    } else if (percentThresholdX < -20) {
+                      borderColor = AppColors.softCoral
+                          .withValues(alpha: (percentThresholdX.abs() / 100).clamp(0, 1));
+                    }
+
+                    return GestureDetector(
+                      onTap: () async {
+                        final uri = Uri.tryParse(_articles[index].url);
+                        if (uri != null) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        }
+                      },
+                      onLongPress: () async {
+                        HapticFeedback.heavyImpact();
+                        await LabelEditSheet.show(
+                          context,
+                          article: _articles[index],
+                        );
+                        _loadArticles();
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: borderColor != null
+                              ? Border.all(color: borderColor, width: 3)
+                              : null,
+                        ),
+                        child: ArticleCard(article: _articles[index]),
+                      ),
+                    );
+                  },
+                ),
               ),
-              const SizedBox(width: 32),
-              Text(
-                '읽음',
-                style: TextStyle(fontSize: 12, color: AppColors.neonGreen.withValues(alpha: 0.6)),
+              // 스와이프 힌트 오버레이
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 36),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _shadowIcon(Icons.arrow_back_ios, AppColors.softCoral),
+                            const SizedBox(height: 4),
+                            _shadowText('나중에', AppColors.softCoral),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 36),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _shadowIcon(Icons.arrow_forward_ios, AppColors.neonGreen),
+                            const SizedBox(height: 4),
+                            _shadowText('읽음', AppColors.neonGreen),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              const SizedBox(width: 4),
-              Icon(Icons.arrow_forward, size: 16, color: AppColors.neonGreen.withValues(alpha: 0.6)),
             ],
           ),
         ),
@@ -385,3 +431,4 @@ class _FilterChip extends StatelessWidget {
     );
   }
 }
+
