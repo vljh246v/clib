@@ -19,6 +19,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   CardSwiperController _swiperController = CardSwiperController();
+  final List<CardSwiperController> _pendingDispose = [];
   List<Article> _articles = [];
   List<String> _allLabels = [];
   final Set<String> _selectedLabels = {};
@@ -35,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _loadArticles() {
     if (!mounted) return;
     final oldController = _swiperController;
+    _pendingDispose.add(oldController);
     _swiperController = CardSwiperController();
     final allUnread = DatabaseService.getUnreadArticles();
     final filtered = _selectedLabels.isEmpty
@@ -48,8 +50,17 @@ class _HomeScreenState extends State<HomeScreen> {
       _cardSwiperKey++;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 300), oldController.dispose);
+      _disposePendingControllers();
     });
+  }
+
+  void _disposePendingControllers() {
+    for (final controller in _pendingDispose) {
+      try {
+        controller.dispose();
+      } catch (_) {}
+    }
+    _pendingDispose.clear();
   }
 
   void _toggleLabel(String label) {
@@ -69,6 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     articlesChangedNotifier.removeListener(_loadArticles);
+    _disposePendingControllers();
     _swiperController.dispose();
     super.dispose();
   }
