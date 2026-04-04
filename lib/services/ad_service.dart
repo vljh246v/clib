@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 class AdService {
@@ -6,11 +7,15 @@ class AdService {
   static bool _isLoaded = false;
 
   static String get _bannerAdUnitId {
-    if (Platform.isAndroid) {
-      return 'ca-app-pub-9364520099576698/3623099162';
-    } else {
-      return 'ca-app-pub-9364520099576698/8220819728';
+    if (kDebugMode) {
+      // 디버그 빌드: Google 테스트 광고 ID 사용 (계정 보호)
+      return Platform.isAndroid
+          ? 'ca-app-pub-3940256099942544/6300978111'
+          : 'ca-app-pub-3940256099942544/2934735716';
     }
+    return Platform.isAndroid
+        ? 'ca-app-pub-9364520099576698/3623099162'
+        : 'ca-app-pub-9364520099576698/8220819728';
   }
 
   static Future<void> initialize() async {
