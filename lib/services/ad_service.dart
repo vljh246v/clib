@@ -18,6 +18,18 @@ class AdService {
         : 'ca-app-pub-9364520099576698/8220819728';
   }
 
+  /// 인피드 네이티브 광고 단위 ID
+  static String get nativeAdUnitId {
+    if (kDebugMode) {
+      return Platform.isAndroid
+          ? 'ca-app-pub-3940256099942544/2247696110'
+          : 'ca-app-pub-3940256099942544/3986624511';
+    }
+    return Platform.isAndroid
+        ? 'ca-app-pub-9364520099576698/8758004217'
+        : 'ca-app-pub-9364520099576698/9855463463';
+  }
+
   static Future<void> initialize() async {
     await MobileAds.instance.initialize();
   }

@@ -5,6 +5,7 @@ import 'package:clib/models/article.dart';
 import 'package:clib/models/platform_meta.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/theme/design_tokens.dart';
+import 'package:clib/widgets/inline_banner_ad.dart';
 
 /// 전체 아티클 화면 — 읽음/안읽음 필터 탭
 class AllArticlesScreen extends StatefulWidget {
@@ -278,13 +279,33 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
       );
     }
 
+    // 8개 아티클마다 인피드 배너 1개 삽입
+    const adInterval = 8;
+    final adCount = articles.length >= adInterval
+        ? (articles.length / adInterval).floor()
+        : 0;
+    final totalCount = articles.length + adCount;
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(
         vertical: Spacing.sm,
         horizontal: Spacing.lg,
       ),
-      itemCount: articles.length,
-      itemBuilder: (context, index) => _buildArticleItem(articles[index]),
+      itemCount: totalCount,
+      itemBuilder: (context, index) {
+        // adInterval개마다 광고 슬롯: index (adInterval), (adInterval*2+1), ...
+        final adsBefore = adCount == 0
+            ? 0
+            : (index + 1) ~/ (adInterval + 1);
+        final isAd = adCount > 0 &&
+            index > 0 &&
+            (index + 1) % (adInterval + 1) == 0;
+
+        if (isAd) return const InlineNativeAd();
+
+        final articleIndex = index - adsBefore;
+        return _buildArticleItem(articles[articleIndex]);
+      },
     );
   }
 
