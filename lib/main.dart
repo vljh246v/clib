@@ -1,5 +1,6 @@
 import 'dart:io' as io;
 import 'package:flutter/material.dart';
+import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/screens/home_screen.dart';
 import 'package:clib/screens/library_screen.dart';
 import 'package:clib/screens/settings_screen.dart';
@@ -39,6 +40,8 @@ class ClibApp extends StatelessWidget {
         return MaterialApp(
           title: 'Clib',
           debugShowCheckedModeBanner: false,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
           themeMode: mode,

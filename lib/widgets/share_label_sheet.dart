@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/models/label.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/services/share_service.dart';
@@ -34,27 +35,28 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
     final nameController = TextEditingController();
     var selectedColor = LabelColors.presets.first;
     final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
 
     final created = await showDialog<Label>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('새 라벨 추가'),
+          title: Text(l.addNewLabelTitle),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: '라벨 이름',
-                  hintText: '예: Flutter, 디자인',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l.labelName,
+                  hintText: l.labelNameHint,
+                  border: const OutlineInputBorder(),
                 ),
                 autofocus: true,
               ),
               const SizedBox(height: Spacing.lg),
-              Text('색상', style: theme.textTheme.labelLarge),
+              Text(l.color, style: theme.textTheme.labelLarge),
               const SizedBox(height: Spacing.sm),
               Wrap(
                 spacing: Spacing.sm,
@@ -88,7 +90,7 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('취소'),
+              child: Text(l.cancel),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
@@ -111,7 +113,7 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
                   }
                 }
               },
-              child: const Text('추가'),
+              child: Text(l.add),
             ),
           ],
         ),
@@ -127,6 +129,7 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
   Widget build(BuildContext context) {
     final labels = DatabaseService.getAllLabelObjects();
     final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -152,7 +155,7 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
           ),
           const SizedBox(height: Spacing.lg),
           Text(
-            'Clib에 저장',
+            l.saveToClib,
             style: theme.textTheme.titleMedium,
           ),
           const SizedBox(height: Spacing.xs),
@@ -165,7 +168,7 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
           const SizedBox(height: Spacing.lg),
           Divider(height: 1, color: theme.dividerColor),
           const SizedBox(height: Spacing.lg),
-          Text('라벨', style: theme.textTheme.labelLarge),
+          Text(l.label, style: theme.textTheme.labelLarge),
           const SizedBox(height: Spacing.md),
           if (labels.isNotEmpty)
             Wrap(
@@ -198,7 +201,7 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
                 }),
                 ActionChip(
                   avatar: const Icon(Icons.add, size: 16),
-                  label: const Text('새 라벨'),
+                  label: Text(l.newLabel),
                   side: BorderSide(
                     color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
                   ),
@@ -211,7 +214,7 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
               padding: const EdgeInsets.only(top: Spacing.sm),
               child: ActionChip(
                 avatar: const Icon(Icons.add, size: 16),
-                label: const Text('새 라벨'),
+                label: Text(l.newLabel),
                 side: BorderSide(
                   color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
                 ),
@@ -232,7 +235,7 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
                     ),
                   ),
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('취소'),
+                  child: Text(l.cancel),
                 ),
               ),
               const SizedBox(width: Spacing.md),
@@ -252,7 +255,7 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('저장'),
+                      : Text(l.save),
                 ),
               ),
             ],

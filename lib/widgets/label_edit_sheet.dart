@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/models/article.dart';
 import 'package:clib/models/platform_meta.dart';
 import 'package:clib/services/database_service.dart';
@@ -55,6 +56,7 @@ class _LabelEditSheetState extends State<LabelEditSheet> {
   Widget build(BuildContext context) {
     final labels = DatabaseService.getAllLabelObjects();
     final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -80,7 +82,7 @@ class _LabelEditSheetState extends State<LabelEditSheet> {
           ),
           const SizedBox(height: Spacing.lg),
           Text(
-            '아티클 편집',
+            l.editArticle,
             style: theme.textTheme.titleMedium,
           ),
           const SizedBox(height: Spacing.xs),
@@ -93,7 +95,7 @@ class _LabelEditSheetState extends State<LabelEditSheet> {
 
           // ── 플랫폼 선택 ──
           const SizedBox(height: Spacing.xl),
-          Text('플랫폼', style: theme.textTheme.labelLarge),
+          Text(l.platform, style: theme.textTheme.labelLarge),
           const SizedBox(height: Spacing.sm),
           Wrap(
             spacing: Spacing.sm,
@@ -112,14 +114,14 @@ class _LabelEditSheetState extends State<LabelEditSheet> {
 
           // ── 라벨 선택 ──
           const SizedBox(height: Spacing.xl),
-          Text('라벨', style: theme.textTheme.labelLarge),
+          Text(l.label, style: theme.textTheme.labelLarge),
           const SizedBox(height: Spacing.sm),
           if (labels.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: Spacing.lg),
               child: Center(
                 child: Text(
-                  '설정에서 라벨을 먼저 추가해주세요',
+                  l.addLabelsFirst,
                   style: theme.textTheme.bodySmall,
                 ),
               ),
@@ -166,7 +168,7 @@ class _LabelEditSheetState extends State<LabelEditSheet> {
                 ),
               ),
               onPressed: _save,
-              child: const Text('저장'),
+              child: Text(l.save),
             ),
           ),
         ],

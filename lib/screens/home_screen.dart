@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/main.dart';
 import 'package:clib/models/article.dart';
 import 'package:clib/services/database_service.dart';
@@ -112,6 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showCardActions(Article article) {
     final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       backgroundColor: theme.colorScheme.surface,
@@ -136,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
               leading: Icon(
                 article.isBookmarked ? Icons.bookmark : Icons.bookmark_border,
               ),
-              title: Text(article.isBookmarked ? '북마크 해제' : '북마크'),
+              title: Text(article.isBookmarked ? l.removeBookmark : l.bookmark),
               onTap: () async {
                 Navigator.pop(ctx);
                 await DatabaseService.toggleBookmark(article);
@@ -145,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.edit_note),
-              title: Text(article.memo != null ? '메모 편집' : '메모 추가'),
+              title: Text(article.memo != null ? l.editMemo : l.addMemo),
               subtitle: article.memo != null
                   ? Text(article.memo!, maxLines: 1, overflow: TextOverflow.ellipsis)
                   : null,
@@ -156,7 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.label_outline),
-              title: const Text('라벨 편집'),
+              title: Text(l.editLabelAction),
               onTap: () async {
                 Navigator.pop(ctx);
                 await LabelEditSheet.show(context, article: article);
@@ -165,7 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.open_in_new),
-              title: const Text('브라우저에서 열기'),
+              title: Text(l.openInBrowser),
               onTap: () async {
                 Navigator.pop(ctx);
                 final uri = Uri.tryParse(article.url);
@@ -183,6 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showMemoDialog(Article article) {
     final controller = TextEditingController(text: article.memo);
     final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -208,7 +211,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: Spacing.lg),
-              Text('메모', style: theme.textTheme.titleSmall),
+              Text(l.memo, style: theme.textTheme.titleSmall),
               const SizedBox(height: Spacing.lg),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Spacing.xxl),
@@ -218,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   maxLines: 1,
                   autofocus: true,
                   decoration: InputDecoration(
-                    hintText: '한 줄 메모를 입력하세요',
+                    hintText: l.memoHint,
                     counterText: '',
                     filled: true,
                     fillColor: theme.colorScheme.surfaceContainerHighest,
@@ -251,7 +254,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             if (ctx.mounted) Navigator.pop(ctx);
                             _loadArticles();
                           },
-                          child: const Text('삭제'),
+                          child: Text(l.delete),
                         ),
                       ),
                       const SizedBox(width: Spacing.sm),
@@ -268,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           if (ctx.mounted) Navigator.pop(ctx);
                           _loadArticles();
                         },
-                        child: const Text('저장'),
+                        child: Text(l.save),
                       ),
                     ),
                   ],
@@ -283,6 +286,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildEmptyState() {
     final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
     return Expanded(
       child: Center(
         child: Padding(
@@ -305,14 +309,14 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: Spacing.xl),
               Text(
-                '스와이프할 아티클이 없습니다',
+                l.noArticlesToSwipe,
                 style: theme.textTheme.titleSmall,
               ),
               const SizedBox(height: Spacing.sm),
               Text(
                 _selectedLabels.isEmpty
-                    ? '공유 시트에서 링크를 추가해보세요!'
-                    : '선택한 라벨에 읽지 않은 아티클이 없어요',
+                    ? l.addLinksHint
+                    : l.noUnreadInLabel,
                 style: theme.textTheme.bodySmall,
               ),
             ],
@@ -324,10 +328,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
 
     final labelCountText = _selectedLabels.isEmpty
-        ? '${_articles.length}개의 아티클'
-        : '${_selectedLabels.join(', ')} · ${_articles.length}개의 아티클';
+        ? l.articleCountText(_articles.length)
+        : l.labelArticleCountText(_selectedLabels.join(', '), _articles.length);
 
     return Column(
       children: [
@@ -348,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _FilterChip(
-                            label: '전체',
+                            label: l.all,
                             selected: _selectedLabels.isEmpty,
                             onTap: _clearLabels,
                           ),
@@ -558,4 +563,3 @@ class _FilterChip extends StatelessWidget {
     );
   }
 }
-

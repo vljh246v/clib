@@ -1,0 +1,211 @@
+{
+  "@@locale": "ko",
+
+  "save": "저장",
+  "cancel": "취소",
+  "delete": "삭제",
+  "confirm": "확인",
+  "add": "추가",
+  "edit": "수정",
+  "select": "선택",
+
+  "bookmark": "북마크",
+  "removeBookmark": "북마크 해제",
+
+  "memo": "메모",
+  "editMemo": "메모 편집",
+  "addMemo": "메모 추가",
+  "memoHint": "한 줄 메모를 입력하세요",
+
+  "label": "라벨",
+  "editLabelAction": "라벨 편집",
+  "labelManagement": "라벨 관리",
+  "labelManagementSubtitle": "라벨 추가, 수정, 삭제 및 알림 설정",
+  "addNewLabel": "신규 라벨 추가",
+  "newLabel": "새 라벨",
+  "addNewLabelTitle": "새 라벨 추가",
+  "addLabelTitle": "라벨 추가",
+  "editLabelTitle": "라벨 수정",
+  "labelName": "라벨 이름",
+  "labelNameHint": "예: Flutter, 디자인",
+  "color": "색상",
+  "createLabelPrompt": "라벨을 만들어 아티클을 분류해보세요",
+  "addLabelsFirst": "설정에서 라벨을 먼저 추가해주세요",
+  "deleteLabel": "라벨 삭제",
+  "deleteLabelConfirm": "''{name}'' 라벨을 삭제할까요?\n{count}개 아티클에서 이 라벨이 제거됩니다.",
+  "@deleteLabelConfirm": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "count": {"type": "int"}
+    }
+  },
+
+  "allArticles": "전체 아티클",
+  "articleCountText": "{count}개의 아티클",
+  "@articleCountText": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "labelArticleCountText": "{labels} · {count}개의 아티클",
+  "@labelArticleCountText": {
+    "placeholders": {
+      "labels": {"type": "String"},
+      "count": {"type": "int"}
+    }
+  },
+  "noArticles": "아티클이 없습니다.",
+  "noReadArticles": "읽은 아티클이 없습니다.",
+  "noUnreadArticles": "안 읽은 아티클이 없습니다.",
+  "deleteArticle": "아티클 삭제",
+  "deleteArticleConfirm": "이 아티클을 삭제할까요?",
+  "deleteSelectedConfirm": "선택한 {count}개 아티클을 삭제할까요?",
+  "@deleteSelectedConfirm": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "selectedCount": "{count}개 선택됨",
+  "@selectedCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "read": "읽음",
+  "unread": "안 읽음",
+  "markAsRead": "읽음으로 변경",
+  "markAsUnread": "안 읽음으로 변경",
+
+  "tabAll": "전체 ({count})",
+  "@tabAll": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "tabUnread": "안 읽음 ({count})",
+  "@tabUnread": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "tabRead": "읽음 ({count})",
+  "@tabRead": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "totalAll": "전체 {count}",
+  "@totalAll": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "totalUnread": "안읽음 {count}",
+  "@totalUnread": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "library": "보관함",
+  "labelStatus": "라벨별 현황",
+  "overallReadingStatus": "전체 읽기 현황",
+  "articlesRead": "{read} / {total} 아티클 읽음",
+  "@articlesRead": {
+    "placeholders": {
+      "read": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "labelCount": "{count}개 라벨",
+  "@labelCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "all": "전체",
+
+  "bookmarks": "북마크",
+  "noBookmarks": "북마크한 아티클이 없습니다.",
+  "noReadBookmarks": "읽은 북마크가 없습니다.",
+  "noUnreadBookmarks": "안 읽은 북마크가 없습니다.",
+
+  "noArticlesToSwipe": "스와이프할 아티클이 없습니다",
+  "addLinksHint": "공유 시트에서 링크를 추가해보세요!",
+  "noUnreadInLabel": "선택한 라벨에 읽지 않은 아티클이 없어요",
+  "openInBrowser": "브라우저에서 열기",
+
+  "settings": "설정",
+  "theme": "테마",
+  "howToUse": "사용 방법",
+  "howToUseSubtitle": "Clib 사용법을 다시 확인해요",
+
+  "systemSettings": "시스템 설정",
+  "systemSettingsSubtitle": "기기 설정에 따라 자동 전환",
+  "darkMode": "다크 모드",
+  "lightMode": "라이트 모드",
+
+  "onboardingSaveTitle": "링크를 저장하세요",
+  "onboardingSaveSubtitle": "공유 버튼 하나로\n어디서든 아티클을 수집할 수 있어요",
+  "onboardingSaveHint": "브라우저, SNS, 유튜브에서 공유하기 → Clib",
+  "onboardingSwipeTitle": "스와이프로 읽으세요",
+  "onboardingSwipeSubtitle": "카드를 넘기며 읽을 콘텐츠를 결정하세요",
+  "onboardingSwipeHint": "오른쪽 → 읽음 처리  ·  왼쪽 → 나중에",
+  "onboardingLibraryTitle": "나만의 라이브러리",
+  "onboardingLibrarySubtitle": "라벨로 정리하고, 알림으로 다시 찾아오세요",
+  "onboardingLibraryHint": "저장만 하던 습관에서 읽는 습관으로",
+  "skip": "건너뛰기",
+  "next": "다음",
+  "start": "시작하기",
+
+  "labelNotification": "{name} 알림",
+  "@labelNotification": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "receiveNotification": "알림 받기",
+  "daysOfWeek": "요일",
+  "selectTime": "시간 선택",
+  "time": "시간",
+  "notificationChannelName": "Clib 라벨 알림",
+  "notificationChannelDesc": "라벨별 미읽음 아티클 알림",
+  "unreadNotification": "읽지 않은 아티클 {count}개가 있어요!",
+  "@unreadNotification": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "allReadNotification": "모두 읽었어요! 🎉",
+
+  "dayMon": "월",
+  "dayTue": "화",
+  "dayWed": "수",
+  "dayThu": "목",
+  "dayFri": "금",
+  "daySat": "토",
+  "daySun": "일",
+
+  "today": "오늘",
+  "yesterday": "어제",
+  "daysAgo": "{count}일 전",
+  "@daysAgo": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "saveToClib": "Clib에 저장",
+  "editArticle": "아티클 편집",
+  "platform": "플랫폼",
+
+  "articleStats": "{total}개 아티클 · {read}개 읽음",
+  "@articleStats": {
+    "placeholders": {
+      "total": {"type": "int"},
+      "read": {"type": "int"}
+    }
+  }
+}

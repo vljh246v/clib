@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/models/label.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/services/notification_service.dart';
@@ -13,17 +14,19 @@ class LabelManagementScreen extends StatefulWidget {
 }
 
 class _LabelManagementScreenState extends State<LabelManagementScreen> {
-  static const _dayLabels = ['월', '화', '수', '목', '금', '토', '일'];
+  List<String> _dayLabels(AppLocalizations l) =>
+      [l.dayMon, l.dayTue, l.dayWed, l.dayThu, l.dayFri, l.daySat, l.daySun];
 
   @override
   Widget build(BuildContext context) {
     final labels = DatabaseService.getAllLabelObjects();
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final l = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('라벨 관리'),
+        title: Text(l.labelManagement),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -49,7 +52,7 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
                   ),
                   const SizedBox(height: Spacing.lg),
                   Text(
-                    '라벨을 만들어 아티클을 분류해보세요',
+                    l.createLabelPrompt,
                     style: theme.textTheme.bodySmall,
                   ),
                   const SizedBox(height: Spacing.xl),
@@ -73,7 +76,7 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
                               color: theme.colorScheme.secondary),
                           const SizedBox(width: Spacing.sm),
                           Text(
-                            '신규 라벨 추가',
+                            l.addNewLabel,
                             style: theme.textTheme.titleSmall?.copyWith(
                               color: theme.colorScheme.secondary,
                             ),
@@ -124,7 +127,7 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
                             fontWeight: FontWeight.w500,
                           )),
                       subtitle: Text(
-                        '${stats.total}개 아티클 · ${stats.read}개 읽음',
+                        l.articleStats(stats.total, stats.read),
                         style: theme.textTheme.labelSmall,
                       ),
                       trailing: Row(
@@ -170,25 +173,27 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
       minute: int.parse(timeParts[1]),
     );
     final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
+    final days = _dayLabels(l);
 
     await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: Text('${label.name} 알림'),
+          title: Text(l.labelNotification(label.name)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SwitchListTile(
-                title: const Text('알림 받기'),
+                title: Text(l.receiveNotification),
                 value: enabled,
                 contentPadding: EdgeInsets.zero,
                 onChanged: (v) => setDialogState(() => enabled = v),
               ),
               if (enabled) ...[
                 const SizedBox(height: Spacing.sm),
-                Text('요일', style: theme.textTheme.labelLarge),
+                Text(l.daysOfWeek, style: theme.textTheme.labelLarge),
                 const SizedBox(height: Spacing.sm),
                 Wrap(
                   spacing: 6,
@@ -220,7 +225,7 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
                         ),
                         alignment: Alignment.center,
                         child: Text(
-                          _dayLabels[i],
+                          days[i],
                           style: TextStyle(
                             color: isSelected
                                 ? Colors.white
@@ -257,7 +262,7 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
                               ),
                             ),
                             const SizedBox(height: Spacing.lg),
-                            Text('시간 선택', style: theme.textTheme.titleSmall),
+                            Text(l.selectTime, style: theme.textTheme.titleSmall),
                             SizedBox(
                               height: 200,
                               child: CupertinoDatePicker(
@@ -282,7 +287,7 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
                                   onPressed: () {
                                     Navigator.pop(sheetCtx);
                                   },
-                                  child: const Text('확인'),
+                                  child: Text(l.confirm),
                                 ),
                               ),
                             ),
@@ -304,7 +309,7 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
                       children: [
                         Icon(Icons.access_time, size: 20, color: theme.colorScheme.onSurfaceVariant),
                         const SizedBox(width: Spacing.md),
-                        Text('시간', style: theme.textTheme.bodyMedium),
+                        Text(l.time, style: theme.textTheme.bodyMedium),
                         const Spacer(),
                         Text(
                           '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
@@ -324,7 +329,7 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('취소'),
+              child: Text(l.cancel),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
@@ -351,7 +356,7 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
                 if (ctx.mounted) Navigator.pop(ctx);
                 setState(() {});
               },
-              child: const Text('저장'),
+              child: Text(l.save),
             ),
           ],
         ),
@@ -365,27 +370,28 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
     var selectedColor =
         label != null ? Color(label.colorValue) : LabelColors.presets.first;
     final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
 
     await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(isEdit ? '라벨 수정' : '라벨 추가'),
+          title: Text(isEdit ? l.editLabelTitle : l.addLabelTitle),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: '라벨 이름',
-                  hintText: '예: Flutter, 디자인',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l.labelName,
+                  hintText: l.labelNameHint,
+                  border: const OutlineInputBorder(),
                 ),
                 autofocus: true,
               ),
               const SizedBox(height: Spacing.lg),
-              Text('색상', style: theme.textTheme.labelLarge),
+              Text(l.color, style: theme.textTheme.labelLarge),
               const SizedBox(height: Spacing.sm),
               Wrap(
                 spacing: Spacing.sm,
@@ -426,7 +432,7 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('취소'),
+              child: Text(l.cancel),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
@@ -456,7 +462,7 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
                   }
                 }
               },
-              child: Text(isEdit ? '수정' : '추가'),
+              child: Text(isEdit ? l.edit : l.add),
             ),
           ],
         ),
@@ -466,25 +472,23 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
 
   Future<void> _confirmDelete(Label label) async {
     final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
     final stats = DatabaseService.getLabelStats(label.name);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('라벨 삭제'),
-        content: Text(
-          '\'${label.name}\' 라벨을 삭제할까요?\n'
-          '${stats.total}개 아티클에서 이 라벨이 제거됩니다.',
-        ),
+        title: Text(l.deleteLabel),
+        content: Text(l.deleteLabelConfirm(label.name, stats.total)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('취소'),
+            child: Text(l.cancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
                 backgroundColor: theme.colorScheme.error),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('삭제'),
+            child: Text(l.delete),
           ),
         ],
       ),

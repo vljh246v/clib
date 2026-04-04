@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/models/label.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/screens/all_articles_screen.dart';
@@ -20,15 +21,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final labels = DatabaseService.getAllLabelObjects();
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final l = AppLocalizations.of(context)!;
 
     return ListView(
       padding: const EdgeInsets.all(Spacing.lg),
       children: [
-        Text('보관함', style: theme.textTheme.displaySmall),
+        Text(l.library, style: theme.textTheme.displaySmall),
         const SizedBox(height: Spacing.sm),
-        _buildOverallStats(labels, theme, isDark),
+        _buildOverallStats(labels, theme, isDark, l),
         const SizedBox(height: Spacing.xl),
-        Text('라벨별 현황', style: theme.textTheme.titleMedium),
+        Text(l.labelStatus, style: theme.textTheme.titleMedium),
         const SizedBox(height: Spacing.md),
         GridView.builder(
           shrinkWrap: true,
@@ -41,9 +43,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
           itemCount: labels.length + 2,
           itemBuilder: (context, index) {
-            if (index == 0) return _buildAllCard(theme, isDark);
-            if (index == 1) return _buildBookmarkCard(theme, isDark);
-            return _buildLabelCard(labels[index - 2], theme, isDark);
+            if (index == 0) return _buildAllCard(theme, isDark, l);
+            if (index == 1) return _buildBookmarkCard(theme, isDark, l);
+            return _buildLabelCard(labels[index - 2], theme, isDark, l);
           },
         ),
       ],
@@ -51,7 +53,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   /// 전체 통계 요약 카드
-  Widget _buildOverallStats(List<Label> labels, ThemeData theme, bool isDark) {
+  Widget _buildOverallStats(List<Label> labels, ThemeData theme, bool isDark, AppLocalizations l) {
     var totalArticles = 0;
     var totalRead = 0;
     for (final label in labels) {
@@ -104,15 +106,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text('전체 읽기 현황', style: theme.textTheme.titleSmall),
+                          Text(l.overallReadingStatus, style: theme.textTheme.titleSmall),
                           const SizedBox(height: Spacing.xs),
                           Text(
-                            '$totalRead / $totalArticles 아티클 읽음',
+                            l.articlesRead(totalRead, totalArticles),
                             style: theme.textTheme.bodySmall,
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${labels.length}개 라벨',
+                            l.labelCount(labels.length),
                             style: theme.textTheme.labelSmall,
                           ),
                         ],
@@ -147,7 +149,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   /// 전체 아티클 카드
-  Widget _buildAllCard(ThemeData theme, bool isDark) {
+  Widget _buildAllCard(ThemeData theme, bool isDark, AppLocalizations l) {
     final stats = DatabaseService.getOverallStats();
     final color = theme.colorScheme.primary;
     final progress = stats.total > 0 ? stats.read / stats.total : 0.0;
@@ -204,7 +206,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             ),
             const SizedBox(height: Spacing.sm),
             Text(
-              '전체',
+              l.all,
               style: theme.textTheme.titleSmall?.copyWith(color: color),
             ),
             const SizedBox(height: Spacing.sm),
@@ -212,12 +214,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _statBadge(
-                  '전체 ${stats.total}',
+                  l.totalAll(stats.total),
                   theme.colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 6),
                 _statBadge(
-                  '안읽음 $unread',
+                  l.totalUnread(unread),
                   unread > 0 ? color : theme.colorScheme.onSurfaceVariant,
                 ),
               ],
@@ -229,7 +231,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   /// 북마크 카드 (그리드 아이템)
-  Widget _buildBookmarkCard(ThemeData theme, bool isDark) {
+  Widget _buildBookmarkCard(ThemeData theme, bool isDark, AppLocalizations l) {
     final stats = DatabaseService.getBookmarkStats();
     final color = theme.colorScheme.secondary;
     final unread = stats.total - stats.read;
@@ -266,7 +268,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             ),
             const SizedBox(height: Spacing.sm),
             Text(
-              '북마크',
+              l.bookmarks,
               style: theme.textTheme.titleSmall?.copyWith(color: color),
             ),
             const SizedBox(height: Spacing.sm),
@@ -274,12 +276,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _statBadge(
-                  '전체 ${stats.total}',
+                  l.totalAll(stats.total),
                   theme.colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 6),
                 _statBadge(
-                  '안읽음 $unread',
+                  l.totalUnread(unread),
                   unread > 0 ? color : theme.colorScheme.onSurfaceVariant,
                 ),
               ],
@@ -291,7 +293,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   /// 라벨 카드 (그리드 아이템)
-  Widget _buildLabelCard(Label label, ThemeData theme, bool isDark) {
+  Widget _buildLabelCard(Label label, ThemeData theme, bool isDark, AppLocalizations l) {
     final stats = DatabaseService.getLabelStats(label.name);
     final color = Color(label.colorValue);
     final progress = stats.total > 0 ? stats.read / stats.total : 0.0;
@@ -358,12 +360,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _statBadge(
-                  '전체 ${stats.total}',
+                  l.totalAll(stats.total),
                   theme.colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 6),
                 _statBadge(
-                  '안읽음 $unread',
+                  l.totalUnread(unread),
                   unread > 0 ? color : theme.colorScheme.onSurfaceVariant,
                 ),
               ],

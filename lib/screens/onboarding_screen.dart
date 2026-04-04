@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/theme/design_tokens.dart';
 
@@ -17,30 +18,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _controller = PageController();
   int _currentPage = 0;
 
-  static const _pages = [
-    _PageData(
-      icon: Icons.link_rounded,
-      title: '링크를 저장하세요',
-      subtitle: '공유 버튼 하나로\n어디서든 아티클을 수집할 수 있어요',
-      hint: '브라우저, SNS, 유튜브에서 공유하기 → Clib',
-    ),
-    _PageData(
-      icon: Icons.swipe_rounded,
-      title: '스와이프로 읽으세요',
-      subtitle: '카드를 넘기며 읽을 콘텐츠를 결정하세요',
-      hint: '오른쪽 → 읽음 처리  ·  왼쪽 → 나중에',
-    ),
-    _PageData(
-      icon: Icons.auto_awesome_rounded,
-      title: '나만의 라이브러리',
-      subtitle: '라벨로 정리하고, 알림으로 다시 찾아오세요',
-      hint: '저장만 하던 습관에서 읽는 습관으로',
-    ),
-  ];
-
   void _onNext() {
     HapticFeedback.lightImpact();
-    if (_currentPage < _pages.length - 1) {
+    if (_currentPage < 2) {
       _controller.nextPage(
         duration: AppDurations.medium,
         curve: Curves.easeInOut,
@@ -78,6 +58,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final l = AppLocalizations.of(context)!;
+
+    final pages = [
+      _PageData(
+        icon: Icons.link_rounded,
+        title: l.onboardingSaveTitle,
+        subtitle: l.onboardingSaveSubtitle,
+        hint: l.onboardingSaveHint,
+      ),
+      _PageData(
+        icon: Icons.swipe_rounded,
+        title: l.onboardingSwipeTitle,
+        subtitle: l.onboardingSwipeSubtitle,
+        hint: l.onboardingSwipeHint,
+      ),
+      _PageData(
+        icon: Icons.auto_awesome_rounded,
+        title: l.onboardingLibraryTitle,
+        subtitle: l.onboardingLibrarySubtitle,
+        hint: l.onboardingLibraryHint,
+      ),
+    ];
 
     return Scaffold(
       body: SafeArea(
@@ -91,11 +93,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   top: Spacing.md,
                   right: Spacing.lg,
                 ),
-                child: _currentPage < _pages.length - 1
+                child: _currentPage < pages.length - 1
                     ? GestureDetector(
                         onTap: _onSkip,
                         child: Text(
-                          '건너뛰기',
+                          l.skip,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -109,10 +111,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Expanded(
               child: PageView.builder(
                 controller: _controller,
-                itemCount: _pages.length,
+                itemCount: pages.length,
                 onPageChanged: (i) => setState(() => _currentPage = i),
                 itemBuilder: (context, index) {
-                  final page = _pages[index];
+                  final page = pages[index];
                   return _OnboardingPage(page: page, isDark: isDark);
                 },
               ),
@@ -131,7 +133,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   // 도트 인디케이터
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(_pages.length, (i) {
+                    children: List.generate(pages.length, (i) {
                       final isActive = i == _currentPage;
                       return AnimatedContainer(
                         duration: AppDurations.fast,
@@ -166,11 +168,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         ),
                       ),
                       child: Text(
-                        _currentPage < _pages.length - 1
-                            ? '다음'
+                        _currentPage < pages.length - 1
+                            ? l.next
                             : widget.isGuideMode
-                                ? '확인'
-                                : '시작하기',
+                                ? l.confirm
+                                : l.start,
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,

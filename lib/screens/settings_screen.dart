@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/screens/label_management_screen.dart';
 import 'package:clib/screens/onboarding_screen.dart';
 import 'package:clib/screens/theme_settings_screen.dart';
@@ -12,12 +13,13 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final l = AppLocalizations.of(context)!;
 
     return ListView(
       padding: const EdgeInsets.all(Spacing.lg),
       children: [
         Text(
-          '설정',
+          l.settings,
           style: theme.textTheme.displaySmall,
         ),
         const SizedBox(height: Spacing.xxl),
@@ -35,8 +37,8 @@ class SettingsScreen extends StatelessWidget {
                 theme: theme,
                 icon: Icons.label_outline,
                 iconColor: theme.colorScheme.secondary,
-                title: '라벨 관리',
-                subtitle: '라벨 추가, 수정, 삭제 및 알림 설정',
+                title: l.labelManagement,
+                subtitle: l.labelManagementSubtitle,
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -52,8 +54,8 @@ class SettingsScreen extends StatelessWidget {
                 theme: theme,
                 icon: Icons.palette_outlined,
                 iconColor: theme.colorScheme.primary,
-                title: '테마',
-                subtitle: _themeModeLabel(themeModeNotifier.value),
+                title: l.theme,
+                subtitle: _themeModeLabel(themeModeNotifier.value, l),
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -69,8 +71,8 @@ class SettingsScreen extends StatelessWidget {
                 theme: theme,
                 icon: Icons.help_outline_rounded,
                 iconColor: theme.colorScheme.secondary,
-                title: '사용 방법',
-                subtitle: 'Clib 사용법을 다시 확인해요',
+                title: l.howToUse,
+                subtitle: l.howToUseSubtitle,
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -116,11 +118,11 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  String _themeModeLabel(ThemeMode mode) {
+  String _themeModeLabel(ThemeMode mode, AppLocalizations l) {
     return switch (mode) {
-      ThemeMode.system => '시스템 설정',
-      ThemeMode.dark => '다크 모드',
-      ThemeMode.light => '라이트 모드',
+      ThemeMode.system => l.systemSettings,
+      ThemeMode.dark => l.darkMode,
+      ThemeMode.light => l.lightMode,
     };
   }
 }

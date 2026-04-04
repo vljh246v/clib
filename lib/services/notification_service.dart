@@ -9,6 +9,8 @@ import 'package:clib/services/database_service.dart';
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
 
+  static bool get _isKorean => io.Platform.localeName.startsWith('ko');
+
   static Future<void> init() async {
     tz_data.initializeTimeZones();
     final timezoneInfo = await FlutterTimezone.getLocalTimezone();
@@ -66,6 +68,9 @@ class NotificationService {
       // 0=월 → DateTime.monday(1), 6=일 → DateTime.sunday(7)
       final dartDay = day + 1;
 
+      final channelName = _isKorean ? 'Clib 라벨 알림' : 'Clib Label Notifications';
+      final channelDesc = _isKorean ? '라벨별 미읽음 아티클 알림' : 'Unread article notifications by label';
+
       await _plugin.zonedSchedule(
         id,
         '📚 ${label.name}',
@@ -74,8 +79,8 @@ class NotificationService {
         NotificationDetails(
           android: AndroidNotificationDetails(
             'clib_label_${label.key}',
-            'Clib 라벨 알림',
-            channelDescription: '라벨별 미읽음 아티클 알림',
+            channelName,
+            channelDescription: channelDesc,
             importance: Importance.defaultImportance,
             priority: Priority.defaultPriority,
           ),
@@ -110,9 +115,11 @@ class NotificationService {
     final stats = DatabaseService.getLabelStats(labelName);
     final unread = stats.total - stats.read;
     if (unread > 0) {
-      return '읽지 않은 아티클 $unread개가 있어요!';
+      return _isKorean
+          ? '읽지 않은 아티클 $unread개가 있어요!'
+          : 'You have $unread unread articles!';
     }
-    return '모두 읽었어요! 🎉';
+    return _isKorean ? '모두 읽었어요! 🎉' : 'All caught up! 🎉';
   }
 
   /// 알림 고유 ID (라벨 key * 10 + 요일)

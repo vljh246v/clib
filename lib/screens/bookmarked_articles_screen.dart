@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/models/article.dart';
 import 'package:clib/models/platform_meta.dart';
 import 'package:clib/services/database_service.dart';
@@ -93,21 +94,22 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
 
   Future<void> _bulkDelete() async {
     final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('아티클 삭제'),
-        content: Text('선택한 ${_selectedKeys.length}개 아티클을 삭제할까요?'),
+        title: Text(l.deleteArticle),
+        content: Text(l.deleteSelectedConfirm(_selectedKeys.length)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('취소'),
+            child: Text(l.cancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
                 backgroundColor: theme.colorScheme.error),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('삭제'),
+            child: Text(l.delete),
           ),
         ],
       ),
@@ -131,6 +133,7 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
     final stats = DatabaseService.getBookmarkStats();
     final theme = Theme.of(context);
     final color = theme.colorScheme.secondary;
+    final l = AppLocalizations.of(context)!;
 
     final bool? filterMap = [null, false, true][_tabController.index];
     final currentArticles = _getFilteredArticles(filterMap);
@@ -140,8 +143,8 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
     return Scaffold(
       appBar: AppBar(
         title: _isSelecting
-            ? Text('${_selectedKeys.length}개 선택됨')
-            : const Text('북마크'),
+            ? Text(l.selectedCount(_selectedKeys.length))
+            : Text(l.bookmarks),
         actions: _isSelecting
             ? [
                 Checkbox(
@@ -151,13 +154,13 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
                 ),
                 TextButton(
                   onPressed: _toggleSelectMode,
-                  child: const Text('취소'),
+                  child: Text(l.cancel),
                 ),
               ]
             : [
                 IconButton(
                   icon: const Icon(Icons.checklist),
-                  tooltip: '선택',
+                  tooltip: l.select,
                   onPressed: _toggleSelectMode,
                 ),
               ],
@@ -166,9 +169,9 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
           indicatorColor: color,
           labelColor: color,
           tabs: [
-            Tab(text: '전체 (${stats.total})'),
-            Tab(text: '안 읽음 (${stats.total - stats.read})'),
-            Tab(text: '읽음 (${stats.read})'),
+            Tab(text: l.tabAll(stats.total)),
+            Tab(text: l.tabUnread(stats.total - stats.read)),
+            Tab(text: l.tabRead(stats.read)),
           ],
         ),
       ),
@@ -193,7 +196,7 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
                         Expanded(
                           child: OutlinedButton.icon(
                             icon: const Icon(Icons.bookmark_add, size: 18),
-                            label: const Text('북마크'),
+                            label: Text(l.bookmark),
                             onPressed: () => _bulkToggleBookmark(true),
                           ),
                         ),
@@ -201,7 +204,7 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
                         Expanded(
                           child: OutlinedButton.icon(
                             icon: const Icon(Icons.bookmark_remove, size: 18),
-                            label: const Text('북마크 해제'),
+                            label: Text(l.removeBookmark),
                             onPressed: () => _bulkToggleBookmark(false),
                           ),
                         ),
@@ -213,7 +216,7 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
                         Expanded(
                           child: OutlinedButton.icon(
                             icon: const Icon(Icons.check_circle_outline, size: 18),
-                            label: const Text('안 읽음'),
+                            label: Text(l.unread),
                             onPressed: () => _bulkMarkRead(false),
                           ),
                         ),
@@ -221,7 +224,7 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
                         Expanded(
                           child: OutlinedButton.icon(
                             icon: const Icon(Icons.check_circle, size: 18),
-                            label: const Text('읽음'),
+                            label: Text(l.read),
                             onPressed: () => _bulkMarkRead(true),
                           ),
                         ),
@@ -231,7 +234,7 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
                             style: FilledButton.styleFrom(
                                 backgroundColor: theme.colorScheme.error),
                             icon: const Icon(Icons.delete_outline, size: 18),
-                            label: const Text('삭제'),
+                            label: Text(l.delete),
                             onPressed: _bulkDelete,
                           ),
                         ),
@@ -248,6 +251,7 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
   Widget _buildArticleList(bool? isReadFilter) {
     final articles = _getFilteredArticles(isReadFilter);
     final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
 
     if (articles.isEmpty) {
       return Center(
@@ -268,10 +272,10 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
             const SizedBox(height: Spacing.lg),
             Text(
               isReadFilter == null
-                  ? '북마크한 아티클이 없습니다.'
+                  ? l.noBookmarks
                   : isReadFilter
-                      ? '읽은 북마크가 없습니다.'
-                      : '안 읽은 북마크가 없습니다.',
+                      ? l.noReadBookmarks
+                      : l.noUnreadBookmarks,
               style: theme.textTheme.bodySmall,
             ),
           ],
@@ -291,12 +295,13 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
     final meta = platformMeta(article.platform);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final l = AppLocalizations.of(context)!;
     final createdDaysAgo = DateTime.now().difference(article.createdAt).inDays;
     final dateText = createdDaysAgo == 0
-        ? '오늘'
+        ? l.today
         : createdDaysAgo == 1
-            ? '어제'
-            : '$createdDaysAgo일 전';
+            ? l.yesterday
+            : l.daysAgo(createdDaysAgo);
     final isSelected = _selectedKeys.contains(article.key);
 
     return Container(
@@ -424,6 +429,7 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
 
   void _showArticleActions(Article article) {
     final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       backgroundColor: theme.colorScheme.surface,
@@ -448,7 +454,7 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
               leading: Icon(
                 article.isBookmarked ? Icons.bookmark : Icons.bookmark_border,
               ),
-              title: Text(article.isBookmarked ? '북마크 해제' : '북마크'),
+              title: Text(article.isBookmarked ? l.removeBookmark : l.bookmark),
               onTap: () async {
                 Navigator.pop(ctx);
                 await DatabaseService.toggleBookmark(article);
@@ -457,7 +463,7 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
             ),
             ListTile(
               leading: const Icon(Icons.edit_note),
-              title: Text(article.memo != null ? '메모 편집' : '메모 추가'),
+              title: Text(article.memo != null ? l.editMemo : l.addMemo),
               subtitle: article.memo != null
                   ? Text(article.memo!, maxLines: 1, overflow: TextOverflow.ellipsis)
                   : null,
@@ -470,7 +476,7 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
               leading: Icon(
                 article.isRead ? Icons.visibility_off : Icons.visibility,
               ),
-              title: Text(article.isRead ? '안 읽음으로 변경' : '읽음으로 변경'),
+              title: Text(article.isRead ? l.markAsUnread : l.markAsRead),
               onTap: () async {
                 Navigator.pop(ctx);
                 if (article.isRead) {
@@ -483,7 +489,7 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
             ),
             ListTile(
               leading: const Icon(Icons.open_in_new),
-              title: const Text('브라우저에서 열기'),
+              title: Text(l.openInBrowser),
               onTap: () async {
                 Navigator.pop(ctx);
                 final uri = Uri.tryParse(article.url);
@@ -494,24 +500,24 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
             ),
             ListTile(
               leading: Icon(Icons.delete_outline, color: theme.colorScheme.error),
-              title: Text('삭제', style: TextStyle(color: theme.colorScheme.error)),
+              title: Text(l.delete, style: TextStyle(color: theme.colorScheme.error)),
               onTap: () async {
                 Navigator.pop(ctx);
                 final confirmed = await showDialog<bool>(
                   context: context,
                   builder: (ctx2) => AlertDialog(
-                    title: const Text('아티클 삭제'),
-                    content: const Text('이 아티클을 삭제할까요?'),
+                    title: Text(l.deleteArticle),
+                    content: Text(l.deleteArticleConfirm),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(ctx2, false),
-                        child: const Text('취소'),
+                        child: Text(l.cancel),
                       ),
                       FilledButton(
                         style: FilledButton.styleFrom(
                             backgroundColor: theme.colorScheme.error),
                         onPressed: () => Navigator.pop(ctx2, true),
-                        child: const Text('삭제'),
+                        child: Text(l.delete),
                       ),
                     ],
                   ),
@@ -531,6 +537,7 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
   void _showMemoDialog(Article article) {
     final controller = TextEditingController(text: article.memo);
     final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -556,7 +563,7 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
                 ),
               ),
               const SizedBox(height: Spacing.lg),
-              Text('메모', style: theme.textTheme.titleSmall),
+              Text(l.memo, style: theme.textTheme.titleSmall),
               const SizedBox(height: Spacing.lg),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Spacing.xxl),
@@ -566,7 +573,7 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
                   maxLines: 1,
                   autofocus: true,
                   decoration: InputDecoration(
-                    hintText: '한 줄 메모를 입력하세요',
+                    hintText: l.memoHint,
                     counterText: '',
                     filled: true,
                     fillColor: theme.colorScheme.surfaceContainerHighest,
@@ -599,7 +606,7 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
                             if (ctx.mounted) Navigator.pop(ctx);
                             setState(() {});
                           },
-                          child: const Text('삭제'),
+                          child: Text(l.delete),
                         ),
                       ),
                       const SizedBox(width: Spacing.sm),
@@ -616,7 +623,7 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
                           if (ctx.mounted) Navigator.pop(ctx);
                           setState(() {});
                         },
-                        child: const Text('저장'),
+                        child: Text(l.save),
                       ),
                     ),
                   ],
