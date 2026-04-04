@@ -22,6 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<String> _allLabels = [];
   final Set<String> _selectedLabels = {};
   int _cardSwiperKey = 0;
+  bool _isExpanded = false;
 
   @override
   void initState() {
@@ -45,22 +46,22 @@ class _HomeScreenState extends State<HomeScreen> {
       _articles = filtered;
       _cardSwiperKey++;
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => oldController.dispose());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 300), oldController.dispose);
+    });
   }
 
   void _toggleLabel(String label) {
-    setState(() {
-      if (_selectedLabels.contains(label)) {
-        _selectedLabels.remove(label);
-      } else {
-        _selectedLabels.add(label);
-      }
-    });
+    if (_selectedLabels.contains(label)) {
+      _selectedLabels.remove(label);
+    } else {
+      _selectedLabels.add(label);
+    }
     _loadArticles();
   }
 
   void _clearLabels() {
-    setState(() => _selectedLabels.clear());
+    _selectedLabels.clear();
     _loadArticles();
   }
 
@@ -76,6 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
     int? currentIndex,
     CardSwiperDirection direction,
   ) {
+    if (previousIndex >= _articles.length) return false;
     final article = _articles[previousIndex];
 
     if (direction == CardSwiperDirection.right) {
@@ -86,6 +88,10 @@ class _HomeScreenState extends State<HomeScreen> {
     } else if (direction == CardSwiperDirection.left) {
       // 왼쪽 스와이프: 나중에 (스택 아래로)
       HapticFeedback.lightImpact();
+      // 마지막 카드를 스와이프한 경우(currentIndex == null) 스와이퍼 리셋
+      if (currentIndex == null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _loadArticles());
+      }
     }
 
     return true;
@@ -138,29 +144,104 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 12),
         // 라벨 필터 바
         if (_allLabels.isNotEmpty)
-          SizedBox(
-            height: 36,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                _FilterChip(
-                  label: '전체',
-                  selected: _selectedLabels.isEmpty,
-                  onTap: _clearLabels,
-                ),
-                const VerticalDivider(width: 16, indent: 6, endIndent: 6),
-                for (final label in _allLabels)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: _FilterChip(
-                      label: label,
-                      selected: _selectedLabels.contains(label),
-                      onTap: () => _toggleLabel(label),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 36,
+                child: Row(
+                  children: [
+                    // 고정: 전체 칩 + 구분선
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _FilterChip(
+                            label: '전체',
+                            selected: _selectedLabels.isEmpty,
+                            onTap: _clearLabels,
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 1,
+                            height: 20,
+                            color: Colors.grey.withValues(alpha: 0.35),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                      ),
                     ),
-                  ),
-              ],
-            ),
+                    // 스크롤 가능한 라벨 목록
+                    Expanded(
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _allLabels.length,
+                        itemBuilder: (context, index) => Padding(
+                          padding: EdgeInsets.only(
+                            right: index < _allLabels.length - 1 ? 8 : 0,
+                          ),
+                          child: _FilterChip(
+                            label: _allLabels[index],
+                            selected: _selectedLabels.contains(_allLabels[index]),
+                            onTap: () => _toggleLabel(_allLabels[index]),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // 확장 버튼
+                    GestureDetector(
+                      onTap: () => setState(() => _isExpanded = !_isExpanded),
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 12, right: 16),
+                        child: AnimatedRotation(
+                          turns: _isExpanded ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 200),
+                          child: Container(
+                            width: 26,
+                            height: 26,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.grey.withValues(alpha: 0.4),
+                                width: 1.2,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.keyboard_arrow_down,
+                              size: 16,
+                              color: Colors.grey.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // 확장된 라벨 그리드
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                child: _isExpanded
+                    ? Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final label in _allLabels)
+                              _FilterChip(
+                                label: label,
+                                selected: _selectedLabels.contains(label),
+                                onTap: () => _toggleLabel(label),
+                              ),
+                          ],
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
           ),
         const SizedBox(height: 10),
         // 아티클 카운트
@@ -191,12 +272,13 @@ class _HomeScreenState extends State<HomeScreen> {
               numberOfCardsDisplayed: _articles.length < 3 ? _articles.length : 3,
               backCardOffset: const Offset(0, -30),
               padding: const EdgeInsets.only(bottom: 24),
-              isLoop: true,
+              isLoop: _articles.length > 1,
               allowedSwipeDirection: const AllowedSwipeDirection.symmetric(
                 horizontal: true,
               ),
               onSwipe: _onSwipe,
               cardBuilder: (context, index, percentThresholdX, percentThresholdY) {
+                if (index >= _articles.length) return const SizedBox.shrink();
                 // 스와이프 방향에 따른 테두리 색상
                 Color? borderColor;
                 if (percentThresholdX > 20) {
