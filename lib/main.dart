@@ -6,11 +6,13 @@ import 'package:clib/screens/library_screen.dart';
 import 'package:clib/screens/settings_screen.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/services/notification_service.dart';
+import 'package:clib/services/ad_service.dart';
 import 'package:clib/services/share_service.dart';
 import 'package:clib/theme/app_theme.dart';
 import 'package:clib/theme/design_tokens.dart';
 import 'package:clib/screens/onboarding_screen.dart';
 import 'package:clib/widgets/share_label_sheet.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 /// 앱 전역 테마 모드
 final themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
@@ -24,6 +26,7 @@ void main() async {
   await DatabaseService.syncLabelsToAppGroup();
   await NotificationService.init();
   await NotificationService.rescheduleAll();
+  await AdService.initialize();
   themeModeNotifier.value = DatabaseService.savedThemeMode;
   runApp(const ClibApp());
 }
@@ -66,6 +69,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
+  bool _isBannerAdLoaded = false;
 
   final _screens = [
     const HomeScreen(),
@@ -78,10 +82,20 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkPendingShares());
+    _loadBannerAd();
+  }
+
+  void _loadBannerAd() {
+    AdService.loadBannerAd(
+      onLoaded: () {
+        if (mounted) setState(() => _isBannerAdLoaded = true);
+      },
+    );
   }
 
   @override
   void dispose() {
+    AdService.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -112,7 +126,20 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      body: SafeArea(child: _screens[_currentIndex]),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(child: _screens[_currentIndex]),
+            if (_isBannerAdLoaded && AdService.bannerAd != null)
+              Container(
+                width: AdSize.banner.width.toDouble(),
+                height: AdSize.banner.height.toDouble(),
+                color: theme.colorScheme.surface,
+                child: AdWidget(ad: AdService.bannerAd!),
+              ),
+          ],
+        ),
+      ),
       bottomNavigationBar: SafeArea(
         child: Container(
           margin: const EdgeInsets.fromLTRB(24, 0, 24, 16),
