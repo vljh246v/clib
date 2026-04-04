@@ -8,6 +8,7 @@ import 'package:clib/services/notification_service.dart';
 import 'package:clib/services/share_service.dart';
 import 'package:clib/theme/app_theme.dart';
 import 'package:clib/theme/design_tokens.dart';
+import 'package:clib/screens/onboarding_screen.dart';
 import 'package:clib/widgets/share_label_sheet.dart';
 
 /// 앱 전역 테마 모드
@@ -33,13 +34,19 @@ class ClibApp extends StatelessWidget {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeModeNotifier,
       builder: (context, mode, _) {
+        final showOnboarding = !DatabaseService.hasSeenOnboarding;
         return MaterialApp(
           title: 'Clib',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
           themeMode: mode,
-          home: const MainScreen(),
+          home: showOnboarding
+              ? const OnboardingScreen()
+              : const MainScreen(),
+          routes: {
+            '/main': (_) => const MainScreen(),
+          },
         );
       },
     );

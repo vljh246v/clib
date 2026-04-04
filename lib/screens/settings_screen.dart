@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:clib/screens/label_management_screen.dart';
+import 'package:clib/screens/onboarding_screen.dart';
 import 'package:clib/screens/theme_settings_screen.dart';
 import 'package:clib/main.dart';
 import 'package:clib/theme/design_tokens.dart';
@@ -57,6 +58,24 @@ class SettingsScreen extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                       builder: (_) => const ThemeSettingsScreen()),
+                ),
+              ),
+              Divider(
+                  height: 1,
+                  indent: 56,
+                  color: theme.dividerColor),
+              _buildItem(
+                context,
+                theme: theme,
+                icon: Icons.help_outline_rounded,
+                iconColor: theme.colorScheme.secondary,
+                title: '사용 방법',
+                subtitle: 'Clib 사용법을 다시 확인해요',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) =>
+                          const OnboardingScreen(isGuideMode: true)),
                 ),
               ),
             ],

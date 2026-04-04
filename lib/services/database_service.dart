@@ -7,6 +7,7 @@ import 'package:clib/models/label.dart';
 class DatabaseService {
   static const _boxName = 'articles';
   static const _labelBoxName = 'labels';
+  static const _prefsBoxName = 'preferences';
   static const _channel = MethodChannel('com.clib.clib/share');
 
   static Future<void> init() async {
@@ -16,10 +17,20 @@ class DatabaseService {
     Hive.registerAdapter(LabelAdapter());
     await Hive.openBox<Article>(_boxName);
     await Hive.openBox<Label>(_labelBoxName);
+    await Hive.openBox(_prefsBoxName);
   }
 
   static Box<Article> get _box => Hive.box<Article>(_boxName);
   static Box<Label> get _labelBox => Hive.box<Label>(_labelBoxName);
+  static Box get _prefsBox => Hive.box(_prefsBoxName);
+
+  // 온보딩 완료 여부
+  static bool get hasSeenOnboarding =>
+      _prefsBox.get('hasSeenOnboarding', defaultValue: false) as bool;
+
+  static Future<void> setOnboardingComplete() async {
+    await _prefsBox.put('hasSeenOnboarding', true);
+  }
 
   // 아티클 저장
   static Future<int> saveArticle(Article article) async {
