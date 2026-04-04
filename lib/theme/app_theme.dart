@@ -16,9 +16,12 @@ class AppColors {
 }
 
 class AppTheme {
+  static const _fontFamily = 'Pretendard';
+
   static ThemeData dark() {
     return ThemeData(
       brightness: Brightness.dark,
+      fontFamily: _fontFamily,
       scaffoldBackgroundColor: AppColors.darkBg,
       colorScheme: const ColorScheme.dark(
         primary: Color(0xFF7986CB),       // 다크 배경에서 읽기 좋은 인디고
@@ -52,6 +55,7 @@ class AppTheme {
   static ThemeData light() {
     return ThemeData(
       brightness: Brightness.light,
+      fontFamily: _fontFamily,
       scaffoldBackgroundColor: AppColors.lightBg,
       colorScheme: const ColorScheme.light(
         primary: AppColors.deepIndigo,
