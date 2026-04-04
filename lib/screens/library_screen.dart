@@ -83,9 +83,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         painter: _CircularProgressPainter(
                           progress: progress,
                           color: theme.colorScheme.secondary,
-                          backgroundColor: theme.colorScheme.secondary.withValues(
-                            alpha: 0.12,
-                          ),
+                          backgroundColor: theme.colorScheme.secondary
+                              .withValues(alpha: 0.12),
                           strokeWidth: 5,
                         ),
                         child: Center(
@@ -112,7 +111,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
                             style: theme.textTheme.bodySmall,
                           ),
                           const SizedBox(height: 2),
-                          Text('${labels.length}개 라벨', style: theme.textTheme.labelSmall),
+                          Text(
+                            '${labels.length}개 라벨',
+                            style: theme.textTheme.labelSmall,
+                          ),
                         ],
                       ),
                     ),
