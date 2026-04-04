@@ -6,6 +6,7 @@ import 'package:clib/models/label.dart';
 import 'package:clib/models/platform_meta.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/theme/design_tokens.dart';
+import 'package:clib/widgets/inline_banner_ad.dart';
 
 /// 라벨 상세 화면 — 해당 라벨의 아티클 리스트 + 읽음/안읽음 필터
 class LabelDetailScreen extends StatefulWidget {
@@ -289,12 +290,27 @@ class _LabelDetailScreenState extends State<LabelDetailScreen>
       );
     }
 
+    const adInterval = 8;
+    final adCount = articles.length >= adInterval
+        ? (articles.length / adInterval).floor()
+        : 0;
+    final totalCount = articles.length + adCount;
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(
           vertical: Spacing.sm, horizontal: Spacing.lg),
-      itemCount: articles.length,
-      itemBuilder: (context, index) =>
-          _buildArticleItem(articles[index], isDark, labelColor),
+      itemCount: totalCount,
+      itemBuilder: (context, index) {
+        final adsBefore = adCount == 0 ? 0 : (index + 1) ~/ (adInterval + 1);
+        final isAd = adCount > 0 &&
+            index > 0 &&
+            (index + 1) % (adInterval + 1) == 0;
+
+        if (isAd) return const InlineBannerAd();
+
+        final articleIndex = index - adsBefore;
+        return _buildArticleItem(articles[articleIndex], isDark, labelColor);
+      },
     );
   }
 

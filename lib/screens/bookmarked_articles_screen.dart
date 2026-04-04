@@ -5,6 +5,7 @@ import 'package:clib/models/article.dart';
 import 'package:clib/models/platform_meta.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/theme/design_tokens.dart';
+import 'package:clib/widgets/inline_banner_ad.dart';
 
 /// 북마크된 아티클 화면
 class BookmarkedArticlesScreen extends StatefulWidget {
@@ -283,11 +284,27 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
       );
     }
 
+    const adInterval = 8;
+    final adCount = articles.length >= adInterval
+        ? (articles.length / adInterval).floor()
+        : 0;
+    final totalCount = articles.length + adCount;
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(
           vertical: Spacing.sm, horizontal: Spacing.lg),
-      itemCount: articles.length,
-      itemBuilder: (context, index) => _buildArticleItem(articles[index]),
+      itemCount: totalCount,
+      itemBuilder: (context, index) {
+        final adsBefore = adCount == 0 ? 0 : (index + 1) ~/ (adInterval + 1);
+        final isAd = adCount > 0 &&
+            index > 0 &&
+            (index + 1) % (adInterval + 1) == 0;
+
+        if (isAd) return const InlineBannerAd();
+
+        final articleIndex = index - adsBefore;
+        return _buildArticleItem(articles[articleIndex]);
+      },
     );
   }
 

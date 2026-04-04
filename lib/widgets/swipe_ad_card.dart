@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:clib/services/ad_service.dart';
+import 'package:clib/theme/app_theme.dart';
 import 'package:clib/theme/design_tokens.dart';
 
-/// 리스트 사이에 삽입되는 인피드 네이티브 광고 위젯.
-/// 아티클 카드와 자연스럽게 어울리도록 NativeTemplateStyle을 사용한다.
-class InlineBannerAd extends StatefulWidget {
-  const InlineBannerAd({super.key});
+/// 스와이프 덱에 삽입되는 네이티브 광고 카드.
+/// ArticleCard와 동일한 외형(둥근 모서리, 그림자, 풀사이즈)을 가진다.
+class SwipeAdCard extends StatefulWidget {
+  const SwipeAdCard({super.key});
 
   @override
-  State<InlineBannerAd> createState() => _InlineBannerAdState();
+  State<SwipeAdCard> createState() => _SwipeAdCardState();
 }
 
-class _InlineBannerAdState extends State<InlineBannerAd> {
+class _SwipeAdCardState extends State<SwipeAdCard> {
   NativeAd? _nativeAd;
   bool _isLoaded = false;
   bool _adRequested = false;
@@ -34,11 +35,11 @@ class _InlineBannerAdState extends State<InlineBannerAd> {
       request: const AdRequest(),
       listener: NativeAdListener(
         onAdLoaded: (ad) {
-          debugPrint('✅ Native ad loaded successfully');
+          debugPrint('✅ Swipe native ad loaded');
           if (mounted) setState(() => _isLoaded = true);
         },
         onAdFailedToLoad: (ad, error) {
-          debugPrint('❌ Native ad failed: ${error.code} - ${error.message}');
+          debugPrint('❌ Swipe native ad failed: ${error.message}');
           ad.dispose();
           _nativeAd = null;
         },
@@ -46,27 +47,27 @@ class _InlineBannerAdState extends State<InlineBannerAd> {
       nativeTemplateStyle: NativeTemplateStyle(
         templateType: TemplateType.medium,
         mainBackgroundColor: theme.colorScheme.surface,
-        cornerRadius: Radii.lg,
+        cornerRadius: Radii.xl,
         callToActionTextStyle: NativeTemplateTextStyle(
           textColor: theme.colorScheme.onSecondary,
           backgroundColor: theme.colorScheme.secondary,
           style: NativeTemplateFontStyle.bold,
-          size: 12.0,
+          size: 14.0,
         ),
         primaryTextStyle: NativeTemplateTextStyle(
           textColor: theme.colorScheme.onSurface,
           style: NativeTemplateFontStyle.bold,
-          size: 13.0,
+          size: 16.0,
         ),
         secondaryTextStyle: NativeTemplateTextStyle(
           textColor: const Color(0xFF8E8E93),
           style: NativeTemplateFontStyle.normal,
-          size: 11.0,
+          size: 12.0,
         ),
         tertiaryTextStyle: NativeTemplateTextStyle(
           textColor: const Color(0xFF8E8E93),
           style: NativeTemplateFontStyle.normal,
-          size: 11.0,
+          size: 12.0,
         ),
       ),
     )..load();
@@ -80,23 +81,30 @@ class _InlineBannerAdState extends State<InlineBannerAd> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isLoaded || _nativeAd == null) return const SizedBox.shrink();
-
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: Spacing.sm),
       decoration: BoxDecoration(
+        borderRadius: Radii.borderXl,
+        boxShadow: AppShadows.swipeCard(isDark),
         color: theme.colorScheme.surface,
-        borderRadius: Radii.borderLg,
-        boxShadow: AppShadows.card(isDark),
       ),
       clipBehavior: Clip.antiAlias,
-      child: SizedBox(
-        width: double.infinity,
-        height: 400,
-        child: AdWidget(ad: _nativeAd!),
+      child: _isLoaded && _nativeAd != null
+          ? AdWidget(ad: _nativeAd!)
+          : _placeholder(theme),
+    );
+  }
+
+  Widget _placeholder(ThemeData theme) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.warmCharcoal, Color(0xFF3D3D4A)],
+        ),
       ),
     );
   }

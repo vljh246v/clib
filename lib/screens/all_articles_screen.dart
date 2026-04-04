@@ -301,7 +301,7 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
             index > 0 &&
             (index + 1) % (adInterval + 1) == 0;
 
-        if (isAd) return const InlineNativeAd();
+        if (isAd) return const InlineBannerAd();
 
         final articleIndex = index - adsBefore;
         return _buildArticleItem(articles[articleIndex]);

@@ -6,7 +6,7 @@ class AdService {
   static BannerAd? _bannerAd;
   static bool _isLoaded = false;
 
-  static String get _bannerAdUnitId {
+  static String get bannerAdUnitId {
     if (kDebugMode) {
       // 디버그 빌드: Google 테스트 광고 ID 사용 (계정 보호)
       return Platform.isAndroid
@@ -31,14 +31,18 @@ class AdService {
   }
 
   static Future<void> initialize() async {
-    await MobileAds.instance.initialize();
+    final status = await MobileAds.instance.initialize();
+    debugPrint('✅ AdMob SDK initialized');
+    status.adapterStatuses.forEach((adapter, status) {
+      debugPrint('  Adapter: $adapter → ${status.state}');
+    });
   }
 
   static BannerAd? get bannerAd => _isLoaded ? _bannerAd : null;
 
   static void loadBannerAd({required Function onLoaded}) {
     _bannerAd = BannerAd(
-      adUnitId: _bannerAdUnitId,
+      adUnitId: bannerAdUnitId,
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(

@@ -10,6 +10,7 @@ import 'package:clib/theme/app_theme.dart';
 import 'package:clib/theme/design_tokens.dart';
 import 'package:clib/widgets/article_card.dart';
 import 'package:clib/widgets/label_edit_sheet.dart';
+import 'package:clib/widgets/swipe_ad_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,6 +27,29 @@ class _HomeScreenState extends State<HomeScreen> {
   final Set<String> _selectedLabels = {};
   int _cardSwiperKey = 0;
   bool _isExpanded = false;
+
+  static const _adInterval = 8;
+
+  /// 광고 슬롯을 포함한 전체 카드 수
+  int get _totalCards {
+    if (_articles.isEmpty) return 0;
+    final adCount = _articles.length >= _adInterval
+        ? (_articles.length / _adInterval).floor()
+        : 0;
+    return _articles.length + adCount;
+  }
+
+  /// 해당 인덱스가 광고 슬롯인지 판단
+  bool _isAdSlot(int index) {
+    if (_articles.length < _adInterval) return false;
+    return index > 0 && (index + 1) % (_adInterval + 1) == 0;
+  }
+
+  /// 광고 슬롯을 제외한 실제 아티클 인덱스
+  int _articleIndex(int index) {
+    if (_articles.length < _adInterval) return index;
+    return index - ((index + 1) ~/ (_adInterval + 1));
+  }
 
   @override
   void initState() {
@@ -91,18 +115,19 @@ class _HomeScreenState extends State<HomeScreen> {
     int? currentIndex,
     CardSwiperDirection direction,
   ) {
-    if (previousIndex >= _articles.length) return false;
-    final article = _articles[previousIndex];
+    // 광고 카드는 스와이프만 허용, 아티클 처리 안함
+    if (_isAdSlot(previousIndex)) return true;
+
+    final artIdx = _articleIndex(previousIndex);
+    if (artIdx >= _articles.length) return false;
+    final article = _articles[artIdx];
 
     if (direction == CardSwiperDirection.right) {
-      // 오른쪽 스와이프: 읽음 처리 후 목록 갱신
       HapticFeedback.mediumImpact();
       DatabaseService.markAsRead(article);
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadArticles());
     } else if (direction == CardSwiperDirection.left) {
-      // 왼쪽 스와이프: 나중에 (스택 아래로)
       HapticFeedback.lightImpact();
-      // 마지막 카드를 스와이프한 경우(currentIndex == null) 스와이퍼 리셋
       if (currentIndex == null) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _loadArticles());
       }
@@ -463,18 +488,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: CardSwiper(
                   key: ValueKey(_cardSwiperKey),
                   controller: _swiperController,
-                  cardsCount: _articles.length,
-                  numberOfCardsDisplayed: _articles.length < 3 ? _articles.length : 3,
+                  cardsCount: _totalCards,
+                  numberOfCardsDisplayed: _totalCards < 3 ? _totalCards : 3,
                   backCardOffset: const Offset(0, 36),
                   scale: 0.95,
                   padding: const EdgeInsets.only(bottom: 56),
-                  isLoop: _articles.length > 1,
+                  isLoop: _totalCards > 1,
                   allowedSwipeDirection: const AllowedSwipeDirection.symmetric(
                     horizontal: true,
                   ),
                   onSwipe: _onSwipe,
                   cardBuilder: (context, index, percentThresholdX, percentThresholdY) {
-                    if (index >= _articles.length) return const SizedBox.shrink();
+                    if (index >= _totalCards) return const SizedBox.shrink();
+
+                    // 광고 슬롯
+                    if (_isAdSlot(index)) {
+                      return const SwipeAdCard();
+                    }
+
+                    final artIdx = _articleIndex(index);
+                    if (artIdx >= _articles.length) return const SizedBox.shrink();
+
                     // 스와이프 방향에 따른 테두리 색상
                     Color? borderColor;
                     if (percentThresholdX > 20) {
@@ -487,14 +521,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     return GestureDetector(
                       onTap: () async {
-                        final uri = Uri.tryParse(_articles[index].url);
+                        final uri = Uri.tryParse(_articles[artIdx].url);
                         if (uri != null) {
                           await launchUrl(uri, mode: LaunchMode.externalApplication);
                         }
                       },
                       onLongPress: () {
                         HapticFeedback.heavyImpact();
-                        _showCardActions(_articles[index]);
+                        _showCardActions(_articles[artIdx]);
                       },
                       child: Container(
                         decoration: BoxDecoration(
@@ -503,7 +537,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ? Border.all(color: borderColor, width: 2.5)
                               : null,
                         ),
-                        child: ArticleCard(article: _articles[index]),
+                        child: ArticleCard(article: _articles[artIdx]),
                       ),
                     );
                   },
