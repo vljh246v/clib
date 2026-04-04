@@ -97,33 +97,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return true;
   }
 
-  static const _hintShadows = [
-    Shadow(color: Colors.black54, blurRadius: 6),
-    Shadow(color: Colors.black38, blurRadius: 12),
-  ];
-
-  Widget _shadowText(String text, Color color) {
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w700,
-        color: color,
-        shadows: _hintShadows,
-      ),
-    );
-  }
-
-  Widget _shadowIcon(IconData icon, Color color) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Icon(icon, size: 22, color: Colors.black38),
-        Icon(icon, size: 20, color: color),
-      ],
-    );
-  }
-
   Widget _buildEmptyState() {
     return Expanded(
       child: Center(
@@ -303,8 +276,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   controller: _swiperController,
                   cardsCount: _articles.length,
                   numberOfCardsDisplayed: _articles.length < 3 ? _articles.length : 3,
-                  backCardOffset: const Offset(0, -30),
-                  padding: const EdgeInsets.only(bottom: 24),
+                  backCardOffset: const Offset(0, 36),
+                  scale: 0.95,
+                  padding: const EdgeInsets.only(bottom: 56),
                   isLoop: _articles.length > 1,
                   allowedSwipeDirection: const AllowedSwipeDirection.symmetric(
                     horizontal: true,
@@ -348,39 +322,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     );
                   },
-                ),
-              ),
-              // 스와이프 힌트 오버레이
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(left: 36),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _shadowIcon(Icons.arrow_back_ios, AppColors.softCoral),
-                            const SizedBox(height: 4),
-                            _shadowText('나중에', AppColors.softCoral),
-                          ],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(right: 36),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _shadowIcon(Icons.arrow_forward_ios, AppColors.neonGreen),
-                            const SizedBox(height: 4),
-                            _shadowText('읽음', AppColors.neonGreen),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ],

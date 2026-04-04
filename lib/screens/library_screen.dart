@@ -139,11 +139,31 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
+  Widget _statBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
   /// 전체 아티클 카드
   Widget _buildAllCard(ThemeData theme, bool isDark) {
     final stats = DatabaseService.getOverallStats();
     final color = theme.colorScheme.primary;
     final progress = stats.total > 0 ? stats.read / stats.total : 0.0;
+    final unread = stats.total - stats.read;
+    final percent = stats.total > 0 ? (progress * 100).round() : 0;
 
     return GestureDetector(
       onTap: () async {
@@ -178,15 +198,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   strokeWidth: 5,
                 ),
                 child: Center(
-                  child: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: color.withValues(alpha: 0.2),
-                    child: Icon(Icons.layers, color: color, size: 18),
+                  child: Text(
+                    '$percent%',
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Text(
               '전체',
               style: TextStyle(
@@ -195,13 +218,19 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 color: color,
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              '${stats.read}/${stats.total}',
-              style: TextStyle(
-                color: Colors.grey.withValues(alpha: 0.7),
-                fontSize: 12,
-              ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _statBadge('전체 ${stats.total}', Colors.grey.withValues(alpha: 0.7)),
+                const SizedBox(width: 6),
+                _statBadge(
+                  '안읽음 $unread',
+                  unread > 0
+                      ? color.withValues(alpha: 0.8)
+                      : Colors.grey.withValues(alpha: 0.5),
+                ),
+              ],
             ),
           ],
         ),
@@ -214,6 +243,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final stats = DatabaseService.getLabelStats(label.name);
     final color = Color(label.colorValue);
     final progress = stats.total > 0 ? stats.read / stats.total : 0.0;
+
+    final unread = stats.total - stats.read;
+    final percent = stats.total > 0 ? (progress * 100).round() : 0;
 
     return GestureDetector(
       onTap: () async {
@@ -242,7 +274,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 원형 프로그레스 + 라벨 이니셜
+            // 원형 프로그레스 + 퍼센트
             SizedBox(
               width: 56,
               height: 56,
@@ -254,22 +286,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   strokeWidth: 5,
                 ),
                 child: Center(
-                  child: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: color.withValues(alpha: 0.2),
-                    child: Text(
-                      label.name[0],
-                      style: TextStyle(
-                        color: color,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+                  child: Text(
+                    '$percent%',
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
                     ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             // 라벨명
             Text(
               label.name,
@@ -280,14 +308,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 fontSize: 14,
               ),
             ),
-            const SizedBox(height: 4),
-            // 통계 텍스트
-            Text(
-              '${stats.read}/${stats.total}',
-              style: TextStyle(
-                color: Colors.grey.withValues(alpha: 0.7),
-                fontSize: 12,
-              ),
+            const SizedBox(height: 6),
+            // 통계 수치
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _statBadge('전체 ${stats.total}', Colors.grey.withValues(alpha: 0.7)),
+                const SizedBox(width: 6),
+                _statBadge(
+                  '안읽음 $unread',
+                  unread > 0
+                      ? color.withValues(alpha: 0.8)
+                      : Colors.grey.withValues(alpha: 0.5),
+                ),
+              ],
             ),
           ],
         ),
