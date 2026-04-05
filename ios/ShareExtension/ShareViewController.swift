@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 
 class ShareViewController: UIViewController {
 
-    private let appGroupId = "group.com.clib.clib"
+    private let appGroupId = "group.com.clibapp.clib"
     private let sharedKey = "SharedURLs"
     private let labelsKey = "SharedLabels"
 
