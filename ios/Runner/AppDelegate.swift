@@ -4,7 +4,7 @@ import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
-  private let appGroupId = "group.com.jaehyun.clib"
+  private let appGroupId = "group.com.jaehyun.clib.share"
   private let sharedKey = "SharedURLs"
 
   override func application(
@@ -24,7 +24,7 @@ import UserNotifications
 
     // MethodChannel 설정
     let messenger = engineBridge.applicationRegistrar.messenger()
-    let channel = FlutterMethodChannel(name: "com.jaehyun.clib/share", binaryMessenger: messenger)
+    let channel = FlutterMethodChannel(name: "com.jaehyun.clibapp/share", binaryMessenger: messenger)
 
     channel.setMethodCallHandler { [weak self] (call: FlutterMethodCall, result: @escaping FlutterResult) in
       guard let self = self else { return }

@@ -1,4 +1,4 @@
-package com.jaehyun.clib
+package com.jaehyun.clibapp
 
 import android.content.Intent
 import android.os.Bundle
@@ -7,7 +7,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
-    private val CHANNEL = "com.jaehyun.clib/share"
+    private val CHANNEL = "com.jaehyun.clibapp/share"
     private var sharedText: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {

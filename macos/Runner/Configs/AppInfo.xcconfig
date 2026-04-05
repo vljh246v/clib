@@ -8,7 +8,7 @@
 PRODUCT_NAME = clib
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.jaehyun.clib
+PRODUCT_BUNDLE_IDENTIFIER = com.jaehyun.clibapp
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 com.clib. All rights reserved.
