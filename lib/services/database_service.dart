@@ -9,7 +9,7 @@ class DatabaseService {
   static const _boxName = 'articles';
   static const _labelBoxName = 'labels';
   static const _prefsBoxName = 'preferences';
-  static const _channel = MethodChannel('com.clibapp.clib/share');
+  static const _channel = MethodChannel('com.jaehyun.clib/share');
 
   static Future<void> init() async {
     await Hive.initFlutter();

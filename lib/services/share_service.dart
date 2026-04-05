@@ -7,7 +7,7 @@ import 'package:clib/services/database_service.dart';
 import 'package:clib/services/scraping_service.dart';
 
 class ShareService {
-  static const _channel = MethodChannel('com.clibapp.clib/share');
+  static const _channel = MethodChannel('com.jaehyun.clib/share');
 
   /// Android: intent에서 공유된 텍스트 수신
   static Future<String?> getSharedTextFromIntent() async {
