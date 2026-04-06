@@ -48,3 +48,9 @@ app.*.map.json
 
 # CLAUDE
 .claude/*.local.json
+.claude/plans/
+
+# Firebase
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+**/GoogleService-Info.plist

@@ -1,0 +1,38 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_response.filePath // .tool_input.file_path' | { read -r f; echo \"$f\" | grep -qE '\\.dart$' && cd /Users/jaehyeon/Documents/workspace/clib && flutter analyze --no-pub 2>&1 | tail -5 || true; }",
+            "timeout": 30,
+            "statusMessage": "flutter analyze 실행 중..."
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreCompact\",\"additionalContext\":\"컨텍스트 압축 시 반드시 보존할 것: 1) 현재 작업 중인 파일 목록과 변경 내용 2) 발견된 버그나 이슈 3) ARB 키 추가 여부 4) build_runner 실행 필요 여부\"}}'",
+            "statusMessage": "컨텍스트 보존 정보 수집 중..."
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(flutter:*)",
+      "Bash(dart:*)",
+      "Bash(git:*)",
+      "Bash(pod install:*)",
+      "Bash(ls:*)",
+      "Read"
+    ]
+  }
+}
