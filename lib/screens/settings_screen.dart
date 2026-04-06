@@ -267,10 +267,12 @@ class _AccountSection extends StatelessWidget {
   ) async {
     try {
       await signInMethod();
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('로그인 실패: $e');
+      debugPrint('$st');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.loginFailed)),
+          SnackBar(content: Text('${l.loginFailed}: $e')),
         );
       }
     }
