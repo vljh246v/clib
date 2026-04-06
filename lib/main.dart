@@ -7,6 +7,7 @@ import 'package:clib/screens/settings_screen.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/services/notification_service.dart';
 import 'package:clib/services/ad_service.dart';
+import 'package:clib/services/demo_data_service.dart';
 import 'package:clib/services/share_service.dart';
 import 'package:clib/theme/app_theme.dart';
 import 'package:clib/theme/design_tokens.dart';
@@ -26,6 +27,8 @@ void main() async {
   await NotificationService.init();
   await NotificationService.rescheduleAll();
   await AdService.initialize();
+  // ★ 스크린샷용 데모 데이터 — 촬영 후 이 줄 삭제
+  await DemoDataService.seed();
   themeModeNotifier.value = DatabaseService.savedThemeMode;
   runApp(const ClibApp());
 }
