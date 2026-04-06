@@ -1,4 +1,7 @@
 import 'dart:io' as io;
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/screens/home_screen.dart';
@@ -20,15 +23,25 @@ final themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
 /// 아티클 추가/삭제 시 HomeScreen에 알리는 notifier
 final articlesChangedNotifier = ValueNotifier<int>(0);
 
+/// 인증 상태 notifier
+final authStateNotifier = ValueNotifier<User?>(null);
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  // 인증 상태 변경 감지
+  FirebaseAuth.instance.authStateChanges().listen((user) {
+    authStateNotifier.value = user;
+  });
   await DatabaseService.init();
   await DatabaseService.syncLabelsToAppGroup();
   await NotificationService.init();
   await NotificationService.rescheduleAll();
   await AdService.initialize();
-  // ★ 스크린샷용 데모 데이터 — 촬영 후 이 줄 삭제
-  await DemoDataService.seed();
+  // debug 모드에서만 데모 데이터 생성
+  if (kDebugMode) {
+    await DemoDataService.seed();
+  }
   themeModeNotifier.value = DatabaseService.savedThemeMode;
   runApp(const ClibApp());
 }

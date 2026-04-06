@@ -354,4 +354,48 @@ class AppLocalizationsKo extends AppLocalizations {
   String articleStats(int total, int read) {
     return '$total개 아티클 · $read개 읽음';
   }
+
+  @override
+  String get account => '계정';
+
+  @override
+  String get loginSubtitle => '로그인하면 다른 기기에서도 사용할 수 있어요';
+
+  @override
+  String get signInWithGoogle => 'Google로 로그인';
+
+  @override
+  String get signInWithApple => 'Apple로 로그인';
+
+  @override
+  String get signOut => '로그아웃';
+
+  @override
+  String get signOutConfirm => '로그아웃 하시겠어요?';
+
+  @override
+  String get signOutDescription => '로그아웃해도 이 기기의 데이터는 유지됩니다.';
+
+  @override
+  String get deleteAccount => '계정 삭제';
+
+  @override
+  String get deleteAccountConfirm => '계정을 삭제하시겠어요?';
+
+  @override
+  String get deleteAccountDescription =>
+      '클라우드 데이터가 모두 삭제됩니다. 이 기기의 데이터는 유지됩니다.';
+
+  @override
+  String get syncComplete => '동기화 완료';
+
+  @override
+  String get syncing => '동기화 중...';
+
+  @override
+  String get loginFailed => '로그인에 실패했습니다';
+
+  @override
+  String get notificationDeviceOnly =>
+      '알림은 이 기기에서만 울립니다. 다른 기기에서는 별도로 설정해 주세요.';
 }

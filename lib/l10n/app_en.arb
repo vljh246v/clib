@@ -123,5 +123,20 @@
   "editArticle": "Edit Article",
   "platform": "Platform",
 
-  "articleStats": "{total} articles · {read} read"
+  "articleStats": "{total} articles · {read} read",
+
+  "account": "Account",
+  "loginSubtitle": "Sign in to sync across devices",
+  "signInWithGoogle": "Sign in with Google",
+  "signInWithApple": "Sign in with Apple",
+  "signOut": "Sign Out",
+  "signOutConfirm": "Sign out?",
+  "signOutDescription": "Your data on this device will be kept.",
+  "deleteAccount": "Delete Account",
+  "deleteAccountConfirm": "Delete your account?",
+  "deleteAccountDescription": "All cloud data will be deleted. Data on this device will be kept.",
+  "syncComplete": "Sync complete",
+  "syncing": "Syncing...",
+  "loginFailed": "Sign in failed",
+  "notificationDeviceOnly": "Notifications only ring on this device. Set up separately on other devices."
 }

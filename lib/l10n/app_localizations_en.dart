@@ -360,4 +360,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String articleStats(int total, int read) {
     return '$total articles · $read read';
   }
+
+  @override
+  String get account => 'Account';
+
+  @override
+  String get loginSubtitle => 'Sign in to sync across devices';
+
+  @override
+  String get signInWithGoogle => 'Sign in with Google';
+
+  @override
+  String get signInWithApple => 'Sign in with Apple';
+
+  @override
+  String get signOut => 'Sign Out';
+
+  @override
+  String get signOutConfirm => 'Sign out?';
+
+  @override
+  String get signOutDescription => 'Your data on this device will be kept.';
+
+  @override
+  String get deleteAccount => 'Delete Account';
+
+  @override
+  String get deleteAccountConfirm => 'Delete your account?';
+
+  @override
+  String get deleteAccountDescription =>
+      'All cloud data will be deleted. Data on this device will be kept.';
+
+  @override
+  String get syncComplete => 'Sync complete';
+
+  @override
+  String get syncing => 'Syncing...';
+
+  @override
+  String get loginFailed => 'Sign in failed';
+
+  @override
+  String get notificationDeviceOnly =>
+      'Notifications only ring on this device. Set up separately on other devices.';
 }

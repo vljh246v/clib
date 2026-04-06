@@ -727,6 +727,90 @@ abstract class AppLocalizations {
   /// In ko, this message translates to:
   /// **'{total}개 아티클 · {read}개 읽음'**
   String articleStats(int total, int read);
+
+  /// No description provided for @account.
+  ///
+  /// In ko, this message translates to:
+  /// **'계정'**
+  String get account;
+
+  /// No description provided for @loginSubtitle.
+  ///
+  /// In ko, this message translates to:
+  /// **'로그인하면 다른 기기에서도 사용할 수 있어요'**
+  String get loginSubtitle;
+
+  /// No description provided for @signInWithGoogle.
+  ///
+  /// In ko, this message translates to:
+  /// **'Google로 로그인'**
+  String get signInWithGoogle;
+
+  /// No description provided for @signInWithApple.
+  ///
+  /// In ko, this message translates to:
+  /// **'Apple로 로그인'**
+  String get signInWithApple;
+
+  /// No description provided for @signOut.
+  ///
+  /// In ko, this message translates to:
+  /// **'로그아웃'**
+  String get signOut;
+
+  /// No description provided for @signOutConfirm.
+  ///
+  /// In ko, this message translates to:
+  /// **'로그아웃 하시겠어요?'**
+  String get signOutConfirm;
+
+  /// No description provided for @signOutDescription.
+  ///
+  /// In ko, this message translates to:
+  /// **'로그아웃해도 이 기기의 데이터는 유지됩니다.'**
+  String get signOutDescription;
+
+  /// No description provided for @deleteAccount.
+  ///
+  /// In ko, this message translates to:
+  /// **'계정 삭제'**
+  String get deleteAccount;
+
+  /// No description provided for @deleteAccountConfirm.
+  ///
+  /// In ko, this message translates to:
+  /// **'계정을 삭제하시겠어요?'**
+  String get deleteAccountConfirm;
+
+  /// No description provided for @deleteAccountDescription.
+  ///
+  /// In ko, this message translates to:
+  /// **'클라우드 데이터가 모두 삭제됩니다. 이 기기의 데이터는 유지됩니다.'**
+  String get deleteAccountDescription;
+
+  /// No description provided for @syncComplete.
+  ///
+  /// In ko, this message translates to:
+  /// **'동기화 완료'**
+  String get syncComplete;
+
+  /// No description provided for @syncing.
+  ///
+  /// In ko, this message translates to:
+  /// **'동기화 중...'**
+  String get syncing;
+
+  /// No description provided for @loginFailed.
+  ///
+  /// In ko, this message translates to:
+  /// **'로그인에 실패했습니다'**
+  String get loginFailed;
+
+  /// No description provided for @notificationDeviceOnly.
+  ///
+  /// In ko, this message translates to:
+  /// **'알림은 이 기기에서만 울립니다. 다른 기기에서는 별도로 설정해 주세요.'**
+  String get notificationDeviceOnly;
 }
 
 class _AppLocalizationsDelegate
