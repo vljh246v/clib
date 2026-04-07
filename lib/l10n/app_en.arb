@@ -143,5 +143,8 @@
   "addArticle": "Add Article",
   "urlHint": "Enter URL",
   "invalidUrl": "Invalid URL",
-  "pasteFromClipboard": "Paste"
+  "pasteFromClipboard": "Paste",
+
+  "swipeRead": "READ",
+  "swipeLater": "LATER"
 }

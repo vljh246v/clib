@@ -416,4 +416,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pasteFromClipboard => 'Paste';
+
+  @override
+  String get swipeRead => 'READ';
+
+  @override
+  String get swipeLater => 'LATER';
 }

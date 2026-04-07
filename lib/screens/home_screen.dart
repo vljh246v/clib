@@ -537,6 +537,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           .withValues(alpha: (percentThresholdX.abs() / 100).clamp(0, 1));
                     }
 
+                    // 스와이프 힌트 opacity (20% 이상 드래그 시 페이드인)
+                    final readOpacity = percentThresholdX > 20
+                        ? ((percentThresholdX - 20) / 40).clamp(0.0, 1.0)
+                        : 0.0;
+                    final laterOpacity = percentThresholdX < -20
+                        ? ((percentThresholdX.abs() - 20) / 40).clamp(0.0, 1.0)
+                        : 0.0;
+
                     return GestureDetector(
                       onTap: () async {
                         final uri = Uri.tryParse(_articles[artIdx].url);
@@ -555,7 +563,39 @@ class _HomeScreenState extends State<HomeScreen> {
                               ? Border.all(color: borderColor, width: 2.5)
                               : null,
                         ),
-                        child: ArticleCard(article: _articles[artIdx]),
+                        child: Stack(
+                          children: [
+                            ArticleCard(article: _articles[artIdx]),
+                            // 오른쪽 스와이프: "읽음" 스탬프
+                            if (readOpacity > 0)
+                              Positioned(
+                                top: 24,
+                                left: 20,
+                                child: Opacity(
+                                  opacity: readOpacity,
+                                  child: _SwipeStamp(
+                                    text: l.swipeRead,
+                                    icon: Icons.check_rounded,
+                                    color: AppColors.swipeRead,
+                                  ),
+                                ),
+                              ),
+                            // 왼쪽 스와이프: "나중에" 스탬프
+                            if (laterOpacity > 0)
+                              Positioned(
+                                top: 24,
+                                right: 20,
+                                child: Opacity(
+                                  opacity: laterOpacity,
+                                  child: _SwipeStamp(
+                                    text: l.swipeLater,
+                                    icon: Icons.schedule_rounded,
+                                    color: AppColors.swipeSkip,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -611,6 +651,46 @@ class _FilterChip extends StatelessWidget {
                 : theme.colorScheme.onSurfaceVariant,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SwipeStamp extends StatelessWidget {
+  final String text;
+  final IconData icon;
+  final Color color;
+
+  const _SwipeStamp({
+    required this.text,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.3),
+        borderRadius: Radii.borderMd,
+        border: Border.all(color: color, width: 2),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
+            ),
+          ),
+        ],
       ),
     );
   }

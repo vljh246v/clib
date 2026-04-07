@@ -835,6 +835,18 @@ abstract class AppLocalizations {
   /// In ko, this message translates to:
   /// **'붙여넣기'**
   String get pasteFromClipboard;
+
+  /// No description provided for @swipeRead.
+  ///
+  /// In ko, this message translates to:
+  /// **'읽음'**
+  String get swipeRead;
+
+  /// No description provided for @swipeLater.
+  ///
+  /// In ko, this message translates to:
+  /// **'나중에'**
+  String get swipeLater;
 }
 
 class _AppLocalizationsDelegate

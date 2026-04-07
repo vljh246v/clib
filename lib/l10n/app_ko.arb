@@ -227,5 +227,8 @@
   "addArticle": "아티클 추가",
   "urlHint": "URL을 입력하세요",
   "invalidUrl": "유효하지 않은 URL입니다",
-  "pasteFromClipboard": "붙여넣기"
+  "pasteFromClipboard": "붙여넣기",
+
+  "swipeRead": "읽음",
+  "swipeLater": "나중에"
 }

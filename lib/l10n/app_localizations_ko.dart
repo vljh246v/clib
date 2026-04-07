@@ -410,4 +410,10 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get pasteFromClipboard => '붙여넣기';
+
+  @override
+  String get swipeRead => '읽음';
+
+  @override
+  String get swipeLater => '나중에';
 }
