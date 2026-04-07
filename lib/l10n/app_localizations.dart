@@ -811,6 +811,30 @@ abstract class AppLocalizations {
   /// In ko, this message translates to:
   /// **'알림은 이 기기에서만 울립니다. 다른 기기에서는 별도로 설정해 주세요.'**
   String get notificationDeviceOnly;
+
+  /// No description provided for @addArticle.
+  ///
+  /// In ko, this message translates to:
+  /// **'아티클 추가'**
+  String get addArticle;
+
+  /// No description provided for @urlHint.
+  ///
+  /// In ko, this message translates to:
+  /// **'URL을 입력하세요'**
+  String get urlHint;
+
+  /// No description provided for @invalidUrl.
+  ///
+  /// In ko, this message translates to:
+  /// **'유효하지 않은 URL입니다'**
+  String get invalidUrl;
+
+  /// No description provided for @pasteFromClipboard.
+  ///
+  /// In ko, this message translates to:
+  /// **'붙여넣기'**
+  String get pasteFromClipboard;
 }
 
 class _AppLocalizationsDelegate

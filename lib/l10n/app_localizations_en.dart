@@ -404,4 +404,16 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get notificationDeviceOnly =>
       'Notifications only ring on this device. Set up separately on other devices.';
+
+  @override
+  String get addArticle => 'Add Article';
+
+  @override
+  String get urlHint => 'Enter URL';
+
+  @override
+  String get invalidUrl => 'Invalid URL';
+
+  @override
+  String get pasteFromClipboard => 'Paste';
 }

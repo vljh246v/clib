@@ -222,5 +222,10 @@
   "syncComplete": "동기화 완료",
   "syncing": "동기화 중...",
   "loginFailed": "로그인에 실패했습니다",
-  "notificationDeviceOnly": "알림은 이 기기에서만 울립니다. 다른 기기에서는 별도로 설정해 주세요."
+  "notificationDeviceOnly": "알림은 이 기기에서만 울립니다. 다른 기기에서는 별도로 설정해 주세요.",
+
+  "addArticle": "아티클 추가",
+  "urlHint": "URL을 입력하세요",
+  "invalidUrl": "유효하지 않은 URL입니다",
+  "pasteFromClipboard": "붙여넣기"
 }

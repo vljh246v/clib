@@ -10,6 +10,7 @@ import 'package:clib/theme/app_theme.dart';
 import 'package:clib/theme/design_tokens.dart';
 import 'package:clib/widgets/article_card.dart';
 import 'package:clib/widgets/label_edit_sheet.dart';
+import 'package:clib/widgets/add_article_sheet.dart';
 import 'package:clib/widgets/swipe_ad_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -465,7 +466,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         const SizedBox(height: 10),
-        // 아티클 카운트
+        // 아티클 카운트 + 추가 버튼
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Row(
@@ -473,6 +474,23 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 labelCountText,
                 style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => AddArticleSheet.show(context),
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  ),
+                  child: Icon(
+                    Icons.add_rounded,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ),
             ],
           ),

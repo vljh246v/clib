@@ -398,4 +398,16 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String get notificationDeviceOnly =>
       '알림은 이 기기에서만 울립니다. 다른 기기에서는 별도로 설정해 주세요.';
+
+  @override
+  String get addArticle => '아티클 추가';
+
+  @override
+  String get urlHint => 'URL을 입력하세요';
+
+  @override
+  String get invalidUrl => '유효하지 않은 URL입니다';
+
+  @override
+  String get pasteFromClipboard => '붙여넣기';
 }

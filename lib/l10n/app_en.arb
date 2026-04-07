@@ -138,5 +138,10 @@
   "syncComplete": "Sync complete",
   "syncing": "Syncing...",
   "loginFailed": "Sign in failed",
-  "notificationDeviceOnly": "Notifications only ring on this device. Set up separately on other devices."
+  "notificationDeviceOnly": "Notifications only ring on this device. Set up separately on other devices.",
+
+  "addArticle": "Add Article",
+  "urlHint": "Enter URL",
+  "invalidUrl": "Invalid URL",
+  "pasteFromClipboard": "Paste"
 }
