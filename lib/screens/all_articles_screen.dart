@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:clib/l10n/app_localizations.dart';
+import 'package:clib/main.dart';
 import 'package:clib/models/article.dart';
 import 'package:clib/models/platform_meta.dart';
 import 'package:clib/services/database_service.dart';
@@ -26,12 +27,18 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() => setState(() => _selectedKeys.clear()));
+    articlesChangedNotifier.addListener(_refresh);
   }
 
   @override
   void dispose() {
+    articlesChangedNotifier.removeListener(_refresh);
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _refresh() {
+    if (mounted) setState(() {});
   }
 
   List<Article> _getFilteredArticles(bool? isReadFilter) {

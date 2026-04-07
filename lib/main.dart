@@ -24,6 +24,9 @@ final themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
 /// 아티클 추가/삭제 시 HomeScreen에 알리는 notifier
 final articlesChangedNotifier = ValueNotifier<int>(0);
 
+/// 라벨 변경 시 LibraryScreen 등에 알리는 notifier
+final labelsChangedNotifier = ValueNotifier<int>(0);
+
 /// 인증 상태 notifier
 final authStateNotifier = ValueNotifier<User?>(null);
 

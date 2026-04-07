@@ -14,6 +14,10 @@ class SyncService {
   static bool _articleSyncing = false;
   static bool _labelSyncing = false;
 
+  /// 처리 중 새 스냅샷이 도착하면 여기에 저장 → 현재 처리 완료 후 재처리
+  static List<Article>? _pendingArticleSnapshot;
+  static List<Label>? _pendingLabelSnapshot;
+
   /// 첫 스냅샷에서 로컬→리모트 머지 수행 여부
   static bool _articleMergeDone = false;
   static bool _labelMergeDone = false;
@@ -54,6 +58,8 @@ class SyncService {
     _articleSub = null;
     _labelSub?.cancel();
     _labelSub = null;
+    _pendingArticleSnapshot = null;
+    _pendingLabelSnapshot = null;
   }
 
   /// 계정 전환 시 이전 계정의 firestoreId 제거
@@ -131,183 +137,215 @@ class SyncService {
 
   /// Firestore 아티클 스냅샷 → Hive 반영
   static Future<void> _onArticlesSnapshot(List<Article> remoteArticles) async {
-    if (_articleSyncing) return;
+    if (_articleSyncing) {
+      // 처리 중이면 최신 스냅샷을 보관 → 현재 처리 완료 후 재처리
+      _pendingArticleSnapshot = remoteArticles;
+      return;
+    }
     _articleSyncing = true;
 
     try {
-      final box = Hive.box<Article>('articles');
+      await _processArticlesSnapshot(remoteArticles);
 
-      // 원격 firestoreId → Article 맵
-      final remoteMap = <String, Article>{};
-      for (final article in remoteArticles) {
-        if (article.firestoreId != null) {
-          remoteMap[article.firestoreId!] = article;
-        }
+      // 처리 중 도착한 스냅샷이 있으면 재처리
+      while (_pendingArticleSnapshot != null) {
+        final pending = _pendingArticleSnapshot!;
+        _pendingArticleSnapshot = null;
+        await _processArticlesSnapshot(pending);
       }
-
-      // 기존 로컬 firestoreId → Article 맵
-      final localByFsId = <String, Article>{};
-      // URL → Article 맵 (중복 방지용)
-      final localByUrl = <String, Article>{};
-      for (final article in box.values) {
-        if (article.firestoreId != null) {
-          localByFsId[article.firestoreId!] = article;
-        }
-        localByUrl[article.url] = article;
-      }
-
-      // 원격에서 온 데이터 반영
-      for (final entry in remoteMap.entries) {
-        final remote = entry.value;
-
-        if (remote.deletedAt != null) {
-          final local = localByFsId[entry.key];
-          if (local != null && local.isInBox) {
-            await local.delete();
-          }
-          continue;
-        }
-
-        final local = localByFsId[entry.key];
-        if (local != null) {
-          // firestoreId로 매칭 → 업데이트
-          if (remote.updatedAt != null &&
-              (local.updatedAt == null ||
-                  remote.updatedAt!.isAfter(local.updatedAt!))) {
-            local
-              ..url = remote.url
-              ..title = remote.title
-              ..thumbnailUrl = remote.thumbnailUrl
-              ..platform = remote.platform
-              ..topicLabels = remote.topicLabels
-              ..isRead = remote.isRead
-              ..isBookmarked = remote.isBookmarked
-              ..memo = remote.memo
-              ..updatedAt = remote.updatedAt;
-            await local.save();
-          }
-        } else {
-          // firestoreId 매칭 실패 → URL로 중복 체크
-          final byUrl = localByUrl[remote.url];
-          if (byUrl != null) {
-            byUrl
-              ..firestoreId = remote.firestoreId
-              ..title = remote.title
-              ..thumbnailUrl = remote.thumbnailUrl
-              ..platform = remote.platform
-              ..topicLabels = remote.topicLabels
-              ..isRead = remote.isRead
-              ..isBookmarked = remote.isBookmarked
-              ..memo = remote.memo
-              ..updatedAt = remote.updatedAt;
-            await byUrl.save();
-          } else {
-            // 완전히 새로운 아티클 → Hive에 추가
-            await box.add(remote);
-          }
-        }
-      }
-
-      // 첫 스냅샷: 리모트에 없는 로컬 아티클을 업로드
-      if (!_articleMergeDone) {
-        _articleMergeDone = true;
-        final uid = _uid;
-        if (uid != null) {
-          // 리모트 URL → firestoreId 맵 (업로드 시 재사용 판단용)
-          final remoteUrlToId = <String, String>{};
-          for (final entry in remoteMap.entries) {
-            if (entry.value.deletedAt == null) {
-              remoteUrlToId[entry.value.url] = entry.key;
-            }
-          }
-          await _uploadUnlinkedArticles(uid, remoteUrlToId);
-        }
-      }
-
-      // 홈화면 갱신 알림
-      articlesChangedNotifier.value++;
     } finally {
       _articleSyncing = false;
     }
   }
 
+  static Future<void> _processArticlesSnapshot(
+      List<Article> remoteArticles) async {
+    final box = Hive.box<Article>('articles');
+
+    // 원격 firestoreId → Article 맵
+    final remoteMap = <String, Article>{};
+    for (final article in remoteArticles) {
+      if (article.firestoreId != null) {
+        remoteMap[article.firestoreId!] = article;
+      }
+    }
+
+    // 기존 로컬 firestoreId → Article 맵
+    final localByFsId = <String, Article>{};
+    // URL → Article 맵 (중복 방지용)
+    final localByUrl = <String, Article>{};
+    for (final article in box.values) {
+      if (article.firestoreId != null) {
+        localByFsId[article.firestoreId!] = article;
+      }
+      localByUrl[article.url] = article;
+    }
+
+    // 원격에서 온 데이터 반영
+    for (final entry in remoteMap.entries) {
+      final remote = entry.value;
+
+      if (remote.deletedAt != null) {
+        final local = localByFsId[entry.key];
+        if (local != null && local.isInBox) {
+          await local.delete();
+        }
+        continue;
+      }
+
+      final local = localByFsId[entry.key];
+      if (local != null) {
+        // firestoreId로 매칭 → 업데이트
+        if (remote.updatedAt != null &&
+            (local.updatedAt == null ||
+                remote.updatedAt!.isAfter(local.updatedAt!))) {
+          local
+            ..url = remote.url
+            ..title = remote.title
+            ..thumbnailUrl = remote.thumbnailUrl
+            ..platform = remote.platform
+            ..topicLabels = remote.topicLabels
+            ..isRead = remote.isRead
+            ..isBookmarked = remote.isBookmarked
+            ..memo = remote.memo
+            ..updatedAt = remote.updatedAt;
+          await local.save();
+        }
+      } else {
+        // firestoreId 매칭 실패 → URL로 중복 체크
+        final byUrl = localByUrl[remote.url];
+        if (byUrl != null) {
+          byUrl
+            ..firestoreId = remote.firestoreId
+            ..title = remote.title
+            ..thumbnailUrl = remote.thumbnailUrl
+            ..platform = remote.platform
+            ..topicLabels = remote.topicLabels
+            ..isRead = remote.isRead
+            ..isBookmarked = remote.isBookmarked
+            ..memo = remote.memo
+            ..updatedAt = remote.updatedAt;
+          await byUrl.save();
+        } else {
+          // 완전히 새로운 아티클 → Hive에 추가
+          await box.add(remote);
+        }
+      }
+    }
+
+    // 첫 스냅샷: 리모트에 없는 로컬 아티클을 업로드
+    if (!_articleMergeDone) {
+      _articleMergeDone = true;
+      final uid = _uid;
+      if (uid != null) {
+        // 리모트 URL → firestoreId 맵 (업로드 시 재사용 판단용)
+        final remoteUrlToId = <String, String>{};
+        for (final entry in remoteMap.entries) {
+          if (entry.value.deletedAt == null) {
+            remoteUrlToId[entry.value.url] = entry.key;
+          }
+        }
+        await _uploadUnlinkedArticles(uid, remoteUrlToId);
+      }
+    }
+
+    // 홈화면 갱신 알림
+    articlesChangedNotifier.value++;
+  }
+
   /// Firestore 라벨 스냅샷 → Hive 반영
   static Future<void> _onLabelsSnapshot(List<Label> remoteLabels) async {
-    if (_labelSyncing) return;
+    if (_labelSyncing) {
+      _pendingLabelSnapshot = remoteLabels;
+      return;
+    }
     _labelSyncing = true;
 
     try {
-      final box = Hive.box<Label>('labels');
+      await _processLabelsSnapshot(remoteLabels);
 
-      final remoteMap = <String, Label>{};
-      for (final label in remoteLabels) {
-        if (label.firestoreId != null) {
-          remoteMap[label.firestoreId!] = label;
-        }
-      }
-
-      final localByFsId = <String, Label>{};
-      final localByName = <String, Label>{};
-      for (final label in box.values) {
-        if (label.firestoreId != null) {
-          localByFsId[label.firestoreId!] = label;
-        }
-        localByName[label.name] = label;
-      }
-
-      for (final entry in remoteMap.entries) {
-        final remote = entry.value;
-
-        if (remote.deletedAt != null) {
-          final local = localByFsId[entry.key];
-          if (local != null && local.isInBox) {
-            await local.delete();
-          }
-          continue;
-        }
-
-        final local = localByFsId[entry.key];
-        if (local != null) {
-          if (remote.updatedAt != null &&
-              (local.updatedAt == null ||
-                  remote.updatedAt!.isAfter(local.updatedAt!))) {
-            local
-              ..name = remote.name
-              ..colorValue = remote.colorValue
-              ..updatedAt = remote.updatedAt;
-            await local.save();
-          }
-        } else {
-          final byName = localByName[remote.name];
-          if (byName != null) {
-            byName
-              ..firestoreId = remote.firestoreId
-              ..colorValue = remote.colorValue
-              ..updatedAt = remote.updatedAt;
-            await byName.save();
-          } else {
-            await box.add(remote);
-          }
-        }
-      }
-
-      // 첫 스냅샷: 리모트에 없는 로컬 라벨을 업로드
-      if (!_labelMergeDone) {
-        _labelMergeDone = true;
-        final uid = _uid;
-        if (uid != null) {
-          final remoteNameToId = <String, String>{};
-          for (final entry in remoteMap.entries) {
-            if (entry.value.deletedAt == null) {
-              remoteNameToId[entry.value.name] = entry.key;
-            }
-          }
-          await _uploadUnlinkedLabels(uid, remoteNameToId);
-        }
+      while (_pendingLabelSnapshot != null) {
+        final pending = _pendingLabelSnapshot!;
+        _pendingLabelSnapshot = null;
+        await _processLabelsSnapshot(pending);
       }
     } finally {
       _labelSyncing = false;
     }
+  }
+
+  static Future<void> _processLabelsSnapshot(List<Label> remoteLabels) async {
+    final box = Hive.box<Label>('labels');
+
+    final remoteMap = <String, Label>{};
+    for (final label in remoteLabels) {
+      if (label.firestoreId != null) {
+        remoteMap[label.firestoreId!] = label;
+      }
+    }
+
+    final localByFsId = <String, Label>{};
+    final localByName = <String, Label>{};
+    for (final label in box.values) {
+      if (label.firestoreId != null) {
+        localByFsId[label.firestoreId!] = label;
+      }
+      localByName[label.name] = label;
+    }
+
+    for (final entry in remoteMap.entries) {
+      final remote = entry.value;
+
+      if (remote.deletedAt != null) {
+        final local = localByFsId[entry.key];
+        if (local != null && local.isInBox) {
+          await local.delete();
+        }
+        continue;
+      }
+
+      final local = localByFsId[entry.key];
+      if (local != null) {
+        if (remote.updatedAt != null &&
+            (local.updatedAt == null ||
+                remote.updatedAt!.isAfter(local.updatedAt!))) {
+          local
+            ..name = remote.name
+            ..colorValue = remote.colorValue
+            ..updatedAt = remote.updatedAt;
+          await local.save();
+        }
+      } else {
+        final byName = localByName[remote.name];
+        if (byName != null) {
+          byName
+            ..firestoreId = remote.firestoreId
+            ..colorValue = remote.colorValue
+            ..updatedAt = remote.updatedAt;
+          await byName.save();
+        } else {
+          await box.add(remote);
+        }
+      }
+    }
+
+    // 첫 스냅샷: 리모트에 없는 로컬 라벨을 업로드
+    if (!_labelMergeDone) {
+      _labelMergeDone = true;
+      final uid = _uid;
+      if (uid != null) {
+        final remoteNameToId = <String, String>{};
+        for (final entry in remoteMap.entries) {
+          if (entry.value.deletedAt == null) {
+            remoteNameToId[entry.value.name] = entry.key;
+          }
+        }
+        await _uploadUnlinkedLabels(uid, remoteNameToId);
+      }
+    }
+
+    // 라이브러리 화면 갱신 알림
+    labelsChangedNotifier.value++;
   }
 
   // ── DatabaseService에서 호출하는 동기화 메서드 ──

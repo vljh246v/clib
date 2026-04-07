@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:clib/l10n/app_localizations.dart';
+import 'package:clib/main.dart';
 import 'package:clib/models/label.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/screens/all_articles_screen.dart';
@@ -16,6 +17,24 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    articlesChangedNotifier.addListener(_refresh);
+    labelsChangedNotifier.addListener(_refresh);
+  }
+
+  @override
+  void dispose() {
+    articlesChangedNotifier.removeListener(_refresh);
+    labelsChangedNotifier.removeListener(_refresh);
+    super.dispose();
+  }
+
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     final labels = DatabaseService.getAllLabelObjects();
