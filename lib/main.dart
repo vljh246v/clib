@@ -38,8 +38,9 @@ void main() async {
   await NotificationService.init();
   await NotificationService.rescheduleAll();
   await AdService.initialize();
-  // debug 모드에서만 데모 데이터 생성
-  if (kDebugMode) {
+  // debug 모드 + 미로그인 상태에서만 데모 데이터 생성
+  // (로그인 상태에서 seed하면 Firestore 동기화와 충돌)
+  if (kDebugMode && FirebaseAuth.instance.currentUser == null) {
     await DemoDataService.seed();
   }
   // 모든 초기화 완료 후 인증 상태 감지 + 동기화 시작

@@ -235,17 +235,22 @@ class SyncService {
 
     // 첫 스냅샷: 리모트에 없는 로컬 아티클을 업로드
     if (!_articleMergeDone) {
-      _articleMergeDone = true;
       final uid = _uid;
       if (uid != null) {
-        // 리모트 URL → firestoreId 맵 (업로드 시 재사용 판단용)
-        final remoteUrlToId = <String, String>{};
-        for (final entry in remoteMap.entries) {
-          if (entry.value.deletedAt == null) {
-            remoteUrlToId[entry.value.url] = entry.key;
+        try {
+          final remoteUrlToId = <String, String>{};
+          for (final entry in remoteMap.entries) {
+            if (entry.value.deletedAt == null) {
+              remoteUrlToId[entry.value.url] = entry.key;
+            }
           }
+          await _uploadUnlinkedArticles(uid, remoteUrlToId);
+          _articleMergeDone = true;
+        } catch (e) {
+          debugPrint('아티클 초기 머지 실패 (다음 스냅샷에서 재시도): $e');
         }
-        await _uploadUnlinkedArticles(uid, remoteUrlToId);
+      } else {
+        _articleMergeDone = true;
       }
     }
 
@@ -331,16 +336,22 @@ class SyncService {
 
     // 첫 스냅샷: 리모트에 없는 로컬 라벨을 업로드
     if (!_labelMergeDone) {
-      _labelMergeDone = true;
       final uid = _uid;
       if (uid != null) {
-        final remoteNameToId = <String, String>{};
-        for (final entry in remoteMap.entries) {
-          if (entry.value.deletedAt == null) {
-            remoteNameToId[entry.value.name] = entry.key;
+        try {
+          final remoteNameToId = <String, String>{};
+          for (final entry in remoteMap.entries) {
+            if (entry.value.deletedAt == null) {
+              remoteNameToId[entry.value.name] = entry.key;
+            }
           }
+          await _uploadUnlinkedLabels(uid, remoteNameToId);
+          _labelMergeDone = true;
+        } catch (e) {
+          debugPrint('라벨 초기 머지 실패 (다음 스냅샷에서 재시도): $e');
         }
-        await _uploadUnlinkedLabels(uid, remoteNameToId);
+      } else {
+        _labelMergeDone = true;
       }
     }
 

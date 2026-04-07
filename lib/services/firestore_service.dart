@@ -174,19 +174,34 @@ class FirestoreService {
       );
       final batch = _db.batch();
 
-      for (final item in chunk) {
+      // docRef를 먼저 생성하고 batch에 추가 (commit 전에 firestoreId 설정하지 않음)
+      final docRefs = <int, DocumentReference>{}; // chunk index → docRef
+      for (var j = 0; j < chunk.length; j++) {
+        final item = chunk[j];
         if (item.article != null) {
           final docRef = _articlesRef(uid).doc();
           batch.set(docRef, articleToMap(item.article!));
-          item.article!.firestoreId = docRef.id;
+          docRefs[j] = docRef;
         } else if (item.label != null) {
           final docRef = _labelsRef(uid).doc();
           batch.set(docRef, labelToMap(item.label!));
-          item.label!.firestoreId = docRef.id;
+          docRefs[j] = docRef;
         }
       }
 
       await batch.commit();
+
+      // commit 성공 후에만 firestoreId 설정
+      for (var j = 0; j < chunk.length; j++) {
+        final item = chunk[j];
+        final docRef = docRefs[j];
+        if (docRef == null) continue;
+        if (item.article != null) {
+          item.article!.firestoreId = docRef.id;
+        } else if (item.label != null) {
+          item.label!.firestoreId = docRef.id;
+        }
+      }
     }
 
     // Hive에 firestoreId 반영
