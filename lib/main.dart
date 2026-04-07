@@ -12,6 +12,7 @@ import 'package:clib/services/notification_service.dart';
 import 'package:clib/services/ad_service.dart';
 import 'package:clib/services/demo_data_service.dart';
 import 'package:clib/services/share_service.dart';
+import 'package:clib/services/sync_service.dart';
 import 'package:clib/theme/app_theme.dart';
 import 'package:clib/theme/design_tokens.dart';
 import 'package:clib/screens/onboarding_screen.dart';
@@ -29,10 +30,6 @@ final authStateNotifier = ValueNotifier<User?>(null);
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  // 인증 상태 변경 감지
-  FirebaseAuth.instance.authStateChanges().listen((user) {
-    authStateNotifier.value = user;
-  });
   await DatabaseService.init();
   await DatabaseService.syncLabelsToAppGroup();
   await NotificationService.init();
@@ -42,6 +39,27 @@ void main() async {
   if (kDebugMode) {
     await DemoDataService.seed();
   }
+  // 모든 초기화 완료 후 인증 상태 감지 + 동기화 시작
+  // (seed()보다 뒤에 와야 레이스 컨디션 방지)
+  final currentUser = FirebaseAuth.instance.currentUser;
+  authStateNotifier.value = currentUser;
+  if (currentUser != null) {
+    await SyncService.init(currentUser);
+  }
+  // 첫 이벤트(현재 상태)는 위에서 처리했으므로 건너뜀
+  bool isFirstAuthEvent = true;
+  FirebaseAuth.instance.authStateChanges().listen((user) {
+    if (isFirstAuthEvent) {
+      isFirstAuthEvent = false;
+      return;
+    }
+    authStateNotifier.value = user;
+    if (user != null) {
+      SyncService.init(user);
+    } else {
+      SyncService.dispose();
+    }
+  });
   themeModeNotifier.value = DatabaseService.savedThemeMode;
   runApp(const ClibApp());
 }

@@ -21,4 +21,13 @@ class Label extends HiveObject {
 
   @HiveField(5, defaultValue: '09:00')
   String notificationTime = '09:00'; // HH:mm
+
+  @HiveField(6)
+  String? firestoreId;
+
+  @HiveField(7)
+  DateTime? updatedAt;
+
+  @HiveField(8)
+  DateTime? deletedAt;
 }

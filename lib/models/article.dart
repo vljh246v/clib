@@ -58,6 +58,15 @@ class Article extends HiveObject {
 
   @HiveField(8)
   String? memo;
+
+  @HiveField(9)
+  String? firestoreId;
+
+  @HiveField(10)
+  DateTime? updatedAt;
+
+  @HiveField(11)
+  DateTime? deletedAt;
 }
 
 Platform classifyPlatform(String url) {

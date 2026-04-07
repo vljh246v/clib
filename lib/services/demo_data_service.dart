@@ -6,6 +6,9 @@ import 'package:clib/theme/design_tokens.dart';
 /// 앱스토어 스크린샷용 데모 데이터 시드
 class DemoDataService {
   static Future<void> seed() async {
+    // 데모 시드 중에는 Firestore 동기화 비활성화
+    DatabaseService.skipSync = true;
+
     // 기존 데이터 모두 삭제
     final existing = DatabaseService.getAllArticles();
     for (final a in existing) {
@@ -158,6 +161,9 @@ class DemoDataService {
     }
 
     debugPrint('✅ Demo data seeded: ${articles.length} articles, 5 labels');
+
+    // 동기화 다시 활성화
+    DatabaseService.skipSync = false;
   }
 }
 

@@ -23,13 +23,16 @@ class LabelAdapter extends TypeAdapter<Label> {
       ..notificationEnabled = fields[3] == null ? false : fields[3] as bool
       ..notificationDays =
           fields[4] == null ? [] : (fields[4] as List).cast<int>()
-      ..notificationTime = fields[5] == null ? '09:00' : fields[5] as String;
+      ..notificationTime = fields[5] == null ? '09:00' : fields[5] as String
+      ..firestoreId = fields[6] as String?
+      ..updatedAt = fields[7] as DateTime?
+      ..deletedAt = fields[8] as DateTime?;
   }
 
   @override
   void write(BinaryWriter writer, Label obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -41,7 +44,13 @@ class LabelAdapter extends TypeAdapter<Label> {
       ..writeByte(4)
       ..write(obj.notificationDays)
       ..writeByte(5)
-      ..write(obj.notificationTime);
+      ..write(obj.notificationTime)
+      ..writeByte(6)
+      ..write(obj.firestoreId)
+      ..writeByte(7)
+      ..write(obj.updatedAt)
+      ..writeByte(8)
+      ..write(obj.deletedAt);
   }
 
   @override

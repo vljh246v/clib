@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/models/label.dart';
+import 'package:clib/services/auth_service.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/services/notification_service.dart';
 import 'package:clib/theme/design_tokens.dart';
@@ -191,6 +192,16 @@ class _LabelManagementScreenState extends State<LabelManagementScreen> {
                 contentPadding: EdgeInsets.zero,
                 onChanged: (v) => setDialogState(() => enabled = v),
               ),
+              if (AuthService.isLoggedIn)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: Spacing.sm),
+                  child: Text(
+                    l.notificationDeviceOnly,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
               if (enabled) ...[
                 const SizedBox(height: Spacing.sm),
                 Text(l.daysOfWeek, style: theme.textTheme.labelLarge),

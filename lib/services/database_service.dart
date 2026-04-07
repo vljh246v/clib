@@ -4,12 +4,17 @@ import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:clib/models/article.dart';
 import 'package:clib/models/label.dart';
+import 'package:clib/services/auth_service.dart';
+import 'package:clib/services/sync_service.dart';
 
 class DatabaseService {
   static const _boxName = 'articles';
   static const _labelBoxName = 'labels';
   static const _prefsBoxName = 'preferences';
   static const _channel = MethodChannel('com.jaehyun.clibapp/share');
+
+  /// true일 때 Firestore 동기화를 건너뜀 (데모 데이터 시드 등)
+  static bool skipSync = false;
 
   static Future<void> init() async {
     await Hive.initFlutter();
@@ -24,6 +29,18 @@ class DatabaseService {
   static Box<Article> get _box => Hive.box<Article>(_boxName);
   static Box<Label> get _labelBox => Hive.box<Label>(_labelBoxName);
   static Box get _prefsBox => Hive.box(_prefsBoxName);
+
+  // 마지막 로그인 UID (계정 전환 감지용)
+  static String? get lastLoginUid =>
+      _prefsBox.get('lastLoginUid') as String?;
+
+  static Future<void> saveLastLoginUid(String? uid) async {
+    if (uid == null) {
+      await _prefsBox.delete('lastLoginUid');
+    } else {
+      await _prefsBox.put('lastLoginUid', uid);
+    }
+  }
 
   // 온보딩 완료 여부
   static bool get hasSeenOnboarding =>
@@ -50,7 +67,12 @@ class DatabaseService {
 
   // 아티클 저장
   static Future<int> saveArticle(Article article) async {
-    return _box.add(article);
+    article.updatedAt = DateTime.now();
+    final key = await _box.add(article);
+    if (!skipSync && AuthService.isLoggedIn) {
+      await SyncService.syncArticle(article);
+    }
+    return key;
   }
 
   // 전체 아티클 목록
@@ -84,25 +106,42 @@ class DatabaseService {
   // 읽음 처리
   static Future<void> markAsRead(Article article) async {
     article.isRead = true;
+    article.updatedAt = DateTime.now();
     await article.save();
+    if (!skipSync && AuthService.isLoggedIn) {
+      await SyncService.syncArticleFields(article, {'isRead': true});
+    }
   }
 
   // 안 읽음 처리
   static Future<void> markAsUnread(Article article) async {
     article.isRead = false;
+    article.updatedAt = DateTime.now();
     await article.save();
+    if (!skipSync && AuthService.isLoggedIn) {
+      await SyncService.syncArticleFields(article, {'isRead': false});
+    }
   }
 
   // 북마크 토글
   static Future<void> toggleBookmark(Article article) async {
     article.isBookmarked = !article.isBookmarked;
+    article.updatedAt = DateTime.now();
     await article.save();
+    if (!skipSync && AuthService.isLoggedIn) {
+      await SyncService.syncArticleFields(
+          article, {'isBookmarked': article.isBookmarked});
+    }
   }
 
   // 메모 업데이트
   static Future<void> updateMemo(Article article, String? memo) async {
     article.memo = (memo != null && memo.trim().isEmpty) ? null : memo?.trim();
+    article.updatedAt = DateTime.now();
     await article.save();
+    if (!skipSync && AuthService.isLoggedIn) {
+      await SyncService.syncArticleFields(article, {'memo': article.memo});
+    }
   }
 
   // 북마크된 아티클 목록
@@ -121,6 +160,9 @@ class DatabaseService {
 
   // 아티클 삭제
   static Future<void> deleteArticle(Article article) async {
+    if (!skipSync && AuthService.isLoggedIn) {
+      await SyncService.syncDeleteArticle(article);
+    }
     await article.delete();
   }
 
@@ -160,9 +202,13 @@ class DatabaseService {
     final label = Label()
       ..name = name
       ..colorValue = color.toARGB32()
-      ..createdAt = DateTime.now();
+      ..createdAt = DateTime.now()
+      ..updatedAt = DateTime.now();
     await _labelBox.add(label);
     await syncLabelsToAppGroup();
+    if (!skipSync && AuthService.isLoggedIn) {
+      await SyncService.syncLabel(label);
+    }
     return label;
   }
 
@@ -186,7 +232,12 @@ class DatabaseService {
         final idx = article.topicLabels.indexOf(oldName);
         if (idx != -1) {
           article.topicLabels[idx] = newName;
+          article.updatedAt = DateTime.now();
           await article.save();
+          if (!skipSync && AuthService.isLoggedIn) {
+            await SyncService.syncArticleFields(
+                article, {'topicLabels': article.topicLabels});
+          }
         }
       }
       label.name = newName;
@@ -196,8 +247,12 @@ class DatabaseService {
       label.colorValue = newColor.toARGB32();
     }
 
+    label.updatedAt = DateTime.now();
     await label.save();
     await syncLabelsToAppGroup();
+    if (!skipSync && AuthService.isLoggedIn) {
+      await SyncService.syncLabel(label);
+    }
   }
 
   // 라벨 삭제
@@ -205,8 +260,16 @@ class DatabaseService {
     // 모든 아티클에서 해당 라벨 제거
     for (final article in _box.values) {
       if (article.topicLabels.remove(label.name)) {
+        article.updatedAt = DateTime.now();
         await article.save();
+        if (!skipSync && AuthService.isLoggedIn) {
+          await SyncService.syncArticleFields(
+              article, {'topicLabels': article.topicLabels});
+        }
       }
+    }
+    if (!skipSync && AuthService.isLoggedIn) {
+      await SyncService.syncDeleteLabel(label);
     }
     await label.delete();
     await syncLabelsToAppGroup();
@@ -264,6 +327,11 @@ class DatabaseService {
     List<String> newLabels,
   ) async {
     article.topicLabels = newLabels;
+    article.updatedAt = DateTime.now();
     await article.save();
+    if (!skipSync && AuthService.isLoggedIn) {
+      await SyncService.syncArticleFields(
+          article, {'topicLabels': newLabels});
+    }
   }
 }
