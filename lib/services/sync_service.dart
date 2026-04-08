@@ -161,6 +161,7 @@ class SyncService {
   static Future<void> _processArticlesSnapshot(
       List<Article> remoteArticles) async {
     final box = Hive.box<Article>('articles');
+    bool changed = false;
 
     // 원격 firestoreId → Article 맵
     final remoteMap = <String, Article>{};
@@ -170,36 +171,32 @@ class SyncService {
       }
     }
 
-    // 기존 로컬 firestoreId → Article 맵
-    final localByFsId = <String, Article>{};
-    // URL → Article 맵 (중복 방지용)
-    final localByUrl = <String, Article>{};
-    for (final article in box.values) {
-      if (article.firestoreId != null) {
-        localByFsId[article.firestoreId!] = article;
-      }
-      localByUrl[article.url] = article;
-    }
-
     // 원격에서 온 데이터 반영
     for (final entry in remoteMap.entries) {
       final remote = entry.value;
 
+      // 로컬 맵을 매번 최신으로 빌드 (동시 수정 대응)
+      Article? localByFsId;
+      Article? localByUrl;
+      for (final a in box.values) {
+        if (a.firestoreId == entry.key) localByFsId = a;
+        if (a.url == remote.url) localByUrl = a;
+      }
+
       if (remote.deletedAt != null) {
-        final local = localByFsId[entry.key];
-        if (local != null && local.isInBox) {
-          await local.delete();
+        if (localByFsId != null && localByFsId.isInBox) {
+          await localByFsId.delete();
+          changed = true;
         }
         continue;
       }
 
-      final local = localByFsId[entry.key];
-      if (local != null) {
+      if (localByFsId != null) {
         // firestoreId로 매칭 → 업데이트
         if (remote.updatedAt != null &&
-            (local.updatedAt == null ||
-                remote.updatedAt!.isAfter(local.updatedAt!))) {
-          local
+            (localByFsId.updatedAt == null ||
+                remote.updatedAt!.isAfter(localByFsId.updatedAt!))) {
+          localByFsId
             ..url = remote.url
             ..title = remote.title
             ..thumbnailUrl = remote.thumbnailUrl
@@ -209,27 +206,27 @@ class SyncService {
             ..isBookmarked = remote.isBookmarked
             ..memo = remote.memo
             ..updatedAt = remote.updatedAt;
-          await local.save();
+          await localByFsId.save();
+          changed = true;
         }
+      } else if (localByUrl != null) {
+        // URL로 매칭 → firestoreId 연결 + 업데이트
+        localByUrl
+          ..firestoreId = remote.firestoreId
+          ..title = remote.title
+          ..thumbnailUrl = remote.thumbnailUrl
+          ..platform = remote.platform
+          ..topicLabels = remote.topicLabels
+          ..isRead = remote.isRead
+          ..isBookmarked = remote.isBookmarked
+          ..memo = remote.memo
+          ..updatedAt = remote.updatedAt;
+        await localByUrl.save();
+        changed = true;
       } else {
-        // firestoreId 매칭 실패 → URL로 중복 체크
-        final byUrl = localByUrl[remote.url];
-        if (byUrl != null) {
-          byUrl
-            ..firestoreId = remote.firestoreId
-            ..title = remote.title
-            ..thumbnailUrl = remote.thumbnailUrl
-            ..platform = remote.platform
-            ..topicLabels = remote.topicLabels
-            ..isRead = remote.isRead
-            ..isBookmarked = remote.isBookmarked
-            ..memo = remote.memo
-            ..updatedAt = remote.updatedAt;
-          await byUrl.save();
-        } else {
-          // 완전히 새로운 아티클 → Hive에 추가
-          await box.add(remote);
-        }
+        // 완전히 새로운 아티클 → Hive에 추가
+        await box.add(remote);
+        changed = true;
       }
     }
 
@@ -254,8 +251,10 @@ class SyncService {
       }
     }
 
-    // 홈화면 갱신 알림
-    articlesChangedNotifier.value++;
+    // 실제 변경이 있을 때만 홈화면 갱신
+    if (changed) {
+      articlesChangedNotifier.value++;
+    }
   }
 
   /// Firestore 라벨 스냅샷 → Hive 반영
@@ -281,6 +280,7 @@ class SyncService {
 
   static Future<void> _processLabelsSnapshot(List<Label> remoteLabels) async {
     final box = Hive.box<Label>('labels');
+    bool changed = false;
 
     final remoteMap = <String, Label>{};
     for (final label in remoteLabels) {
@@ -289,48 +289,46 @@ class SyncService {
       }
     }
 
-    final localByFsId = <String, Label>{};
-    final localByName = <String, Label>{};
-    for (final label in box.values) {
-      if (label.firestoreId != null) {
-        localByFsId[label.firestoreId!] = label;
-      }
-      localByName[label.name] = label;
-    }
-
     for (final entry in remoteMap.entries) {
       final remote = entry.value;
 
+      // 로컬 맵을 매번 최신으로 빌드 (동시 수정 대응)
+      Label? localByFsId;
+      Label? localByName;
+      for (final l in box.values) {
+        if (l.firestoreId == entry.key) localByFsId = l;
+        if (l.name == remote.name) localByName = l;
+      }
+
       if (remote.deletedAt != null) {
-        final local = localByFsId[entry.key];
-        if (local != null && local.isInBox) {
-          await local.delete();
+        if (localByFsId != null && localByFsId.isInBox) {
+          await localByFsId.delete();
+          changed = true;
         }
         continue;
       }
 
-      final local = localByFsId[entry.key];
-      if (local != null) {
+      if (localByFsId != null) {
         if (remote.updatedAt != null &&
-            (local.updatedAt == null ||
-                remote.updatedAt!.isAfter(local.updatedAt!))) {
-          local
+            (localByFsId.updatedAt == null ||
+                remote.updatedAt!.isAfter(localByFsId.updatedAt!))) {
+          localByFsId
             ..name = remote.name
             ..colorValue = remote.colorValue
             ..updatedAt = remote.updatedAt;
-          await local.save();
+          await localByFsId.save();
+          changed = true;
         }
+      } else if (localByName != null) {
+        localByName
+          ..firestoreId = remote.firestoreId
+          ..colorValue = remote.colorValue
+          ..updatedAt = remote.updatedAt;
+        await localByName.save();
+        changed = true;
       } else {
-        final byName = localByName[remote.name];
-        if (byName != null) {
-          byName
-            ..firestoreId = remote.firestoreId
-            ..colorValue = remote.colorValue
-            ..updatedAt = remote.updatedAt;
-          await byName.save();
-        } else {
-          await box.add(remote);
-        }
+        await box.add(remote);
+        changed = true;
       }
     }
 
@@ -355,8 +353,10 @@ class SyncService {
       }
     }
 
-    // 라이브러리 화면 갱신 알림
-    labelsChangedNotifier.value++;
+    // 실제 변경이 있을 때만 라이브러리 갱신
+    if (changed) {
+      labelsChangedNotifier.value++;
+    }
   }
 
   // ── DatabaseService에서 호출하는 동기화 메서드 ──
