@@ -56,30 +56,42 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadArticles();
-    articlesChangedNotifier.addListener(_loadArticles);
+    _loadArticles(resetPosition: true);
+    articlesChangedNotifier.addListener(_onArticlesChanged);
   }
 
-  void _loadArticles() {
+  /// 외부 notifier (공유 저장 등) — 카드 위치 유지
+  void _onArticlesChanged() {
+    _loadArticles(resetPosition: false);
+  }
+
+  void _loadArticles({required bool resetPosition}) {
     if (!mounted) return;
-    final oldController = _swiperController;
-    _pendingDispose.add(oldController);
-    _swiperController = CardSwiperController();
     final allUnread = DatabaseService.getUnreadArticles();
     final filtered = _selectedLabels.isEmpty
         ? allUnread
         : allUnread
             .where((a) => _selectedLabels.every((l) => a.topicLabels.contains(l)))
             .toList();
-    _thresholdNotifier.value = 0.0;
-    setState(() {
-      _allLabels = DatabaseService.getAllLabelObjects().map((l) => l.name).toList();
-      _articles = filtered;
-      _cardSwiperKey++;
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _disposePendingControllers();
-    });
+    _allLabels = DatabaseService.getAllLabelObjects().map((l) => l.name).toList();
+
+    if (resetPosition) {
+      final oldController = _swiperController;
+      _pendingDispose.add(oldController);
+      _swiperController = CardSwiperController();
+      _thresholdNotifier.value = 0.0;
+      setState(() {
+        _articles = filtered;
+        _cardSwiperKey++;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _disposePendingControllers();
+      });
+    } else {
+      setState(() {
+        _articles = filtered;
+      });
+    }
   }
 
   void _disposePendingControllers() {
@@ -97,17 +109,17 @@ class _HomeScreenState extends State<HomeScreen> {
     } else {
       _selectedLabels.add(label);
     }
-    _loadArticles();
+    _loadArticles(resetPosition: true);
   }
 
   void _clearLabels() {
     _selectedLabels.clear();
-    _loadArticles();
+    _loadArticles(resetPosition: true);
   }
 
   @override
   void dispose() {
-    articlesChangedNotifier.removeListener(_loadArticles);
+    articlesChangedNotifier.removeListener(_onArticlesChanged);
     _disposePendingControllers();
     _swiperController.dispose();
     _thresholdNotifier.dispose();
@@ -129,11 +141,11 @@ class _HomeScreenState extends State<HomeScreen> {
     if (direction == CardSwiperDirection.right) {
       HapticFeedback.mediumImpact();
       DatabaseService.markAsRead(article);
-      WidgetsBinding.instance.addPostFrameCallback((_) => _loadArticles());
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadArticles(resetPosition: true));
     } else if (direction == CardSwiperDirection.left) {
       HapticFeedback.lightImpact();
       if (currentIndex == null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _loadArticles());
+        WidgetsBinding.instance.addPostFrameCallback((_) => _loadArticles(resetPosition: true));
       }
     }
 
@@ -171,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () async {
                 Navigator.pop(ctx);
                 await DatabaseService.toggleBookmark(article);
-                _loadArticles();
+                _loadArticles(resetPosition: false);
               },
             ),
             ListTile(
@@ -191,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () async {
                 Navigator.pop(ctx);
                 await LabelEditSheet.show(context, article: article);
-                _loadArticles();
+                _loadArticles(resetPosition: false);
               },
             ),
             ListTile(
@@ -281,7 +293,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           onPressed: () async {
                             await DatabaseService.updateMemo(article, null);
                             if (ctx.mounted) Navigator.pop(ctx);
-                            _loadArticles();
+                            _loadArticles(resetPosition: false);
                           },
                           child: Text(l.delete),
                         ),
@@ -298,7 +310,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         onPressed: () async {
                           await DatabaseService.updateMemo(article, controller.text);
                           if (ctx.mounted) Navigator.pop(ctx);
-                          _loadArticles();
+                          _loadArticles(resetPosition: false);
                         },
                         child: Text(l.save),
                       ),
