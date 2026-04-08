@@ -138,6 +138,21 @@ class DatabaseService {
     }
   }
 
+  // 일괄 북마크 설정 (batch write로 스냅샷 1회)
+  static Future<void> bulkSetBookmark(List<Article> articles, bool bookmark) async {
+    final now = DateTime.now();
+    for (final article in articles) {
+      article.isBookmarked = bookmark;
+      article.updatedAt = now;
+      await article.save();
+    }
+    await _box.flush();
+    if (!skipSync && AuthService.isLoggedIn) {
+      await SyncService.syncBulkArticleFields(
+          articles, {'isBookmarked': bookmark});
+    }
+  }
+
   // 북마크 토글
   static Future<void> toggleBookmark(Article article) async {
     article.isBookmarked = !article.isBookmarked;

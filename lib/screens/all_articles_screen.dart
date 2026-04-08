@@ -703,10 +703,7 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
     final articles = DatabaseService.getAllArticles()
         .where((a) => _selectedKeys.contains(a.key))
         .toList();
-    for (final a in articles) {
-      a.isBookmarked = bookmark;
-      await a.save();
-    }
+    await DatabaseService.bulkSetBookmark(articles, bookmark);
     setState(() {
       _isSelecting = false;
       _selectedKeys.clear();

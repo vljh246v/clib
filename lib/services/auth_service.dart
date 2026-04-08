@@ -29,12 +29,19 @@ class AuthService {
   }
 
   // Apple 로그인 — Firebase 네이티브 Apple 프로바이더 사용
-  static Future<UserCredential> signInWithApple() async {
+  static Future<UserCredential?> signInWithApple() async {
     final appleProvider = AppleAuthProvider();
     appleProvider.addScope('email');
     appleProvider.addScope('name');
 
-    return await _auth.signInWithProvider(appleProvider);
+    try {
+      return await _auth.signInWithProvider(appleProvider);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'canceled' || e.code == 'web-context-cancelled') {
+        return null; // 사용자 취소
+      }
+      rethrow;
+    }
   }
 
   // 로그아웃
@@ -80,6 +87,9 @@ class AuthService {
         await label.save();
       }
     }
+
+    await articleBox.flush();
+    await labelBox.flush();
 
     // 5. lastLoginUid 제거
     await DatabaseService.saveLastLoginUid(null);

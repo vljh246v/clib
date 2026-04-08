@@ -665,10 +665,7 @@ class _LabelDetailScreenState extends State<LabelDetailScreen>
     final articles = DatabaseService.getArticlesByLabel(widget.label.name)
         .where((a) => _selectedKeys.contains(a.key))
         .toList();
-    for (final a in articles) {
-      a.isBookmarked = bookmark;
-      await a.save();
-    }
+    await DatabaseService.bulkSetBookmark(articles, bookmark);
     setState(() {
       _isSelecting = false;
       _selectedKeys.clear();

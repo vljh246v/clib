@@ -84,10 +84,7 @@ class _BookmarkedArticlesScreenState extends State<BookmarkedArticlesScreen>
     final articles = DatabaseService.getBookmarkedArticles()
         .where((a) => _selectedKeys.contains(a.key))
         .toList();
-    for (final a in articles) {
-      a.isBookmarked = bookmark;
-      await a.save();
-    }
+    await DatabaseService.bulkSetBookmark(articles, bookmark);
     setState(() {
       _isSelecting = false;
       _selectedKeys.clear();
