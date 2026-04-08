@@ -1,5 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:clib/models/article.dart';
+import 'package:clib/models/label.dart';
+import 'package:clib/services/database_service.dart';
+import 'package:clib/services/firestore_service.dart';
+import 'package:clib/services/sync_service.dart';
 
 class AuthService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -38,8 +44,44 @@ class AuthService {
   }
 
   // 계정 삭제
+  // 1. SyncService 리스너 중지 (삭제 중 스냅샷이 로컬 데이터 건드리는 것 방지)
+  // 2. Firestore 데이터 영구 삭제
+  // 3. Firebase Auth 계정 삭제
+  // 4. 로컬 firestoreId 초기화 + lastLoginUid 제거
   static Future<void> deleteAccount() async {
-    await currentUser?.delete();
-  }
+    final user = currentUser;
+    if (user == null) return;
 
+    final uid = user.uid;
+
+    // 1. 리스너 중지 — 삭제 중 스냅샷이 로컬 데이터를 건드리지 않도록
+    SyncService.dispose();
+
+    // 2. Firestore 데이터 영구 삭제
+    await FirestoreService.deleteAllUserData(uid);
+
+    // 3. Firebase Auth 계정 삭제
+    await user.delete();
+
+    // 4. 로컬 firestoreId 초기화 (클라우드 연결 해제, 로컬 데이터는 유지)
+    final articleBox = Hive.box<Article>('articles');
+    for (final article in articleBox.values) {
+      if (article.firestoreId != null) {
+        article.firestoreId = null;
+        article.updatedAt = null;
+        await article.save();
+      }
+    }
+    final labelBox = Hive.box<Label>('labels');
+    for (final label in labelBox.values) {
+      if (label.firestoreId != null) {
+        label.firestoreId = null;
+        label.updatedAt = null;
+        await label.save();
+      }
+    }
+
+    // 5. lastLoginUid 제거
+    await DatabaseService.saveLastLoginUid(null);
+  }
 }

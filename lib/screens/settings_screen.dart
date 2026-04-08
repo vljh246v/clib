@@ -216,46 +216,65 @@ class _AccountSection extends StatelessWidget {
   }
 
   Widget _buildLoggedIn(BuildContext context) {
-    return Row(
+    return Column(
       children: [
-        CircleAvatar(
-          radius: 20,
-          backgroundImage:
-              user!.photoURL != null ? NetworkImage(user!.photoURL!) : null,
-          backgroundColor: theme.colorScheme.secondary.withValues(alpha: 0.1),
-          child: user!.photoURL == null
-              ? Icon(Icons.person, size: 20, color: theme.colorScheme.secondary)
-              : null,
-        ),
-        const SizedBox(width: Spacing.md),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                user!.displayName ?? user!.email ?? '',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (user!.email != null)
-                Text(
-                  user!.email!,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+        Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundImage:
+                  user!.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+              backgroundColor:
+                  theme.colorScheme.secondary.withValues(alpha: 0.1),
+              child: user!.photoURL == null
+                  ? Icon(Icons.person,
+                      size: 20, color: theme.colorScheme.secondary)
+                  : null,
+            ),
+            const SizedBox(width: Spacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user!.displayName ?? user!.email ?? '',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-            ],
-          ),
+                  if (user!.email != null)
+                    Text(
+                      user!.email!,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
+            ),
+            TextButton(
+              onPressed: () => _handleSignOut(context),
+              child: Text(l.signOut,
+                  style:
+                      TextStyle(color: theme.colorScheme.error, fontSize: 13)),
+            ),
+          ],
         ),
-        TextButton(
-          onPressed: () => _handleSignOut(context),
-          child: Text(l.signOut,
-              style: TextStyle(color: theme.colorScheme.error, fontSize: 13)),
+        const SizedBox(height: Spacing.sm),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: () => _handleDeleteAccount(context),
+            child: Text(l.deleteAccount,
+                style: TextStyle(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontSize: 12,
+                )),
+          ),
         ),
       ],
     );
@@ -273,6 +292,39 @@ class _AccountSection extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${l.loginFailed}: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleDeleteAccount(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l.deleteAccountConfirm),
+        content: Text(l.deleteAccountDescription),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l.deleteAccount,
+                style: TextStyle(color: theme.colorScheme.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await AuthService.deleteAccount();
+    } catch (e) {
+      debugPrint('계정 삭제 실패: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
         );
       }
     }

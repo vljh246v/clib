@@ -28,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final Set<String> _selectedLabels = {};
   int _cardSwiperKey = 0;
   bool _isExpanded = false;
+  final _thresholdNotifier = ValueNotifier<double>(0.0);
 
   static const _adInterval = 8;
 
@@ -70,6 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
         : allUnread
             .where((a) => _selectedLabels.every((l) => a.topicLabels.contains(l)))
             .toList();
+    _thresholdNotifier.value = 0.0;
     setState(() {
       _allLabels = DatabaseService.getAllLabelObjects().map((l) => l.name).toList();
       _articles = filtered;
@@ -108,6 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
     articlesChangedNotifier.removeListener(_loadArticles);
     _disposePendingControllers();
     _swiperController.dispose();
+    _thresholdNotifier.dispose();
     super.dispose();
   }
 
@@ -528,22 +531,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (artIdx >= _articles.length) return const SizedBox.shrink();
 
                     // 스와이프 방향에 따른 테두리 색상
+                    final onVariant = Theme.of(context).colorScheme.onSurfaceVariant;
                     Color? borderColor;
                     if (percentThresholdX > 20) {
                       borderColor = AppColors.swipeRead
                           .withValues(alpha: (percentThresholdX / 100).clamp(0, 1));
                     } else if (percentThresholdX < -20) {
-                      borderColor = AppColors.swipeSkip
+                      borderColor = onVariant
                           .withValues(alpha: (percentThresholdX.abs() / 100).clamp(0, 1));
                     }
 
-                    // 스와이프 힌트 opacity (20% 이상 드래그 시 페이드인)
-                    final readOpacity = percentThresholdX > 20
-                        ? ((percentThresholdX - 20) / 40).clamp(0.0, 1.0)
-                        : 0.0;
-                    final laterOpacity = percentThresholdX < -20
-                        ? ((percentThresholdX.abs() - 20) / 40).clamp(0.0, 1.0)
-                        : 0.0;
+                    // 하단 힌트 라벨용 threshold 업데이트
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) _thresholdNotifier.value = percentThresholdX.toDouble();
+                    });
 
                     return GestureDetector(
                       onTap: () async {
@@ -563,42 +564,53 @@ class _HomeScreenState extends State<HomeScreen> {
                               ? Border.all(color: borderColor, width: 2.5)
                               : null,
                         ),
-                        child: Stack(
-                          children: [
-                            ArticleCard(article: _articles[artIdx]),
-                            // 오른쪽 스와이프: "읽음" 스탬프
-                            if (readOpacity > 0)
-                              Positioned(
-                                top: 24,
-                                left: 20,
-                                child: Opacity(
-                                  opacity: readOpacity,
-                                  child: _SwipeStamp(
-                                    text: l.swipeRead,
-                                    icon: Icons.check_rounded,
-                                    color: AppColors.swipeRead,
-                                  ),
-                                ),
-                              ),
-                            // 왼쪽 스와이프: "나중에" 스탬프
-                            if (laterOpacity > 0)
-                              Positioned(
-                                top: 24,
-                                right: 20,
-                                child: Opacity(
-                                  opacity: laterOpacity,
-                                  child: _SwipeStamp(
-                                    text: l.swipeLater,
-                                    icon: Icons.schedule_rounded,
-                                    color: AppColors.swipeSkip,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
+                        child: ArticleCard(article: _articles[artIdx]),
                       ),
                     );
                   },
+                ),
+              ),
+              // 카드 하단 스와이프 방향 힌트
+              Positioned(
+                left: 28,
+                right: 28,
+                bottom: 12,
+                child: IgnorePointer(
+                  child: ValueListenableBuilder<double>(
+                    valueListenable: _thresholdNotifier,
+                    builder: (context, threshold, _) {
+                      const base = 0.3;
+                      final laterOpacity = threshold < -20
+                          ? (base + (1 - base) * ((threshold.abs() - 20) / 40)).clamp(base, 1.0)
+                          : base;
+                      final readOpacity = threshold > 20
+                          ? (base + (1 - base) * ((threshold - 20) / 40)).clamp(base, 1.0)
+                          : base;
+                      final theme = Theme.of(context);
+
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Opacity(
+                            opacity: laterOpacity,
+                            child: _SwipeHint(
+                              text: l.swipeLater,
+                              icon: Icons.schedule_rounded,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          Opacity(
+                            opacity: readOpacity,
+                            child: _SwipeHint(
+                              text: l.swipeRead,
+                              icon: Icons.check_rounded,
+                              color: AppColors.swipeRead,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
               ),
             ],
@@ -656,12 +668,12 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
-class _SwipeStamp extends StatelessWidget {
+class _SwipeHint extends StatelessWidget {
   final String text;
   final IconData icon;
   final Color color;
 
-  const _SwipeStamp({
+  const _SwipeHint({
     required this.text,
     required this.icon,
     required this.color,
@@ -669,29 +681,20 @@ class _SwipeStamp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
-        borderRadius: Radii.borderMd,
-        border: Border.all(color: color, width: 2),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 4),
-          Text(
-            text,
-            style: TextStyle(
-              color: color,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1,
-            ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: TextStyle(
+            color: color,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

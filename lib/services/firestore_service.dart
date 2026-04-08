@@ -151,6 +151,33 @@ class FirestoreService {
     });
   }
 
+  // ── 사용자 데이터 전체 삭제 (계정 삭제 시) ──
+
+  /// 사용자의 articles, labels 서브컬렉션 문서를 모두 영구 삭제한다.
+  /// Firestore batch 최대 500 제한을 고려해 청크 처리한다.
+  static Future<void> deleteAllUserData(String uid) async {
+    await _deleteCollection(_articlesRef(uid));
+    await _deleteCollection(_labelsRef(uid));
+    // users/{uid} 문서 자체도 삭제
+    await _db.collection('users').doc(uid).delete();
+  }
+
+  static Future<void> _deleteCollection(
+    CollectionReference<Map<String, dynamic>> ref,
+  ) async {
+    const batchSize = 450;
+    while (true) {
+      final snapshot = await ref.limit(batchSize).get();
+      if (snapshot.docs.isEmpty) break;
+
+      final batch = _db.batch();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    }
+  }
+
   // ── 일괄 업로드 (첫 로그인 시) ──
 
   /// Firestore batch 최대 500 operations 제한을 고려한 청크 업로드
