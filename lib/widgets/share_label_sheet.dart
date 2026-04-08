@@ -136,7 +136,9 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
         left: Spacing.xxl,
         right: Spacing.xxl,
         top: Spacing.xxl,
-        bottom: MediaQuery.of(context).viewInsets.bottom + Spacing.xxl,
+        bottom: MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.of(context).viewPadding.bottom +
+            Spacing.xxl,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
