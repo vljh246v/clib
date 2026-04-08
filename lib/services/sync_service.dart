@@ -171,32 +171,42 @@ class SyncService {
       }
     }
 
+    // 로컬 맵 빌드 (변경 시 함께 업데이트하여 동시 수정 대응)
+    final localByFsId = <String, Article>{};
+    final localByUrl = <String, Article>{};
+    for (final a in box.values) {
+      if (a.firestoreId != null) localByFsId[a.firestoreId!] = a;
+      localByUrl[a.url] = a;
+    }
+
     // 원격에서 온 데이터 반영
     for (final entry in remoteMap.entries) {
       final remote = entry.value;
 
-      // 로컬 맵을 매번 최신으로 빌드 (동시 수정 대응)
-      Article? localByFsId;
-      Article? localByUrl;
-      for (final a in box.values) {
-        if (a.firestoreId == entry.key) localByFsId = a;
-        if (a.url == remote.url) localByUrl = a;
-      }
-
       if (remote.deletedAt != null) {
-        if (localByFsId != null && localByFsId.isInBox) {
-          await localByFsId.delete();
+        final local = localByFsId[entry.key];
+        if (local != null && local.isInBox) {
+          localByFsId.remove(entry.key);
+          localByUrl.remove(local.url);
+          await local.delete();
           changed = true;
         }
         continue;
       }
 
-      if (localByFsId != null) {
+      final byFsId = localByFsId[entry.key];
+      // firestoreId 매칭 실패 시 현재 box에서 URL 재확인 (동시 추가 대응)
+      final byUrl = localByFsId.containsKey(entry.key)
+          ? null
+          : localByUrl[remote.url] ?? box.values.cast<Article?>().firstWhere(
+              (a) => a!.url == remote.url, orElse: () => null);
+
+      if (byFsId != null) {
         // firestoreId로 매칭 → 업데이트
         if (remote.updatedAt != null &&
-            (localByFsId.updatedAt == null ||
-                remote.updatedAt!.isAfter(localByFsId.updatedAt!))) {
-          localByFsId
+            (byFsId.updatedAt == null ||
+                remote.updatedAt!.isAfter(byFsId.updatedAt!))) {
+          byFsId
             ..url = remote.url
             ..title = remote.title
             ..thumbnailUrl = remote.thumbnailUrl
@@ -206,12 +216,12 @@ class SyncService {
             ..isBookmarked = remote.isBookmarked
             ..memo = remote.memo
             ..updatedAt = remote.updatedAt;
-          await localByFsId.save();
+          await byFsId.save();
           changed = true;
         }
-      } else if (localByUrl != null) {
+      } else if (byUrl != null) {
         // URL로 매칭 → firestoreId 연결 + 업데이트
-        localByUrl
+        byUrl
           ..firestoreId = remote.firestoreId
           ..title = remote.title
           ..thumbnailUrl = remote.thumbnailUrl
@@ -221,11 +231,14 @@ class SyncService {
           ..isBookmarked = remote.isBookmarked
           ..memo = remote.memo
           ..updatedAt = remote.updatedAt;
-        await localByUrl.save();
+        await byUrl.save();
+        localByFsId[remote.firestoreId!] = byUrl;
         changed = true;
       } else {
         // 완전히 새로운 아티클 → Hive에 추가
         await box.add(remote);
+        if (remote.firestoreId != null) localByFsId[remote.firestoreId!] = remote;
+        localByUrl[remote.url] = remote;
         changed = true;
       }
     }
@@ -289,45 +302,57 @@ class SyncService {
       }
     }
 
+    // 로컬 맵 빌드 (변경 시 함께 업데이트)
+    final localByFsId = <String, Label>{};
+    final localByName = <String, Label>{};
+    for (final l in box.values) {
+      if (l.firestoreId != null) localByFsId[l.firestoreId!] = l;
+      localByName[l.name] = l;
+    }
+
     for (final entry in remoteMap.entries) {
       final remote = entry.value;
 
-      // 로컬 맵을 매번 최신으로 빌드 (동시 수정 대응)
-      Label? localByFsId;
-      Label? localByName;
-      for (final l in box.values) {
-        if (l.firestoreId == entry.key) localByFsId = l;
-        if (l.name == remote.name) localByName = l;
-      }
-
       if (remote.deletedAt != null) {
-        if (localByFsId != null && localByFsId.isInBox) {
-          await localByFsId.delete();
+        final local = localByFsId[entry.key];
+        if (local != null && local.isInBox) {
+          localByFsId.remove(entry.key);
+          localByName.remove(local.name);
+          await local.delete();
           changed = true;
         }
         continue;
       }
 
-      if (localByFsId != null) {
+      final byFsId = localByFsId[entry.key];
+      final byName = localByFsId.containsKey(entry.key)
+          ? null
+          : localByName[remote.name] ?? box.values.cast<Label?>().firstWhere(
+              (l) => l!.name == remote.name, orElse: () => null);
+
+      if (byFsId != null) {
         if (remote.updatedAt != null &&
-            (localByFsId.updatedAt == null ||
-                remote.updatedAt!.isAfter(localByFsId.updatedAt!))) {
-          localByFsId
+            (byFsId.updatedAt == null ||
+                remote.updatedAt!.isAfter(byFsId.updatedAt!))) {
+          byFsId
             ..name = remote.name
             ..colorValue = remote.colorValue
             ..updatedAt = remote.updatedAt;
-          await localByFsId.save();
+          await byFsId.save();
           changed = true;
         }
-      } else if (localByName != null) {
-        localByName
+      } else if (byName != null) {
+        byName
           ..firestoreId = remote.firestoreId
           ..colorValue = remote.colorValue
           ..updatedAt = remote.updatedAt;
-        await localByName.save();
+        await byName.save();
+        localByFsId[remote.firestoreId!] = byName;
         changed = true;
       } else {
         await box.add(remote);
+        if (remote.firestoreId != null) localByFsId[remote.firestoreId!] = remote;
+        localByName[remote.name] = remote;
         changed = true;
       }
     }
