@@ -141,8 +141,8 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
       child: SafeArea(
         top: false,
         child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 핸들 바
           Center(

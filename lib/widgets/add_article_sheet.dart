@@ -201,8 +201,8 @@ class _AddArticleSheetState extends State<AddArticleSheet> {
       child: SafeArea(
         top: false,
         child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 핸들 바
           Center(
