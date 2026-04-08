@@ -124,6 +124,22 @@ class DatabaseService {
     }
   }
 
+  // 일괄 읽음/안읽음 처리 (동기화는 마지막에 한 번)
+  static Future<void> bulkMarkRead(List<Article> articles, bool isRead) async {
+    final now = DateTime.now();
+    for (final article in articles) {
+      article.isRead = isRead;
+      article.updatedAt = now;
+      await article.save();
+    }
+    await _box.flush();
+    if (!skipSync && AuthService.isLoggedIn) {
+      for (final article in articles) {
+        await SyncService.syncArticleFields(article, {'isRead': isRead});
+      }
+    }
+  }
+
   // 북마크 토글
   static Future<void> toggleBookmark(Article article) async {
     article.isBookmarked = !article.isBookmarked;

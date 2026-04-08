@@ -72,13 +72,7 @@ class _AllArticlesScreenState extends State<AllArticlesScreen>
     final articles = DatabaseService.getAllArticles()
         .where((a) => _selectedKeys.contains(a.key))
         .toList();
-    for (final a in articles) {
-      if (isRead) {
-        await DatabaseService.markAsRead(a);
-      } else {
-        await DatabaseService.markAsUnread(a);
-      }
-    }
+    await DatabaseService.bulkMarkRead(articles, isRead);
     setState(() {
       _isSelecting = false;
       _selectedKeys.clear();
