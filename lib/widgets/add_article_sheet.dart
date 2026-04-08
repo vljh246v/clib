@@ -68,12 +68,20 @@ class _AddArticleSheetState extends State<AddArticleSheet> {
       _urlError = null;
     });
 
-    await ShareService.processAndSave(
-      url,
-      labels: _selected.toList(),
-    );
-
-    if (mounted) Navigator.pop(context);
+    try {
+      await ShareService.processAndSave(
+        url,
+        labels: _selected.toList(),
+      );
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.saveFailed)),
+        );
+      }
+    }
   }
 
   Future<void> _showAddLabelDialog() async {
@@ -188,11 +196,11 @@ class _AddArticleSheetState extends State<AddArticleSheet> {
         left: Spacing.xxl,
         right: Spacing.xxl,
         top: Spacing.xxl,
-        bottom: MediaQuery.of(context).viewInsets.bottom +
-            MediaQuery.of(context).viewPadding.bottom +
-            Spacing.xxl,
+        bottom: MediaQuery.of(context).viewInsets.bottom + Spacing.xxl,
       ),
-      child: Column(
+      child: SafeArea(
+        top: false,
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -332,6 +340,7 @@ class _AddArticleSheetState extends State<AddArticleSheet> {
             ],
           ),
         ],
+      ),
       ),
     );
   }

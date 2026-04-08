@@ -12,6 +12,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get save => '저장';
 
   @override
+  String get saveFailed => '저장에 실패했습니다. 다시 시도해주세요.';
+
+  @override
   String get cancel => '취소';
 
   @override

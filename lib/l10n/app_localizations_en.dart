@@ -12,6 +12,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get save => 'Save';
 
   @override
+  String get saveFailed => 'Failed to save. Please try again.';
+
+  @override
   String get cancel => 'Cancel';
 
   @override

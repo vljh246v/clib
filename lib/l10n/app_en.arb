@@ -2,6 +2,7 @@
   "@@locale": "en",
 
   "save": "Save",
+  "saveFailed": "Failed to save. Please try again.",
   "cancel": "Cancel",
   "delete": "Delete",
   "confirm": "OK",

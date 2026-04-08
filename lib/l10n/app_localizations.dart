@@ -104,6 +104,12 @@ abstract class AppLocalizations {
   /// **'저장'**
   String get save;
 
+  /// No description provided for @saveFailed.
+  ///
+  /// In ko, this message translates to:
+  /// **'저장에 실패했습니다. 다시 시도해주세요.'**
+  String get saveFailed;
+
   /// No description provided for @cancel.
   ///
   /// In ko, this message translates to:
