@@ -206,6 +206,13 @@ class SyncService {
         if (remote.updatedAt != null &&
             (byFsId.updatedAt == null ||
                 remote.updatedAt!.isAfter(byFsId.updatedAt!))) {
+          // 사용자에게 보이는 데이터가 실제로 변경된 경우에만 UI 갱신
+          final dataChanged = byFsId.url != remote.url ||
+              byFsId.title != remote.title ||
+              byFsId.isRead != remote.isRead ||
+              byFsId.isBookmarked != remote.isBookmarked ||
+              byFsId.memo != remote.memo ||
+              byFsId.topicLabels.join(',') != remote.topicLabels.join(',');
           byFsId
             ..url = remote.url
             ..title = remote.title
@@ -217,7 +224,7 @@ class SyncService {
             ..memo = remote.memo
             ..updatedAt = remote.updatedAt;
           await byFsId.save();
-          changed = true;
+          if (dataChanged) changed = true;
         }
       } else if (byUrl != null) {
         // URL로 매칭 → firestoreId 연결 + 업데이트
@@ -334,12 +341,14 @@ class SyncService {
         if (remote.updatedAt != null &&
             (byFsId.updatedAt == null ||
                 remote.updatedAt!.isAfter(byFsId.updatedAt!))) {
+          final dataChanged = byFsId.name != remote.name ||
+              byFsId.colorValue != remote.colorValue;
           byFsId
             ..name = remote.name
             ..colorValue = remote.colorValue
             ..updatedAt = remote.updatedAt;
           await byFsId.save();
-          changed = true;
+          if (dataChanged) changed = true;
         }
       } else if (byName != null) {
         byName
