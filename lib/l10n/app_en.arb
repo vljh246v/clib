@@ -147,5 +147,9 @@
   "pasteFromClipboard": "Paste",
 
   "swipeRead": "READ",
-  "swipeLater": "LATER"
+  "swipeLater": "LATER",
+
+  "privacyPolicy": "Privacy Policy",
+  "privacyPolicySubtitle": "Data collection and management",
+  "loginPolicyAgreement": "By signing in, you agree to the Privacy Policy."
 }

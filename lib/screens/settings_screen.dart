@@ -4,6 +4,7 @@ import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/screens/label_management_screen.dart';
 import 'package:clib/screens/onboarding_screen.dart';
 import 'package:clib/screens/theme_settings_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:clib/services/auth_service.dart';
 import 'package:clib/main.dart';
 import 'package:clib/theme/design_tokens.dart';
@@ -94,6 +95,20 @@ class SettingsScreen extends StatelessWidget {
                       builder: (_) =>
                           const OnboardingScreen(isGuideMode: true)),
                 ),
+              ),
+              Divider(
+                  height: 1,
+                  indent: 56,
+                  color: theme.dividerColor),
+              _buildItem(
+                context,
+                theme: theme,
+                icon: Icons.shield_outlined,
+                iconColor: theme.colorScheme.onSurfaceVariant,
+                title: l.privacyPolicy,
+                subtitle: l.privacyPolicySubtitle,
+                onTap: () => launchUrl(
+                    Uri.parse('https://vljh246v.github.io/clib-support/')),
               ),
             ],
           ),
@@ -210,6 +225,34 @@ class _AccountSection extends StatelessWidget {
           icon: Icons.apple_rounded,
           label: l.signInWithApple,
           theme: theme,
+        ),
+        const SizedBox(height: Spacing.md),
+        Center(
+          child: GestureDetector(
+            onTap: () => launchUrl(
+                Uri.parse('https://vljh246v.github.io/clib-support/')),
+            child: Text.rich(
+              TextSpan(
+                text: l.loginPolicyAgreement.split(l.privacyPolicy).first,
+                children: [
+                  TextSpan(
+                    text: l.privacyPolicy,
+                    style: TextStyle(
+                      decoration: TextDecoration.underline,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  TextSpan(
+                    text: l.loginPolicyAgreement.split(l.privacyPolicy).last,
+                  ),
+                ],
+              ),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontSize: 11,
+              ),
+            ),
+          ),
         ),
       ],
     );

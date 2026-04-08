@@ -419,4 +419,13 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get swipeLater => '나중에';
+
+  @override
+  String get privacyPolicy => '개인정보 처리방침';
+
+  @override
+  String get privacyPolicySubtitle => '수집 정보 및 데이터 관리';
+
+  @override
+  String get loginPolicyAgreement => '로그인 시 개인정보 처리방침에 동의합니다.';
 }

@@ -425,4 +425,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get swipeLater => 'LATER';
+
+  @override
+  String get privacyPolicy => 'Privacy Policy';
+
+  @override
+  String get privacyPolicySubtitle => 'Data collection and management';
+
+  @override
+  String get loginPolicyAgreement =>
+      'By signing in, you agree to the Privacy Policy.';
 }

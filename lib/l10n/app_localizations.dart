@@ -853,6 +853,24 @@ abstract class AppLocalizations {
   /// In ko, this message translates to:
   /// **'나중에'**
   String get swipeLater;
+
+  /// No description provided for @privacyPolicy.
+  ///
+  /// In ko, this message translates to:
+  /// **'개인정보 처리방침'**
+  String get privacyPolicy;
+
+  /// No description provided for @privacyPolicySubtitle.
+  ///
+  /// In ko, this message translates to:
+  /// **'수집 정보 및 데이터 관리'**
+  String get privacyPolicySubtitle;
+
+  /// No description provided for @loginPolicyAgreement.
+  ///
+  /// In ko, this message translates to:
+  /// **'로그인 시 개인정보 처리방침에 동의합니다.'**
+  String get loginPolicyAgreement;
 }
 
 class _AppLocalizationsDelegate
