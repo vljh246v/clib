@@ -6,18 +6,14 @@ import 'package:clib/theme/design_tokens.dart';
 /// 앱스토어 스크린샷용 데모 데이터 시드
 class DemoDataService {
   static Future<void> seed() async {
+    // 이미 데이터가 있으면 시드하지 않음 (공유 저장 데이터 보호)
+    if (DatabaseService.getAllArticles().isNotEmpty ||
+        DatabaseService.getAllLabelObjects().isNotEmpty) {
+      return;
+    }
+
     // 데모 시드 중에는 Firestore 동기화 비활성화
     DatabaseService.skipSync = true;
-
-    // 기존 데이터 모두 삭제
-    final existing = DatabaseService.getAllArticles();
-    for (final a in existing) {
-      await DatabaseService.deleteArticle(a);
-    }
-    final existingLabels = DatabaseService.getAllLabelObjects();
-    for (final l in existingLabels) {
-      await DatabaseService.deleteLabel(l);
-    }
 
     // ── 라벨 생성 ──
     await DatabaseService.createLabel('생산성', LabelColors.presets[0]);       // Calm Blue

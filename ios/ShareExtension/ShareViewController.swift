@@ -336,6 +336,11 @@ class ShareViewController: UIViewController {
             return
         }
 
+        guard let userDefaults = UserDefaults(suiteName: appGroupId) else {
+            close()
+            return
+        }
+
         var payload: [String: Any] = [
             "url": url,
             "labels": Array(selectedLabels)
@@ -345,14 +350,30 @@ class ShareViewController: UIViewController {
         }
 
         if let data = try? JSONSerialization.data(withJSONObject: payload),
-           let jsonString = String(data: data, encoding: .utf8),
-           let userDefaults = UserDefaults(suiteName: appGroupId) {
+           let jsonString = String(data: data, encoding: .utf8) {
             var items = userDefaults.stringArray(forKey: sharedKey) ?? []
             items.append(jsonString)
             userDefaults.set(items, forKey: sharedKey)
-            userDefaults.synchronize()
         }
 
+        // 신규 라벨을 SharedLabels에 즉시 반영 (다음 Share Extension에서 보이도록)
+        if !newLabelsCreated.isEmpty {
+            var allLabels: [[String: Any]] = []
+            if let jsonString = userDefaults.string(forKey: labelsKey),
+               let data = jsonString.data(using: .utf8),
+               let array = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                allLabels = array
+            }
+            for nl in newLabelsCreated {
+                allLabels.append(["name": nl.name, "colorValue": nl.colorValue])
+            }
+            if let data = try? JSONSerialization.data(withJSONObject: allLabels),
+               let jsonString = String(data: data, encoding: .utf8) {
+                userDefaults.set(jsonString, forKey: labelsKey)
+            }
+        }
+
+        userDefaults.synchronize()
         close()
     }
 

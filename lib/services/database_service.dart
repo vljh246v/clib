@@ -69,6 +69,7 @@ class DatabaseService {
   static Future<int> saveArticle(Article article) async {
     article.updatedAt = DateTime.now();
     final key = await _box.add(article);
+    await _box.flush();
     if (!skipSync && AuthService.isLoggedIn) {
       await SyncService.syncArticle(article);
     }
@@ -205,6 +206,7 @@ class DatabaseService {
       ..createdAt = DateTime.now()
       ..updatedAt = DateTime.now();
     await _labelBox.add(label);
+    await _labelBox.flush();
     await syncLabelsToAppGroup();
     if (!skipSync && AuthService.isLoggedIn) {
       await SyncService.syncLabel(label);
