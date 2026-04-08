@@ -402,6 +402,24 @@ class SyncService {
     }
   }
 
+  /// 여러 아티클의 필드를 일괄 동기화 (batch write → 스냅샷 1회)
+  static Future<void> syncBulkArticleFields(
+    List<Article> articles,
+    Map<String, dynamic> fields,
+  ) async {
+    final uid = _uid;
+    if (uid == null) return;
+
+    final syncable = articles.where((a) => a.firestoreId != null).toList();
+    if (syncable.isEmpty) return;
+
+    try {
+      await FirestoreService.batchUpdateArticleFields(uid, syncable, fields);
+    } catch (e) {
+      debugPrint('일괄 아티클 동기화 실패: $e');
+    }
+  }
+
   /// 아티클 필드 업데이트 동기화
   static Future<void> syncArticleFields(
     Article article,

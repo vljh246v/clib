@@ -124,7 +124,7 @@ class DatabaseService {
     }
   }
 
-  // 일괄 읽음/안읽음 처리 (동기화는 마지막에 한 번)
+  // 일괄 읽음/안읽음 처리 (batch write로 스냅샷 1회)
   static Future<void> bulkMarkRead(List<Article> articles, bool isRead) async {
     final now = DateTime.now();
     for (final article in articles) {
@@ -134,9 +134,7 @@ class DatabaseService {
     }
     await _box.flush();
     if (!skipSync && AuthService.isLoggedIn) {
-      for (final article in articles) {
-        await SyncService.syncArticleFields(article, {'isRead': isRead});
-      }
+      await SyncService.syncBulkArticleFields(articles, {'isRead': isRead});
     }
   }
 

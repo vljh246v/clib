@@ -133,6 +133,33 @@ class FirestoreService {
     });
   }
 
+  // ── Batch Update ──
+
+  /// 여러 아티클의 필드를 한 번의 batch로 업데이트
+  static Future<void> batchUpdateArticleFields(
+    String uid,
+    List<Article> articles,
+    Map<String, dynamic> fields,
+  ) async {
+    final updates = <String, dynamic>{
+      ...fields,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    const maxBatchSize = 450;
+    for (var i = 0; i < articles.length; i += maxBatchSize) {
+      final chunk = articles.sublist(
+        i,
+        i + maxBatchSize > articles.length ? articles.length : i + maxBatchSize,
+      );
+      final batch = _db.batch();
+      for (final article in chunk) {
+        if (article.firestoreId == null) continue;
+        batch.update(_articlesRef(uid).doc(article.firestoreId), updates);
+      }
+      await batch.commit();
+    }
+  }
+
   // ── Snapshot Listeners ──
 
   static Stream<List<Article>> listenArticles(String uid) {
