@@ -515,13 +515,15 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 8),
         if (_articles.isEmpty) Expanded(
-          key: widget.cardAreaKey,
-          child: _buildEmptyContent(),
+          child: Container(
+            key: widget.cardAreaKey,
+            child: _buildEmptyContent(),
+          ),
         ),
         // 카드 스택
         if (_articles.isNotEmpty) Expanded(
-          key: widget.cardAreaKey,
           child: Stack(
+            key: widget.cardAreaKey,
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),

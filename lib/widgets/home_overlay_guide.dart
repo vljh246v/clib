@@ -122,11 +122,6 @@ class _HomeOverlayGuideState extends State<HomeOverlayGuide>
     final step = steps[_currentStep];
     final targetRect = _getTargetRect();
 
-    // 설명 카드의 위치: 타겟이 화면 상반부면 아래, 하반부면 위에
-    final screenHeight = MediaQuery.of(context).size.height;
-    final showBelow = targetRect == null ||
-        targetRect.center.dy < screenHeight * 0.5;
-
     return FadeTransition(
       opacity: _fadeAnimation,
       child: GestureDetector(
@@ -144,25 +139,16 @@ class _HomeOverlayGuideState extends State<HomeOverlayGuide>
               ),
             ),
 
-            // 설명 카드
-            Positioned(
-              left: Spacing.xxl,
-              right: Spacing.xxl,
-              top: showBelow
-                  ? (targetRect != null
-                      ? targetRect.bottom + Spacing.lg
-                      : screenHeight * 0.35)
-                  : null,
-              bottom: !showBelow
-                  ? screenHeight -
-                      targetRect.top +
-                      Spacing.lg
-                  : null,
-              child: _GuideCard(
-                step: step,
-                currentStep: _currentStep,
-                totalSteps: _totalSteps,
-                tapHint: l.guideTapToContinue,
+            // 설명 카드 — 화면 중앙에 고정
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Spacing.xxl),
+                child: _GuideCard(
+                  step: step,
+                  currentStep: _currentStep,
+                  totalSteps: _totalSteps,
+                  tapHint: l.guideTapToContinue,
+                ),
               ),
             ),
           ],
@@ -239,14 +225,23 @@ class _GuideCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(Spacing.xxl),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: isDark
+            ? theme.colorScheme.surfaceContainerHighest
+            : theme.colorScheme.surface,
         borderRadius: Radii.borderXl,
+        border: isDark
+            ? Border.all(
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.2),
+              )
+            : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
+            color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.15),
             blurRadius: 24,
             offset: const Offset(0, 8),
           ),
