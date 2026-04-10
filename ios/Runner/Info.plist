@@ -10,6 +10,8 @@
 	<array>
 		<string>ko</string>
 		<string>en</string>
+		<string>ja</string>
+		<string>es</string>
 	</array>
 	<key>CFBundleDisplayName</key>
 	<string>Clib</string>

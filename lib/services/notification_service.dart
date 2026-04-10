@@ -9,7 +9,13 @@ import 'package:clib/services/database_service.dart';
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
 
-  static bool get _isKorean => io.Platform.localeName.startsWith('ko');
+  static String get _langCode {
+    final locale = io.Platform.localeName;
+    if (locale.startsWith('ko')) return 'ko';
+    if (locale.startsWith('ja')) return 'ja';
+    if (locale.startsWith('es')) return 'es';
+    return 'en';
+  }
 
   static Future<void> init() async {
     tz_data.initializeTimeZones();
@@ -68,8 +74,18 @@ class NotificationService {
       // 0=월 → DateTime.monday(1), 6=일 → DateTime.sunday(7)
       final dartDay = day + 1;
 
-      final channelName = _isKorean ? 'Clib 라벨 알림' : 'Clib Label Notifications';
-      final channelDesc = _isKorean ? '라벨별 미읽음 아티클 알림' : 'Unread article notifications by label';
+      final channelName = switch (_langCode) {
+        'ko' => 'Clib 라벨 알림',
+        'ja' => 'Clib ラベル通知',
+        'es' => 'Notificaciones de etiquetas de Clib',
+        _ => 'Clib Label Notifications',
+      };
+      final channelDesc = switch (_langCode) {
+        'ko' => '라벨별 미읽음 아티클 알림',
+        'ja' => 'ラベルごとの未読記事通知',
+        'es' => 'Notificaciones de artículos no leídos por etiqueta',
+        _ => 'Unread article notifications by label',
+      };
 
       await _plugin.zonedSchedule(
         id,
@@ -115,11 +131,19 @@ class NotificationService {
     final stats = DatabaseService.getLabelStats(labelName);
     final unread = stats.total - stats.read;
     if (unread > 0) {
-      return _isKorean
-          ? '읽지 않은 아티클 $unread개가 있어요!'
-          : 'You have $unread unread articles!';
+      return switch (_langCode) {
+        'ko' => '읽지 않은 아티클 $unread개가 있어요!',
+        'ja' => '未読の記事が$unread件あります！',
+        'es' => '¡Tienes $unread artículos sin leer!',
+        _ => 'You have $unread unread articles!',
+      };
     }
-    return _isKorean ? '모두 읽었어요! 🎉' : 'All caught up! 🎉';
+    return switch (_langCode) {
+      'ko' => '모두 읽었어요! 🎉',
+      'ja' => '全部読みました！ 🎉',
+      'es' => '¡Todo leído! 🎉',
+      _ => 'All caught up! 🎉',
+    };
   }
 
   /// 알림 고유 ID (라벨 key * 10 + 요일)
