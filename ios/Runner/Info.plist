@@ -12,6 +12,11 @@
 		<string>en</string>
 		<string>ja</string>
 		<string>es</string>
+		<string>zh-Hans</string>
+		<string>zh-Hant</string>
+		<string>pt</string>
+		<string>fr</string>
+		<string>de</string>
 	</array>
 	<key>CFBundleDisplayName</key>
 	<string>Clib</string>

@@ -14,6 +14,10 @@ class NotificationService {
     if (locale.startsWith('ko')) return 'ko';
     if (locale.startsWith('ja')) return 'ja';
     if (locale.startsWith('es')) return 'es';
+    if (locale.startsWith('zh')) return 'zh';
+    if (locale.startsWith('pt')) return 'pt';
+    if (locale.startsWith('fr')) return 'fr';
+    if (locale.startsWith('de')) return 'de';
     return 'en';
   }
 
@@ -78,12 +82,20 @@ class NotificationService {
         'ko' => 'Clib 라벨 알림',
         'ja' => 'Clib ラベル通知',
         'es' => 'Notificaciones de etiquetas de Clib',
+        'zh' => 'Clib 标签提醒',
+        'pt' => 'Lembretes do Clib',
+        'fr' => 'Rappels Clib',
+        'de' => 'Clib-Erinnerungen',
         _ => 'Clib Label Notifications',
       };
       final channelDesc = switch (_langCode) {
         'ko' => '라벨별 미읽음 아티클 알림',
         'ja' => 'ラベルごとの未読記事通知',
         'es' => 'Notificaciones de artículos no leídos por etiqueta',
+        'zh' => '按标签提醒未读文章',
+        'pt' => 'Lembretes de artigos não lidos por etiqueta',
+        'fr' => "Rappels d'articles non lus par étiquette",
+        'de' => 'Erinnerungen an ungelesene Artikel nach Label',
         _ => 'Unread article notifications by label',
       };
 
@@ -135,6 +147,10 @@ class NotificationService {
         'ko' => '읽지 않은 아티클 $unread개가 있어요!',
         'ja' => '未読の記事が$unread件あります！',
         'es' => '¡Tienes $unread artículos sin leer!',
+        'zh' => '还有$unread篇没读，快来看看！',
+        'pt' => 'Você tem $unread artigos esperando por você!',
+        'fr' => 'Il vous reste $unread articles à lire !',
+        'de' => 'Du hast noch $unread ungelesene Artikel!',
         _ => 'You have $unread unread articles!',
       };
     }
@@ -142,6 +158,10 @@ class NotificationService {
       'ko' => '모두 읽었어요! 🎉',
       'ja' => '全部読みました！ 🎉',
       'es' => '¡Todo leído! 🎉',
+      'zh' => '全部读完了！🎉',
+      'pt' => 'Tudo lido! 🎉',
+      'fr' => 'Tout est lu ! 🎉',
+      'de' => 'Alles gelesen! 🎉',
       _ => 'All caught up! 🎉',
     };
   }
