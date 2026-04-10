@@ -426,6 +426,33 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get loginPolicyAgreement => '登录即表示你同意隐私政策。';
+
+  @override
+  String get guideSwipeTitle => '滑动阅读';
+
+  @override
+  String get guideSwipeDesc => '向右滑标记为已读，向左滑稍后再看';
+
+  @override
+  String get guideAddTitle => '也可以手动添加';
+
+  @override
+  String get guideAddDesc => '输入 URL 直接添加文章';
+
+  @override
+  String get guideLibraryTitle => '在书库中管理';
+
+  @override
+  String get guideLibraryDesc => '按标签分类查看和管理你的文章';
+
+  @override
+  String get guideSettingsTitle => '个性化设置';
+
+  @override
+  String get guideSettingsDesc => '管理标签、切换主题、设置阅读提醒';
+
+  @override
+  String get guideTapToContinue => '点击继续';
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).
@@ -850,6 +877,33 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get loginPolicyAgreement => '登录即表示你同意隐私政策。';
+
+  @override
+  String get guideSwipeTitle => '滑动阅读';
+
+  @override
+  String get guideSwipeDesc => '向右滑标记为已读，向左滑稍后再看';
+
+  @override
+  String get guideAddTitle => '也可以手动添加';
+
+  @override
+  String get guideAddDesc => '输入 URL 直接添加文章';
+
+  @override
+  String get guideLibraryTitle => '在书库中管理';
+
+  @override
+  String get guideLibraryDesc => '按标签分类查看和管理你的文章';
+
+  @override
+  String get guideSettingsTitle => '个性化设置';
+
+  @override
+  String get guideSettingsDesc => '管理标签、切换主题、设置阅读提醒';
+
+  @override
+  String get guideTapToContinue => '点击继续';
 }
 
 /// The translations for Chinese, as used in Taiwan (`zh_TW`).
@@ -1274,4 +1328,31 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get loginPolicyAgreement => '登入即表示你同意隱私權政策。';
+
+  @override
+  String get guideSwipeTitle => '滑動閱讀';
+
+  @override
+  String get guideSwipeDesc => '向右滑標記為已讀，向左滑稍後再看';
+
+  @override
+  String get guideAddTitle => '也可以手動新增';
+
+  @override
+  String get guideAddDesc => '輸入 URL 直接新增文章';
+
+  @override
+  String get guideLibraryTitle => '在書庫中管理';
+
+  @override
+  String get guideLibraryDesc => '依標籤分類查看與管理你的文章';
+
+  @override
+  String get guideSettingsTitle => '個人化設定';
+
+  @override
+  String get guideSettingsDesc => '管理標籤、切換主題、設定閱讀提醒';
+
+  @override
+  String get guideTapToContinue => '點擊繼續';
 }

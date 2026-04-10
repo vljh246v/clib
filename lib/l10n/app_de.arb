@@ -151,5 +151,15 @@
 
   "privacyPolicy": "Datenschutzrichtlinie",
   "privacyPolicySubtitle": "Datenerhebung und -verwaltung",
-  "loginPolicyAgreement": "Mit der Anmeldung stimmst du der Datenschutzrichtlinie zu."
+  "loginPolicyAgreement": "Mit der Anmeldung stimmst du der Datenschutzrichtlinie zu.",
+
+  "guideSwipeTitle": "Wischen zum Lesen",
+  "guideSwipeDesc": "Nach rechts wischen für gelesen, nach links für später",
+  "guideAddTitle": "Links manuell hinzufügen",
+  "guideAddDesc": "Gib eine URL ein, um einen Artikel direkt hinzuzufügen",
+  "guideLibraryTitle": "Deine Bibliothek verwalten",
+  "guideLibraryDesc": "Artikel nach Labels sortiert durchstöbern und verwalten",
+  "guideSettingsTitle": "Einstellungen anpassen",
+  "guideSettingsDesc": "Labels verwalten, Design wechseln und Lese-Erinnerungen einrichten",
+  "guideTapToContinue": "Tippen zum Fortfahren"
 }

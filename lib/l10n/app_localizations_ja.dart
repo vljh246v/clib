@@ -426,4 +426,31 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get loginPolicyAgreement => 'サインインすると、プライバシーポリシーに同意したことになります。';
+
+  @override
+  String get guideSwipeTitle => 'スワイプで読もう';
+
+  @override
+  String get guideSwipeDesc => '右にスワイプで既読、左にスワイプであとで読む';
+
+  @override
+  String get guideAddTitle => '手動で追加もできます';
+
+  @override
+  String get guideAddDesc => 'URLを入力して記事を直接追加しましょう';
+
+  @override
+  String get guideLibraryTitle => 'ライブラリで管理';
+
+  @override
+  String get guideLibraryDesc => 'ラベルごとに整理された記事を確認・管理できます';
+
+  @override
+  String get guideSettingsTitle => '設定をカスタマイズ';
+
+  @override
+  String get guideSettingsDesc => 'ラベル管理、テーマ変更、リーディング通知を設定しましょう';
+
+  @override
+  String get guideTapToContinue => 'タップして続ける';
 }

@@ -151,5 +151,15 @@
 
   "privacyPolicy": "Política de privacidad",
   "privacyPolicySubtitle": "Recopilación y gestión de datos",
-  "loginPolicyAgreement": "Al iniciar sesión, aceptas la Política de privacidad."
+  "loginPolicyAgreement": "Al iniciar sesión, aceptas la Política de privacidad.",
+
+  "guideSwipeTitle": "Desliza para leer",
+  "guideSwipeDesc": "Desliza a la derecha para marcar como leído, a la izquierda para después",
+  "guideAddTitle": "También puedes añadir enlaces",
+  "guideAddDesc": "Introduce una URL para añadir un artículo directamente",
+  "guideLibraryTitle": "Gestiona tu biblioteca",
+  "guideLibraryDesc": "Consulta y organiza tus artículos por etiqueta",
+  "guideSettingsTitle": "Ajusta a tu gusto",
+  "guideSettingsDesc": "Gestiona etiquetas, cambia el tema y configura recordatorios",
+  "guideTapToContinue": "Toca para continuar"
 }

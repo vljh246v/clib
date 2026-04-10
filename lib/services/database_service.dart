@@ -50,6 +50,14 @@ class DatabaseService {
     await _prefsBox.put('hasSeenOnboarding', true);
   }
 
+  // 홈 오버레이 가이드 완료 여부
+  static bool get hasSeenHomeGuide =>
+      _prefsBox.get('hasSeenHomeGuide', defaultValue: false) as bool;
+
+  static Future<void> setHomeGuideComplete() async {
+    await _prefsBox.put('hasSeenHomeGuide', true);
+  }
+
   // 테마 모드 저장/로드 (0=system, 1=light, 2=dark)
   static ThemeMode get savedThemeMode {
     final v = _prefsBox.get('themeMode', defaultValue: 0) as int;

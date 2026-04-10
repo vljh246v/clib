@@ -885,6 +885,60 @@ abstract class AppLocalizations {
   /// In ko, this message translates to:
   /// **'로그인 시 개인정보 처리방침에 동의합니다.'**
   String get loginPolicyAgreement;
+
+  /// No description provided for @guideSwipeTitle.
+  ///
+  /// In ko, this message translates to:
+  /// **'스와이프로 읽으세요'**
+  String get guideSwipeTitle;
+
+  /// No description provided for @guideSwipeDesc.
+  ///
+  /// In ko, this message translates to:
+  /// **'오른쪽으로 넘기면 읽음, 왼쪽으로 넘기면 나중에'**
+  String get guideSwipeDesc;
+
+  /// No description provided for @guideAddTitle.
+  ///
+  /// In ko, this message translates to:
+  /// **'직접 추가할 수도 있어요'**
+  String get guideAddTitle;
+
+  /// No description provided for @guideAddDesc.
+  ///
+  /// In ko, this message translates to:
+  /// **'URL을 입력해서 아티클을 직접 추가하세요'**
+  String get guideAddDesc;
+
+  /// No description provided for @guideLibraryTitle.
+  ///
+  /// In ko, this message translates to:
+  /// **'보관함에서 관리하세요'**
+  String get guideLibraryTitle;
+
+  /// No description provided for @guideLibraryDesc.
+  ///
+  /// In ko, this message translates to:
+  /// **'라벨별로 정리된 아티클을 확인하고 관리하세요'**
+  String get guideLibraryDesc;
+
+  /// No description provided for @guideSettingsTitle.
+  ///
+  /// In ko, this message translates to:
+  /// **'설정을 맞춰보세요'**
+  String get guideSettingsTitle;
+
+  /// No description provided for @guideSettingsDesc.
+  ///
+  /// In ko, this message translates to:
+  /// **'라벨 관리, 테마 변경, 읽기 알림을 설정하세요'**
+  String get guideSettingsDesc;
+
+  /// No description provided for @guideTapToContinue.
+  ///
+  /// In ko, this message translates to:
+  /// **'탭하여 계속'**
+  String get guideTapToContinue;
 }
 
 class _AppLocalizationsDelegate

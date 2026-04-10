@@ -151,5 +151,15 @@
 
   "privacyPolicy": "隐私政策",
   "privacyPolicySubtitle": "数据收集与管理",
-  "loginPolicyAgreement": "登录即表示你同意隐私政策。"
+  "loginPolicyAgreement": "登录即表示你同意隐私政策。",
+
+  "guideSwipeTitle": "滑动阅读",
+  "guideSwipeDesc": "向右滑标记为已读，向左滑稍后再看",
+  "guideAddTitle": "也可以手动添加",
+  "guideAddDesc": "输入 URL 直接添加文章",
+  "guideLibraryTitle": "在书库中管理",
+  "guideLibraryDesc": "按标签分类查看和管理你的文章",
+  "guideSettingsTitle": "个性化设置",
+  "guideSettingsDesc": "管理标签、切换主题、设置阅读提醒",
+  "guideTapToContinue": "点击继续"
 }

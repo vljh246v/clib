@@ -442,4 +442,35 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get loginPolicyAgreement =>
       'En vous connectant, vous acceptez la politique de confidentialité.';
+
+  @override
+  String get guideSwipeTitle => 'Glissez pour lire';
+
+  @override
+  String get guideSwipeDesc =>
+      'Glissez à droite pour marquer comme lu, à gauche pour plus tard';
+
+  @override
+  String get guideAddTitle => 'Ajoutez des liens manuellement';
+
+  @override
+  String get guideAddDesc =>
+      'Saisissez une URL pour ajouter un article directement';
+
+  @override
+  String get guideLibraryTitle => 'Gérez votre bibliothèque';
+
+  @override
+  String get guideLibraryDesc =>
+      'Consultez et organisez vos articles par étiquette';
+
+  @override
+  String get guideSettingsTitle => 'Personnalisez vos réglages';
+
+  @override
+  String get guideSettingsDesc =>
+      'Gérez les étiquettes, changez le thème et configurez les rappels';
+
+  @override
+  String get guideTapToContinue => 'Appuyez pour continuer';
 }

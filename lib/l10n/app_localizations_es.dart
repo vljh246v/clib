@@ -441,4 +441,35 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get loginPolicyAgreement =>
       'Al iniciar sesión, aceptas la Política de privacidad.';
+
+  @override
+  String get guideSwipeTitle => 'Desliza para leer';
+
+  @override
+  String get guideSwipeDesc =>
+      'Desliza a la derecha para marcar como leído, a la izquierda para después';
+
+  @override
+  String get guideAddTitle => 'También puedes añadir enlaces';
+
+  @override
+  String get guideAddDesc =>
+      'Introduce una URL para añadir un artículo directamente';
+
+  @override
+  String get guideLibraryTitle => 'Gestiona tu biblioteca';
+
+  @override
+  String get guideLibraryDesc =>
+      'Consulta y organiza tus artículos por etiqueta';
+
+  @override
+  String get guideSettingsTitle => 'Ajusta a tu gusto';
+
+  @override
+  String get guideSettingsDesc =>
+      'Gestiona etiquetas, cambia el tema y configura recordatorios';
+
+  @override
+  String get guideTapToContinue => 'Toca para continuar';
 }

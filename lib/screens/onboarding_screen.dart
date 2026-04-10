@@ -41,7 +41,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
     if (mounted) {
       if (widget.isGuideMode) {
-        Navigator.pop(context);
+        Navigator.pop(context, true);
       } else {
         Navigator.pushReplacementNamed(context, '/main');
       }

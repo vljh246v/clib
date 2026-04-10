@@ -151,5 +151,15 @@
 
   "privacyPolicy": "プライバシーポリシー",
   "privacyPolicySubtitle": "データの収集と管理",
-  "loginPolicyAgreement": "サインインすると、プライバシーポリシーに同意したことになります。"
+  "loginPolicyAgreement": "サインインすると、プライバシーポリシーに同意したことになります。",
+
+  "guideSwipeTitle": "スワイプで読もう",
+  "guideSwipeDesc": "右にスワイプで既読、左にスワイプであとで読む",
+  "guideAddTitle": "手動で追加もできます",
+  "guideAddDesc": "URLを入力して記事を直接追加しましょう",
+  "guideLibraryTitle": "ライブラリで管理",
+  "guideLibraryDesc": "ラベルごとに整理された記事を確認・管理できます",
+  "guideSettingsTitle": "設定をカスタマイズ",
+  "guideSettingsDesc": "ラベル管理、テーマ変更、リーディング通知を設定しましょう",
+  "guideTapToContinue": "タップして続ける"
 }
