@@ -17,6 +17,7 @@ import 'package:clib/theme/app_theme.dart';
 import 'package:clib/theme/design_tokens.dart';
 import 'package:clib/screens/onboarding_screen.dart';
 import 'package:clib/widgets/share_label_sheet.dart';
+import 'package:clib/widgets/home_overlay_guide.dart';
 
 /// 앱 전역 테마 모드
 final themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
@@ -106,18 +107,31 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
+  bool _showOverlayGuide = false;
 
-  final _screens = [
-    const HomeScreen(),
-    const LibraryScreen(),
-    const SettingsScreen(),
-  ];
+  // 오버레이 가이드용 GlobalKey
+  final _cardAreaKey = GlobalKey();
+  final _addButtonKey = GlobalKey();
+  final _libraryNavKey = GlobalKey();
+  final _settingsNavKey = GlobalKey();
+
+  late final List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
+    _screens = [
+      HomeScreen(cardAreaKey: _cardAreaKey, addButtonKey: _addButtonKey),
+      const LibraryScreen(),
+      SettingsScreen(onShowGuide: _showGuideFromSettings),
+    ];
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkPendingShares());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPendingShares();
+      if (!DatabaseService.hasSeenHomeGuide) {
+        setState(() => _showOverlayGuide = true);
+      }
+    });
   }
 
   @override
@@ -131,6 +145,14 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       _checkPendingShares();
     }
+  }
+
+  void _showGuideFromSettings() {
+    setState(() => _currentIndex = 0);
+    // 홈 탭 레이아웃 완료 후 오버레이 표시
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _showOverlayGuide = true);
+    });
   }
 
   Future<void> _checkPendingShares() async {
@@ -151,41 +173,57 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      body: SafeArea(
-        child: _screens[_currentIndex],
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: Radii.borderFull,
-            boxShadow: AppShadows.navigation(isDark),
+    return Stack(
+      children: [
+        Scaffold(
+          body: SafeArea(
+            child: _screens[_currentIndex],
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _NavItem(
-                icon: Icons.layers_rounded,
-                selected: _currentIndex == 0,
-                onTap: () => setState(() => _currentIndex = 0),
+          bottomNavigationBar: SafeArea(
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: Radii.borderFull,
+                boxShadow: AppShadows.navigation(isDark),
               ),
-              _NavItem(
-                icon: Icons.grid_view_rounded,
-                selected: _currentIndex == 1,
-                onTap: () => setState(() => _currentIndex = 1),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _NavItem(
+                    icon: Icons.layers_rounded,
+                    selected: _currentIndex == 0,
+                    onTap: () => setState(() => _currentIndex = 0),
+                  ),
+                  _NavItem(
+                    key: _libraryNavKey,
+                    icon: Icons.grid_view_rounded,
+                    selected: _currentIndex == 1,
+                    onTap: () => setState(() => _currentIndex = 1),
+                  ),
+                  _NavItem(
+                    key: _settingsNavKey,
+                    icon: Icons.settings_rounded,
+                    selected: _currentIndex == 2,
+                    onTap: () => setState(() => _currentIndex = 2),
+                  ),
+                ],
               ),
-              _NavItem(
-                icon: Icons.settings_rounded,
-                selected: _currentIndex == 2,
-                onTap: () => setState(() => _currentIndex = 2),
-              ),
-            ],
+            ),
           ),
         ),
-      ),
+        if (_showOverlayGuide)
+          HomeOverlayGuide(
+            targetKeys: [
+              _cardAreaKey,
+              _addButtonKey,
+              _libraryNavKey,
+              _settingsNavKey,
+            ],
+            onComplete: () => setState(() => _showOverlayGuide = false),
+          ),
+      ],
     );
   }
 }
@@ -196,6 +234,7 @@ class _NavItem extends StatelessWidget {
   final VoidCallback onTap;
 
   const _NavItem({
+    super.key,
     required this.icon,
     required this.selected,
     required this.onTap,

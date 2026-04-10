@@ -428,4 +428,31 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get loginPolicyAgreement => '로그인 시 개인정보 처리방침에 동의합니다.';
+
+  @override
+  String get guideSwipeTitle => '스와이프로 읽으세요';
+
+  @override
+  String get guideSwipeDesc => '오른쪽으로 넘기면 읽음, 왼쪽으로 넘기면 나중에';
+
+  @override
+  String get guideAddTitle => '직접 추가할 수도 있어요';
+
+  @override
+  String get guideAddDesc => 'URL을 입력해서 아티클을 직접 추가하세요';
+
+  @override
+  String get guideLibraryTitle => '보관함에서 관리하세요';
+
+  @override
+  String get guideLibraryDesc => '라벨별로 정리된 아티클을 확인하고 관리하세요';
+
+  @override
+  String get guideSettingsTitle => '설정을 맞춰보세요';
+
+  @override
+  String get guideSettingsDesc => '라벨 관리, 테마 변경, 읽기 알림을 설정하세요';
+
+  @override
+  String get guideTapToContinue => '탭하여 계속';
 }

@@ -14,7 +14,11 @@ import 'package:clib/widgets/add_article_sheet.dart';
 import 'package:clib/widgets/swipe_ad_card.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  /// MainScreen에서 오버레이 가이드에 사용할 GlobalKey
+  final GlobalKey? cardAreaKey;
+  final GlobalKey? addButtonKey;
+
+  const HomeScreen({super.key, this.cardAreaKey, this.addButtonKey});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -325,43 +329,41 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyContent() {
     final theme = Theme.of(context);
     final l = AppLocalizations.of(context)!;
-    return Expanded(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.xxxl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: theme.colorScheme.secondary.withValues(alpha: 0.06),
-                ),
-                child: Icon(
-                  Icons.inbox_outlined,
-                  size: 56,
-                  color: theme.colorScheme.secondary.withValues(alpha: 0.4),
-                ),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.xxxl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: theme.colorScheme.secondary.withValues(alpha: 0.06),
               ),
-              const SizedBox(height: Spacing.xl),
-              Text(
-                l.noArticlesToSwipe,
-                style: theme.textTheme.titleSmall,
+              child: Icon(
+                Icons.inbox_outlined,
+                size: 56,
+                color: theme.colorScheme.secondary.withValues(alpha: 0.4),
               ),
-              const SizedBox(height: Spacing.sm),
-              Text(
-                _selectedLabels.isEmpty
-                    ? l.addLinksHint
-                    : l.noUnreadInLabel,
-                style: theme.textTheme.bodySmall,
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: Spacing.xl),
+            Text(
+              l.noArticlesToSwipe,
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: Spacing.sm),
+            Text(
+              _selectedLabels.isEmpty
+                  ? l.addLinksHint
+                  : l.noUnreadInLabel,
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
         ),
       ),
     );
@@ -492,6 +494,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const Spacer(),
               GestureDetector(
+                key: widget.addButtonKey,
                 onTap: () => AddArticleSheet.show(context),
                 child: Container(
                   width: 28,
@@ -511,10 +514,16 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        if (_articles.isEmpty) _buildEmptyState(),
+        if (_articles.isEmpty) Expanded(
+          child: Container(
+            key: widget.cardAreaKey,
+            child: _buildEmptyContent(),
+          ),
+        ),
         // 카드 스택
         if (_articles.isNotEmpty) Expanded(
           child: Stack(
+            key: widget.cardAreaKey,
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),

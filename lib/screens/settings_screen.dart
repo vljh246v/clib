@@ -10,7 +10,9 @@ import 'package:clib/main.dart';
 import 'package:clib/theme/design_tokens.dart';
 
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+  final VoidCallback? onShowGuide;
+
+  const SettingsScreen({super.key, this.onShowGuide});
 
   @override
   Widget build(BuildContext context) {
@@ -89,12 +91,18 @@ class SettingsScreen extends StatelessWidget {
                 iconColor: theme.colorScheme.secondary,
                 title: l.howToUse,
                 subtitle: l.howToUseSubtitle,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) =>
-                          const OnboardingScreen(isGuideMode: true)),
-                ),
+                onTap: () {
+                  Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) =>
+                            const OnboardingScreen(isGuideMode: true)),
+                  ).then((completed) {
+                    if (completed == true) {
+                      onShowGuide?.call();
+                    }
+                  });
+                },
               ),
               Divider(
                   height: 1,

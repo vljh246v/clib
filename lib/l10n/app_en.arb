@@ -151,5 +151,15 @@
 
   "privacyPolicy": "Privacy Policy",
   "privacyPolicySubtitle": "Data collection and management",
-  "loginPolicyAgreement": "By signing in, you agree to the Privacy Policy."
+  "loginPolicyAgreement": "By signing in, you agree to the Privacy Policy.",
+
+  "guideSwipeTitle": "Swipe to Read",
+  "guideSwipeDesc": "Swipe right to mark as read, left for later",
+  "guideAddTitle": "Add Links Manually",
+  "guideAddDesc": "Tap here to add an article by entering its URL",
+  "guideLibraryTitle": "Check Your Library",
+  "guideLibraryDesc": "Browse and manage articles organized by label",
+  "guideSettingsTitle": "Customize Settings",
+  "guideSettingsDesc": "Manage labels, switch themes, and set reading reminders",
+  "guideTapToContinue": "Tap to continue"
 }
