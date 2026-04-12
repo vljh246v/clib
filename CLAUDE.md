@@ -2,374 +2,190 @@
 
 > 저장만 하던 습관에서 읽는 습관으로, 스와이프 지식 도서관
 
-## 프로젝트 개요
+링크를 저장만 하고 읽지 않는 습관을 개선하는 모바일 앱. 스와이프 카드 UI + 주간 로컬 푸시로 재방문을 유도한다.
 
-Clib은 링크를 저장만 하고 읽지 않는 습관을 개선하기 위한 모바일 앱이다. 스와이프 기반의 카드 UI로 콘텐츠 소비를 게임화하고, 로컬 푸시 알림으로 재방문을 유도한다.
+- **Local-first**: 회원가입 없이 Hive 로컬 DB 동작. Firebase 로그인 시 선택적 클라우드 동기화.
+- **핵심 가치**: 무마찰 수집 / 게임화된 소비 / 능동적 재방문
 
-- 핵심 가치: 무마찰 수집(Zero-friction Scraping), 게임화된 소비(Swiping), 능동적 재방문(Scheduled Push)
-- Local-first: 회원가입 없음, 모든 데이터는 기기 내부 Hive DB에 저장, 서버 의존성 없음
+## Quick Start
+
+```bash
+flutter pub get
+cd ios && pod install && cd ..
+dart run build_runner build --delete-conflicting-outputs   # 모델 변경 시
+flutter gen-l10n                                            # ARB 변경 시 (l10n.yaml 기반)
+flutter analyze                                             # warning/error 0 유지
+flutter test                                                # widget_test
+flutter run                                                 # 디버그
+flutter run --release                                       # 릴리즈 빌드 실기기 확인 필수
+```
 
 ## 기술 스택
 
-| 패키지 | 버전 | 목적 |
-|--------|------|------|
-| hive / hive_flutter | ^2.2.3 / ^1.1.0 | 로컬 DB |
-| flutter_local_notifications | ^18.0.0 | 로컬 푸시 알림 |
-| flutter_card_swiper | ^7.0.0 | 카드 스와이프 UI |
-| http / html | ^1.2.0 / ^0.15.0 | OG 메타데이터 스크래핑 |
-| url_launcher | ^6.2.0 | 외부 링크 열기 |
-| timezone | ^0.10.0 | 주간 알림 스케줄 |
-| flutter_localizations (SDK) | — | 다국어 지원 (i18n) |
-| intl | any | ICU 메시지 포맷 |
-| google_mobile_ads | ^7.0.0 | AdMob 광고 (네이티브) |
-
-코드 생성: `hive_generator` + `build_runner` → `*.g.dart` 자동 생성
+| 영역 | 패키지 |
+|------|-------|
+| 로컬 DB | `hive` ^2.2.3, `hive_flutter` ^1.1.0 (+ `hive_generator` 코드 생성) |
+| 클라우드 동기화 | `firebase_core` ^3.13, `firebase_auth` ^5.5, `cloud_firestore` ^5.6, `google_sign_in` ^6.2 |
+| 알림 | `flutter_local_notifications` ^18, `timezone` ^0.10, `flutter_timezone` ^5 |
+| UI | `flutter_card_swiper` ^7, `url_launcher` ^6.2, `google_mobile_ads` ^7 |
+| 스크래핑 | `http` ^1.2, `html` ^0.15 |
+| i18n | `flutter_localizations` (SDK) + `intl`, Flutter 공식 gen-l10n |
 
 ## 프로젝트 구조
 
 ```
 lib/
-├── main.dart                        # 앱 진입점, 전역 notifier
-├── l10n/
-│   ├── app_ko.arb                   # 한국어 문자열 (템플릿)
-│   ├── app_en.arb                   # 영어 문자열
-│   ├── app_localizations.dart       # gen-l10n 자동 생성
-│   ├── app_localizations_ko.dart    # gen-l10n 자동 생성
-│   └── app_localizations_en.dart    # gen-l10n 자동 생성
-├── models/
-│   ├── article.dart / .g.dart       # Article HiveObject (typeId: 0)
-│   ├── label.dart / .g.dart         # Label HiveObject (typeId: 2)
-│   └── platform_meta.dart           # 플랫폼별 아이콘/라벨
-├── services/
-│   ├── database_service.dart        # Hive CRUD, 통계 조회, preferences
-│   ├── notification_service.dart    # 주간 로컬 알림 스케줄
-│   ├── share_service.dart           # OS 공유 수신 (Android/iOS)
-│   ├── scraping_service.dart        # OG 메타 스크래핑
-│   └── ad_service.dart              # AdMob 초기화, 광고 단위 ID 관리
-├── screens/
-│   ├── home_screen.dart             # 스와이프 카드 UI
-│   ├── library_screen.dart          # 보관함 2열 그리드
-│   ├── all_articles_screen.dart     # 전체 아티클 목록 + 다중선택
-│   ├── bookmarked_articles_screen.dart # 북마크된 아티클 목록 + 다중선택
-│   ├── label_detail_screen.dart     # 라벨별 아티클 목록 + 다중선택
-│   ├── label_management_screen.dart # 라벨 CRUD + 알림 설정
-│   ├── onboarding_screen.dart       # 온보딩 + 사용 방법 가이드
-│   ├── settings_screen.dart         # 설정 (라벨 관리, 테마, 사용 방법)
-│   └── theme_settings_screen.dart   # 다크/라이트/시스템 선택
-├── widgets/
-│   ├── article_card.dart            # 스와이프용 아티클 카드
-│   ├── swipe_ad_card.dart           # 스와이프 덱용 네이티브 광고 카드
-│   ├── inline_banner_ad.dart        # 리스트 인피드 네이티브 광고
-│   ├── label_edit_sheet.dart        # 라벨 수정 바텀시트
-│   └── share_label_sheet.dart       # Android 공유 시 라벨 선택
-└── theme/
-    ├── app_theme.dart               # AppTheme.light() / AppTheme.dark()
-    └── design_tokens.dart           # Spacing, Radii, AppShadows, AppDurations, LabelColors
+├── main.dart                  # 앱 진입점, 전역 ValueNotifier
+├── l10n/                      # app_{ko,en,de,es,fr,ja,pt,zh,zh_CN,zh_TW}.arb + 자동 생성
+├── models/                    # Article, Label (Hive), platform_meta
+├── services/                  # 아래 "서비스 계층" 참조
+├── screens/                   # home, library, all_articles, bookmarked_articles,
+│                              # label_detail, label_management, onboarding, settings, theme_settings
+├── widgets/                   # article_card, swipe_ad_card, inline_banner_ad,
+│                              # label_edit_sheet, share_label_sheet,
+│                              # add_article_sheet, home_overlay_guide
+└── theme/                     # app_theme(Light/Dark), design_tokens
 ```
 
 ## 데이터 모델
 
+모델 변경 시 **반드시** `dart run build_runner build --delete-conflicting-outputs` 실행. `HiveField` 번호는 **재사용 금지**(추가만 가능).
+
 ### Article (`typeId: 0`)
 
-| 필드 | 타입 | HiveField |
-|------|------|-----------|
-| url | String | 0 |
-| title | String | 1 |
-| thumbnailUrl | String? | 2 |
-| platform | Platform (enum) | 3 |
-| topicLabels | List\<String\> | 4 |
-| isRead | bool | 5 |
-| createdAt | DateTime | 6 |
-| isBookmarked | bool | 7 (기본 false) |
-| memo | String? | 8 (최대 100자 한줄 메모) |
+| HiveField | 필드 | 타입 |
+|---|---|---|
+| 0 | url | String |
+| 1 | title | String |
+| 2 | thumbnailUrl | String? |
+| 3 | platform | Platform (enum) |
+| 4 | topicLabels | List\<String\> |
+| 5 | isRead | bool |
+| 6 | createdAt | DateTime |
+| 7 | isBookmarked | bool (default false) |
+| 8 | memo | String? (한 줄, 최대 100자) |
+| 9 | firestoreId | String? (동기화 식별자) |
+| 10 | updatedAt | DateTime? |
+| 11 | deletedAt | DateTime? (tombstone) |
 
-`Platform` enum: `youtube, instagram, blog, x, tiktok, facebook, linkedin, github, reddit, threads, naverBlog, etc`  
-`classifyPlatform(String url)` — URL 호스트 기반 자동 분류
+`Platform` enum: `youtube, instagram, blog, x, tiktok, facebook, linkedin, github, reddit, threads, naverBlog, etc`. `classifyPlatform(url)`로 URL 호스트 기반 자동 분류.
 
 ### Label (`typeId: 2`)
 
-| 필드 | 타입 | HiveField |
-|------|------|-----------|
-| name | String | 0 |
-| colorValue | int | 1 (Color.value) |
-| createdAt | DateTime | 2 |
-| notificationEnabled | bool | 3 (기본 false) |
-| notificationDays | List\<int\> | 4 (0=월 ~ 6=일) |
-| notificationTime | String | 5 ("HH:mm", 기본 "09:00") |
-
-모델 변경 시 반드시 `dart run build_runner build` 실행
+| HiveField | 필드 | 비고 |
+|---|---|---|
+| 0 | name | |
+| 1 | colorValue | int (Color.value) |
+| 2 | createdAt | |
+| 3 | notificationEnabled | bool (default false) |
+| 4 | notificationDays | List\<int\> (0=월 ~ 6=일) |
+| 5 | notificationTime | "HH:mm" (default "09:00") |
 
 ## 서비스 계층
 
-### DatabaseService
+Hive Boxes: `articles`, `labels`, `preferences` (동적 key-value).
 
-Hive Boxes: `articles` (Article), `labels` (Label), `preferences` (동적 key-value)
-
-- `getAllArticles()` — 최신순 정렬
-- `getUnreadArticles()` — 홈 스와이프용
-- `getArticlesByLabel(String label)`
-- `saveArticle()`, `deleteArticle()`, `markAsRead()`, `markAsUnread()`
-- `toggleBookmark()` — 북마크 토글
-- `updateMemo(article, memo)` — 메모 업데이트 (빈 문자열은 null로 변환)
-- `getBookmarkedArticles()` — 북마크된 아티클 최신순
-- `getBookmarkStats()` — 북마크 통계 `(total, read)`
-- `getAllLabels()`, `getAllLabelObjects()`, `getLabelStats(String label)`, `getOverallStats()`
-- `createLabel()`, `updateLabel()` — 이름 변경 시 아티클 일괄 업데이트
-- `deleteLabel()`
-- `updateLabelNotification()`, `getLabelsWithNotification()`
-- `syncLabelsToAppGroup()` — iOS App Group UserDefaults에 라벨 JSON 동기화
-- `hasSeenOnboarding` (getter) — 온보딩 완료 여부 (preferences box)
-- `setOnboardingComplete()` — 온보딩 완료 플래그 저장
-- `savedThemeMode` (getter) — 저장된 테마 모드 (0=system, 1=light, 2=dark)
-- `saveThemeMode(ThemeMode)` — 테마 선택 Hive 영구 저장
-
-### NotificationService
-
-- `init()` — Android/iOS 알림 채널 초기화
-- `requestPermission()` — 알림 권한 요청
-- `scheduleForLabel(Label label)` — 요일별 weekly 반복 알림 등록
-- `cancelForLabel(Label label)` — 특정 라벨 알림 취소
-- `rescheduleAll()` — 앱 시작 시 모든 활성 라벨 알림 재등록
-- 알림 ID 계산: `label.key * 10 + dayOfWeek`
-- 알림 메시지: 로케일에 따라 한국어/영어 자동 전환 (`Platform.localeName` 기반)
-- 한국어: `"읽지 않은 아티클 N개가 있어요!"` / `"모두 읽었어요! 🎉"`
-- 영어: `"You have N unread articles!"` / `"All caught up! 🎉"`
-
-### ShareService
-
-- **Android**: MethodChannel `com.jaehyun.clib/share` → Intent 텍스트 수신 → URL 정규식 추출
-- **iOS**: App Group UserDefaults에서 JSON `{"url":"...", "labels":[...], "newLabels":[...]}` 파싱
-- `processAndSave(url, labels)` — 스크래핑 후 저장, `articlesChangedNotifier.value++`로 홈화면 갱신
-
-### AdService
-
-- `initialize()` — `MobileAds.instance.initialize()`, 앱 시작 시 `main()`에서 호출
-- `bannerAdUnitId` — 배너 광고 단위 ID (debug: Google 테스트 ID, release: 프로덕션 ID)
-- `nativeAdUnitId` — 네이티브 광고 단위 ID (debug/release 분리)
-- 테스트 광고 ID (debug):
-  - iOS 네이티브: `ca-app-pub-3940256099942544/3986624511`
-  - Android 네이티브: `ca-app-pub-3940256099942544/2247696110`
-- 네이티브 광고는 `NativeTemplateStyle(TemplateType.medium)` 사용 (Flutter 측 렌더링, iOS 네이티브 코드 불필요)
-
-### ScrapingService
-
-- HTTP GET (User-Agent: iPhone Safari)
-- `response.bodyBytes` + charset 감지 디코딩 (UTF-8 기본, `Content-Type` 헤더 charset 참조)
-- `utf8.decode(allowMalformed: true)`로 멀티바이트 문자 깨짐 방지
-- `og:title`, `og:image`, `og:description` 추출
-- Fallback: `<title>` → URL 자체
+| 서비스 | 역할 |
+|--------|------|
+| **DatabaseService** | Hive CRUD, 통계, 테마/온보딩 preferences, 북마크/메모, 라벨 정규화. `skipSync` 플래그로 동기화 억제 가능 |
+| **NotificationService** | 주간 weekly 반복 알림. ID = `label.key * 10 + dayOfWeek`. 메시지는 `Platform.localeName` 기반 다국어 |
+| **ShareService** | Android: MethodChannel `com.jaehyun.clib/share`. iOS: App Group `group.com.jaehyun.clib.share` UserDefaults. `processAndSave()`가 스크래핑 후 저장하고 `articlesChangedNotifier.value++` |
+| **ScrapingService** | HTTP(User-Agent: iPhone Safari) + charset 감지 디코딩(`utf8.decode(allowMalformed: true)`). `og:title/image/description` → `<title>` → URL fallback |
+| **AdService** | AdMob 초기화. debug는 Google 테스트 ID, release는 프로덕션. 네이티브는 `NativeTemplateStyle(TemplateType.medium)` Flutter 렌더링 |
+| **AuthService** | Firebase Auth + Google Sign-In. 로그인/로그아웃/탈퇴 |
+| **FirestoreService** | `users/{uid}/articles`, `users/{uid}/labels` 컬렉션 맵핑. 서버 타임스탬프 사용 |
+| **SyncService** | 로그인 시 snapshot listener → 로컬↔리모트 머지. 동시 스냅샷은 pending 버퍼에 큐잉. tombstone(`deletedAt`)으로 삭제 전파 |
+| **DemoDataService** | 앱스토어 스크린샷용 시드 데이터. 기존 데이터가 있으면 미실행 |
 
 ## 전역 상태 (`lib/main.dart`)
 
 ```dart
 final themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
-final articlesChangedNotifier = ValueNotifier<int>(0); // 아티클 추가/삭제 시 increment
+final articlesChangedNotifier = ValueNotifier<int>(0); // 아티클 변경 시 increment
 ```
 
-- `main()`에서 `DatabaseService.savedThemeMode`로 저장된 테마를 `themeModeNotifier`에 적용 (앱 재시작 후에도 유지)
-- `ThemeSettingsScreen`에서 선택 변경 시 `DatabaseService.saveThemeMode()` 즉시 호출
-- `ClibApp`은 `localizationsDelegates` + `supportedLocales` 설정으로 다국어 지원
-- `ClibApp`은 `DatabaseService.hasSeenOnboarding`으로 초기 화면 분기 (온보딩 or 메인)
-- Named route: `/main` → `MainScreen`
-- `MainScreen`은 `WidgetsBindingObserver`를 구현해 `AppLifecycleState.resumed` 시 `_checkPendingShares()` 호출
-- Android: `ShareLabelSheet.show()` 표시 → 사용자가 라벨 선택 후 저장
-- iOS: `ShareService.checkPendingShares()` 자동 처리
+- `main()`에서 Firebase 초기화 → `DatabaseService.init()` → `themeModeNotifier`에 저장 테마 적용 → `AdService.initialize()`.
+- `ClibApp`은 `hasSeenOnboarding`으로 초기 화면 분기(Onboarding ↔ MainScreen).
+- `MainScreen`은 `WidgetsBindingObserver`로 `AppLifecycleState.resumed` 시 `_checkPendingShares()` 호출.
+  - Android: `ShareLabelSheet` 표시 후 저장 / iOS: `ShareService.checkPendingShares()` 자동.
+- **아티클/라벨 CRUD는 반드시 `DatabaseService`를 경유**해야 `articlesChangedNotifier` 트리거와 Firestore 동기화가 동작한다.
 
-## 화면별 주요 사항
+## 화면별 주요 로직
 
-### HomeScreen
-
-- `CardSwiper(isLoop: true)` — 덱 형태 카드 스택 (`backCardOffset: Offset(0, 36)`, `scale: 0.95`)
-- 오른쪽 스와이프 → `DatabaseService.markAsRead()` + `addPostFrameCallback(_loadArticles)`
-- 왼쪽 스와이프 → 나중에 (스택 아래로 이동)
-- 스와이프 중 카드 테두리: 오른쪽 `AppColors.swipeRead` (Sage Green), 왼쪽 `AppColors.swipeSkip` (Muted Rose)
-- `_loadArticles()`: 컨트롤러 교체 시 `_pendingDispose` 리스트에 모아둔 뒤 `addPostFrameCallback`에서 일괄 dispose (try-catch로 이중 dispose 방지)
-- 아티클 탭 → 외부 브라우저 오픈, 롱프레스 → 통합 액션 시트 (북마크/메모/라벨편집/브라우저)
-- 라벨 필터: 가로 스크롤 칩 + 확장 버튼 → `ConstrainedBox(maxHeight: 160)` + `SingleChildScrollView`로 스크롤 가능한 그리드
-- 인피드 광고: 8개 아티클마다 `SwipeAdCard` (네이티브 광고) 1장 삽입, 광고 카드 스와이프 시 읽음 처리 없이 통과
-
-### LibraryScreen
-
-- 2열 GridView, index 0 = "전체" 카드, index 1 = "북마크" 카드, 이후 라벨 카드
-- 북마크 카드: `Icons.bookmark_rounded` 아이콘 + 전체/안읽음 뱃지 → `BookmarkedArticlesScreen`
-- 라벨 카드: 원형 프로그레스바에 퍼센트 표시 + `_statBadge`로 전체/안읽음 수치 뱃지
-
-### AllArticlesScreen / LabelDetailScreen
-
-세 화면 모두 동일한 인터랙션 패턴 (`BookmarkedArticlesScreen` 포함):
-- 인피드 광고: 8개 아티클마다 `InlineBannerAd` (네이티브 광고) 1개 삽입, 카드와 동일한 스타일링 (`Radii.borderLg`, `AppShadows.card`)
-- 행 탭 → 아티클을 외부 브라우저에서 열기 (1차 액션)
-- 행 롱프레스 → 바텀시트 (북마크 토글, 메모 추가/편집, 읽음/안읽음 변경, 브라우저 열기, 삭제)
-- 메타 줄 표시: 읽음 시 `secondary` 색 체크 아이콘 + 북마크 시 `secondary` 색 북마크 아이콘
-- 메모 표시: 메타 줄 아래 이탤릭 한 줄 텍스트 (`onSurfaceVariant` 70% alpha)
-- 다중선택: `_isSelecting` + `Set<dynamic> _selectedKeys` (Hive `article.key`)
-- 탭 전환 시 `_selectedKeys.clear()`
-- AppBar: 일반 모드(checklist 아이콘) / 선택 모드(개수 + 전체선택 체크박스 + 취소)
-- 하단 바 (선택 시): 1행 북마크 추가/해제, 2행 안읽음/읽음/삭제 일괄 처리
-- 메모 입력: 바텀시트 (핸들바 + 제목 + filled TextField + 저장/삭제 버튼)
-
-### LabelManagementScreen
-
-- 라벨 목록, 추가/수정/삭제
-- 빈 상태: chip 스타일 "신규 라벨 추가" 버튼 표시
-- 알림 설정: 각 라벨에서 활성화 토글 + 요일 다중선택 칩 + TimePicker
-
-### OnboardingScreen
-
-- 3페이지 PageView (링크 저장 → 스와이프 → 라이브러리)
-- `isGuideMode: false` (기본) — 첫 실행 온보딩, 완료 시 `pushReplacementNamed('/main')` + `setOnboardingComplete()`
-- `isGuideMode: true` — 설정 > 사용 방법에서 진입, 완료 시 `Navigator.pop()`
-- 디자인: 원형 아이콘 배경 (secondary 8% alpha) + 힌트 칩 (surfaceContainer) + 도트 인디케이터
-- 건너뛰기 버튼 (마지막 페이지 제외), 다음/시작하기 FilledButton (secondary 컬러)
-
-## 폰트
-
-- Pretendard (v1.3.9) — `ThemeData.fontFamily`로 전역 적용
-- 5개 weight: Regular(400), Medium(500), SemiBold(600), Bold(700), ExtraBold(800)
-- 에셋 경로: `assets/fonts/Pretendard-{Weight}.otf`
+- **HomeScreen**: `CardSwiper(isLoop: true)` 덱. 오른쪽 스와이프 = 읽음(`markAsRead`), 왼쪽 = 나중에. 스와이프 중 카드 테두리는 `AppColors.swipeRead/swipeSkip`. 컨트롤러 교체는 `addPostFrameCallback`에서 일괄 dispose(이중 dispose 방지 `try-catch`). 8카드마다 `SwipeAdCard` 삽입. 첫 실행 시 `home_overlay_guide`가 사용법 힌트 오버레이 표시.
+- **LibraryScreen**: 2열 GridView. 인덱스 0="전체", 1="북마크", 이후 라벨 카드(원형 프로그레스).
+- **AllArticlesScreen / BookmarkedArticlesScreen / LabelDetailScreen**: 공통 패턴 — 행 탭(외부 브라우저), 롱프레스(바텀시트: 북마크/메모/읽음/삭제), 다중선택(`_isSelecting` + `Set<dynamic> _selectedKeys`=Hive key), 8개마다 `InlineBannerAd` 삽입.
+- **LabelManagementScreen**: 라벨 CRUD + 라벨별 알림(요일 칩 + TimePicker).
+- **OnboardingScreen**: 3페이지. `isGuideMode: false`(첫 실행, 완료 시 `setOnboardingComplete()` + `/main`), `true`(설정에서 진입, `Navigator.pop()`).
 
 ## 디자인 시스템
 
-디자인 방향: **Calm & Refined** (Notion, Things 3 영감)
+디자인 방향: **Calm & Refined** (Notion, Things 3 영감). Pretendard 5 weight(Regular~ExtraBold).
 
-### 컬러 시스템 (`AppColors`)
+### 컬러 (`AppColors`)
 
 | 토큰 | Light | Dark |
 |------|-------|------|
-| Primary | `#2C2C3A` Warm Charcoal | `#A8B5D6` Soft Lavender |
-| Secondary (accent) | `#5BA67D` Sage Green | `#7DC4A0` Soft Sage |
-| Error | `#E8726E` Muted Rose | `#E8857F` Soft Rose |
-| Background | `#F8F7F4` Warm Off-White | `#141416` Warm Black |
-| Surface | `#FFFFFF` | `#1C1C1E` |
-| SurfaceContainer | `#F2F1EE` | `#242426` |
-| OnSurface | `#1C1C1E` | `#E5E5EA` |
-| OnSurfaceVariant | `#8E8E93` | `#8E8E93` |
-| `swipeRead` | `#5BA67D` Sage Green (오른쪽 스와이프 읽음) | |
-| `swipeSkip` | `#E8726E` Muted Rose (왼쪽 스와이프 나중에) | |
+| Primary | Warm Charcoal `#2C2C3A` | Soft Lavender `#A8B5D6` |
+| Secondary(accent) | Sage Green `#5BA67D` | Soft Sage `#7DC4A0` |
+| Error | Muted Rose `#E8726E` | Soft Rose `#E8857F` |
+| Background | `#F8F7F4` | `#141416` |
+| Surface / Container | `#FFFFFF` / `#F2F1EE` | `#1C1C1E` / `#242426` |
+| OnSurface / Variant | `#1C1C1E` / `#8E8E93` | `#E5E5EA` / `#8E8E93` |
+| swipeRead / swipeSkip | Sage Green / Muted Rose (공용) | |
 
 ### 디자인 토큰 (`design_tokens.dart`)
 
-- **Spacing**: `xs(4)`, `sm(8)`, `md(12)`, `lg(16)`, `xl(20)`, `xxl(24)`, `xxxl(32)`
-- **Radii**: `sm(8)`, `md(12)`, `lg(16)`, `xl(20)`, `full(100)` + 대응 `BorderRadius` 상수
-- **AppShadows**: `card(isDark)`, `swipeCard(isDark)`, `navigation(isDark)` — 이중 레이어 그림자
-- **AppDurations**: `fast(150ms)`, `medium(250ms)`, `slow(350ms)`
-- **LabelColors.presets**: 10색 프리셋 (채도 낮춘 버전, 라벨 생성 시 사용)
+- **Spacing**: `xs(4) / sm(8) / md(12) / lg(16) / xl(20) / xxl(24) / xxxl(32)`
+- **Radii**: `sm(8) / md(12) / lg(16) / xl(20) / full(100)` + `BorderRadius` 상수
+- **AppShadows**: `card(isDark)`, `swipeCard(isDark)`, `navigation(isDark)` — 이중 레이어
+- **AppDurations**: `fast(150) / medium(250) / slow(350)`
+- **LabelColors.presets**: 10색 (채도 낮은 톤)
 
-### UI 패턴
-
-- **하단 네비게이션**: 플로팅 필 스타일 (양쪽 24px 마진, `Radii.borderFull`, 아이콘 + 점 인디케이터)
-- **카드 리스트**: Divider 대신 개별 카드 (`surface` + `AppShadows.card` + `Radii.borderLg`)
-- **설정 화면**: iOS 스타일 그룹 컨테이너 (아이콘 배경 32x32)
-- **바텀시트**: 36px 핸들바, 둥근 상단 모서리, `isScrollControlled: true` + `viewInsets.bottom` 패딩 (키보드 대응)
-- **빈 상태**: 원형 배경 + 아이콘, accent 컬러 사용
-- **스와이프 카드 북마크**: 우상단 frosted-glass 스타일 아이콘 (`Colors.black` 30% alpha 배경)
-
-## 앱 아이콘 & 스플래시
-
-### 아이콘 원본
-- 소스: `~/Downloads/AppIcons/` (appicon.co에서 생성)
-- 디자인: 카드 스택 아이소메트릭 + 우상단 Sage Green 북마크 탭
-
-### iOS 아이콘
-- 경로: `ios/Runner/Assets.xcassets/AppIcon.appiconset/`
-- 52개 사이즈 (20px ~ 1024px) 모두 교체 완료
-
-### iOS 스플래시 (`LaunchScreen.storyboard`)
-- `LaunchImage.imageset`에 400×1200 이미지 (`@1x/@2x/@3x` 동일 파일)
-- `contentMode="scaleAspectFit"` + 4방향 edge 제약 (전체 화면)
-- 배경색: `#ECE5D5` (이미지 배경색과 동일하게 맞춰 사이드 바 자연스럽게 처리)
-
-### Android 아이콘
-- 경로: `android/app/src/main/res/mipmap-{density}/ic_launcher.png`
-- mdpi(48) / hdpi(72) / xhdpi(96) / xxhdpi(144) / xxxhdpi(192) 5개 교체 완료
-
-### Android 스플래시 (`launch_background.xml`)
-- `drawable/launch_image.png` (400×1200) + `android:gravity="center"`
-- 배경색: `#ECE5D5`
-- `values-night/styles.xml` LaunchTheme 부모를 `Theme.NoTitleBar`로 변경 (기존 `Theme.Black`이 다크모드에서 검정 배경 유발)
-
-## 네이티브 설정
-
-### Android (`AndroidManifest.xml`)
-
-```xml
-<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
-<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-```
-
-- `MainActivity.launchMode = singleTop`
-- Intent filter: `ACTION_SEND`, `mimeType="text/plain"` (URL 공유 수신)
-- `android:localeConfig="@xml/locales_config"` — Android 13+ 앱별 언어 설정 지원
-- `res/xml/locales_config.xml` — 지원 로케일: `ko`, `en`
-- AdMob App ID: `AndroidManifest.xml` → `com.google.android.gms.ads.APPLICATION_ID`
-
-### iOS (`AppDelegate.swift`)
-
-- App Group: `group.com.jaehyun.clib`
-- MethodChannel: `com.jaehyun.clib/share`
-- 지원 메서드: `getSharedURLs`, `clearSharedURLs`, `syncLabels`
-- `UNUserNotificationCenter` delegate 설정
-- `Info.plist`에 `CFBundleLocalizations`: `ko`, `en` — iOS 앱별 언어 설정 지원
-- `Info.plist`에 `GADApplicationIdentifier` — AdMob iOS App ID
+**UI 규칙**: 색은 `Theme.of(context).colorScheme` 또는 `AppColors`, 간격은 `Spacing.*`, 코너는 `Radii.*`, 그림자는 `AppShadows.*`. 하드코딩 금지.
 
 ## 다국어 (i18n)
 
-- 방식: Flutter 공식 `gen-l10n` (ARB 기반)
-- 설정 파일: `l10n.yaml` (템플릿: `app_ko.arb`)
-- 지원 로케일: `ko` (한국어, 기본), `en` (영어, fallback)
-- 로케일 결정: 시스템 언어 설정 자동 감지 — 한국어면 ko, 그 외 en
-- 앱별 언어 설정: iOS (설정 > Clib > 언어), Android 13+ (설정 > 앱 > Clib > 언어)
-- UI 문자열: `AppLocalizations.of(context)!.keyName` 패턴으로 접근
-- NotificationService: BuildContext 없이 `dart:io`의 `Platform.localeName`으로 로케일 판단
-- 문자열 추가 시: `app_ko.arb` + `app_en.arb` 모두에 키 추가 → `dart run build_runner build` 실행
-- 파라미터 문자열: ARB의 ICU 메시지 포맷 사용 (예: `"selectedCount": "{count}개 선택됨"`)
+- 방식: Flutter 공식 `gen-l10n` (ARB, `l10n.yaml` 템플릿=`app_ko.arb`).
+- **지원 로케일(10)**: `ko`(기본), `en`(fallback), `de, es, fr, ja, pt, zh, zh_CN, zh_TW`.
+- 로케일 결정: 시스템 언어 자동 감지. 앱별 언어 설정: iOS Settings > Clib, Android 13+ Settings > Clib.
+- UI 문자열: `AppLocalizations.of(context)!.keyName`. **하드코딩 금지.**
+- `NotificationService`는 BuildContext 없이 `dart:io` `Platform.localeName`으로 로케일 판단 → 한국어면 한국어, 그 외는 영어 메시지.
+- ICU 플레이스홀더: `"selectedCount": "{count}개 선택됨"` 형태. **ko/en을 포함한 모든 로케일 파일에 동일 키·동일 플레이스홀더**가 있어야 한다.
+
+## 네이티브 설정
+
+### Android
+- Permissions: `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`.
+- `MainActivity.launchMode = singleTop` + Intent filter `ACTION_SEND` `text/plain`(URL 공유 수신).
+- `android:localeConfig="@xml/locales_config"`(Android 13+ 앱별 언어).
+- AdMob App ID: `AndroidManifest.xml` meta-data `com.google.android.gms.ads.APPLICATION_ID`.
+- 스플래시: `drawable/launch_image.png` + `android:gravity="center"`, 배경 `#ECE5D5`. `values-night/styles.xml` LaunchTheme 부모는 `Theme.NoTitleBar`(검정 배경 방지).
+
+### iOS (`AppDelegate.swift`)
+- App Group: `group.com.jaehyun.clib.share`. MethodChannel `com.jaehyun.clib/share`: `getSharedURLs`, `clearSharedURLs`, `syncLabels`.
+- `UNUserNotificationCenter` delegate 설정.
+- `Info.plist`: `CFBundleLocalizations`(전 로케일), `GADApplicationIdentifier`(AdMob iOS App ID).
+- 스플래시: `LaunchImage.imageset` 400×1200, `scaleAspectFit` + 4방향 edge 제약, 배경 `#ECE5D5`.
 
 ## 개발 컨벤션
 
-- 언어: 한국어 (주석, 커밋 메시지)
-- UI 텍스트: 하드코딩 금지, 반드시 ARB 파일(`lib/l10n/app_ko.arb`, `app_en.arb`)에 정의 후 `AppLocalizations` 사용
-- Flutter 표준 구조 준수
-- 모델 변경 시 `dart run build_runner build` 필수
-- 분석: `flutter analyze` — No issues found 유지
-- 릴리즈 빌드 테스트 (실기기): `flutter run --release`
+- 한국어 주석/커밋 메시지.
+- UI 문자열 하드코딩 금지 → 모든 ARB 파일에 키 추가 후 `AppLocalizations` 사용.
+- 디자인 토큰 우회 금지 (색/간격/코너/그림자).
+- 모델 변경 → `dart run build_runner build`.
+- `flutter analyze` = No issues 유지.
+- 릴리즈 검증은 실기기 `flutter run --release`.
 
 ## 코드 품질 & 재검증 (필수)
 
-**모든 코드 변경 후 아래 재검증 단계를 반드시 수행한다. 건너뛰지 않는다.**
+**모든 코드 변경 후 아래를 반드시 수행한다.**
 
-### 1. 변경 전 — 영향 범위 파악
+1. **영향 범위 파악**: 대상 파일을 먼저 읽고 참조 지점 전부 grep. 파급이 크면 작업 전에 사용자와 공유.
+2. **정적 분석**: `flutter analyze` warning/error 0건.
+3. **크로스 체크**: import 유효성, 네이밍 일관성, 신규 `AppLocalizations` 키는 **10개 ARB 전부**에 존재, 모델 변경 시 `build_runner` 실행.
+4. **자기 리뷰**: 조건 분기/null/`await` 누락/`setState` 남용/`dispose` 누락/하드코딩/매직 넘버 재확인.
+5. **최종 보고**: 한 줄 요약 (예: "analyze 통과, ARB 10개 동기화, 영향 범위 HomeScreen만").
+6. **커밋 메시지 제안**: 코드 변경이 있었을 때만. 한국어 한 줄 요약. 성격이 다르면 분리 커밋 권장.
 
-- 수정 대상 파일을 먼저 읽고, 해당 클래스/함수를 참조하는 모든 곳을 검색한다
-- 변경이 다른 화면이나 서비스에 파급되는지 확인한 뒤 작업을 시작한다
-- 확신이 없으면 코드를 작성하기 전에 영향 범위를 사용자에게 공유한다
-
-### 2. 변경 후 — 정적 분석
-
-- `flutter analyze` 실행하여 warning/error 0건 확인
-- 새 warning이 발생하면 즉시 수정한 뒤 다음 단계로 진행한다
-
-### 3. 변경 후 — 크로스 체크
-
-- 수정한 파일에서 사용하는 import가 모두 유효한지 확인한다
-- 새로 추가한 함수/변수명이 기존 코드와 네이밍 컨벤션이 일치하는지 확인한다
-- UI 문자열을 추가했다면 `app_ko.arb` + `app_en.arb` 양쪽에 키가 있는지 확인한다
-- 모델(`Article`, `Label`)을 변경했다면 `dart run build_runner build`를 실행한다
-
-### 4. 변경 후 — 자기 리뷰
-
-- 변경한 코드를 처음부터 다시 읽고, 의도와 다른 부분이 없는지 점검한다
-- 특히 조건문 분기, null 처리, 비동기 흐름(`await` 누락 등)을 재확인한다
-- 하드코딩된 문자열, 매직 넘버, 불필요한 `setState` 호출이 없는지 확인한다
-
-### 5. 최종 보고
-
-- 재검증 결과를 한 줄로 요약하여 사용자에게 보고한다 (예: "analyze 통과, ARB 키 양쪽 추가 확인, 영향 범위 HomeScreen만 해당")
-- 문제가 발견되었다면 수정 내용과 함께 보고한다
-
-### 6. 커밋 메시지 제안
-
-- **코드 변경이 있었을 때만** 작업 완료 시점에 적절한 git commit 메시지를 제안한다
-- 코드 변경 없이 조사/질문 응답만 한 경우에는 제안하지 않는다
-- 형식: 한국어, 한 줄 요약 (예: `홈 화면 라벨 필터 초기화 버그 수정`)
-- 변경 파일이 많거나 성격이 다르면 분리 커밋을 권장한다
+**보조 에이전트**: `.claude/agents/arb-sync-checker.md`(ARB 동기화), `.claude/agents/flutter-code-reviewer.md`(변경분 리뷰). 커밋/PR 전 호출 권장.

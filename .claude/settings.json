@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.tool_response.filePath // .tool_input.file_path' | { read -r f; echo \"$f\" | grep -qE '\\.dart$' && cd /Users/jaehyeon/Documents/workspace/clib && flutter analyze --no-pub 2>&1 | tail -5 || true; }",
+            "command": "jq -r '.tool_response.filePath // .tool_input.file_path' | { read -r f; echo \"$f\" | grep -qE '\\.dart$' && cd /Users/jaehyun/Documents/workspace/clib && flutter analyze --no-pub 2>&1 | tail -5 || true; }",
             "timeout": 30,
             "statusMessage": "flutter analyze 실행 중..."
           }
