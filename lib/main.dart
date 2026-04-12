@@ -38,7 +38,11 @@ void main() async {
   await DatabaseService.syncLabelsToAppGroup();
   await NotificationService.init();
   await NotificationService.rescheduleAll();
-  await AdService.initialize();
+  // AdMob 초기화는 iOS Scene 엔진 준비 완료 후 실행
+  // (main에서 직접 호출 시 EXC_BAD_ACCESS 크래시 발생)
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    AdService.initialize();
+  });
   // debug 모드 + 미로그인 상태에서만 데모 데이터 생성
   // (로그인 상태에서 seed하면 Firestore 동기화와 충돌)
   if (kDebugMode && FirebaseAuth.instance.currentUser == null) {
