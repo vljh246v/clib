@@ -22,7 +22,7 @@
 | 1 | Foundation + ThemeCubit | - | 🟢 Done | `feature/bloc-01-theme` | 2026-04-20 |
 | 2 | AuthCubit + SyncService 연동 이동 | PR 1 | 🟢 Done | `feature/bloc-02-auth` | 2026-04-20 |
 | 3 | OnboardingCubit | PR 1 | 🟢 Done | `feature/bloc-03-onboarding` | 2026-04-20 |
-| 4 | LibraryCubit | PR 1 | ⬜ Not Started | `feature/bloc-04-library` | - |
+| 4 | LibraryCubit | PR 1 | 🟢 Done | `feature/bloc-04-library` | 2026-04-20 |
 | 5 | LabelManagementCubit | PR 1 | ⬜ Not Started | `feature/bloc-05-label-mgmt` | - |
 | 6 | ArticleListCubit 도입 + AllArticles | PR 1 | ⬜ Not Started | `feature/bloc-06-article-list` | - |
 | 7 | Bookmarked + LabelDetail (Cubit 재사용) | PR 6 | ⬜ Not Started | `feature/bloc-07-bookmarked-label` | - |

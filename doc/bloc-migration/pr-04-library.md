@@ -255,19 +255,46 @@ BLoC PR4: LibraryCubit 도입 — notifier 브릿지 기반 재로드
 ## 10. 핸드오프 노트
 
 ### 계획대로 된 점
-- (작성)
+- `lib/blocs/library/library_cubit.dart` + `library_state.dart` 신규 (플랜 4절 스니펫과 거의 동일).
+- 두 전역 notifier(`articlesChangedNotifier`, `labelsChangedNotifier`) 생성자 구독 + `close()` removeListener.
+- `LibraryScreen`을 `StatefulWidget → StatelessWidget + BlocProvider(LibraryCubit) → _LibraryBody(StatelessWidget) + BlocBuilder`로 교체.
+- Navigator.push 후 `context.read<LibraryCubit>().load()` 명시 호출 (스펙 5.3).
+- `_OverallStatsCard` / `_AllCard` / `_BookmarkCard` / `_LabelCard` 각각 StatelessWidget으로 분리하여 가독성 ↑.
 
 ### 계획과 다르게 된 점
-- (작성)
+- **`LibraryState`가 `OverallStats` / `BookmarkStats` / `LabelStats` 같은 값 클래스를 사용하지 않음**: `DatabaseService`의 실제 반환 타입은 Dart 레코드 `({int total, int read})`. 레코드는 구조적 `==`를 가져 Equatable의 Map 비교에서도 정상 동작하므로 래퍼 클래스 불필요. `DeepCollectionEquality` 도입도 불필요.
+- **`_LibraryBody(StatefulWidget)` 분리 패턴 미적용**: PR 3에서 확립한 패턴은 "StatefulWidget + provider-scoped context 동시 필요 시"에만 적용. LibraryScreen은 로컬 상태(PageController 등)가 전혀 없어 StatelessWidget으로 충분.
+- **플랜의 `bloc_test` 스니펫 → `flutter_test` + `Cubit.stream` 패턴으로 교체**: PR 1~3 컨벤션 일관성.
+- **유닛 테스트 7개 전량 작성**: 플랜 7절에서 "copyWith만이라도" 허용했지만, Hive 격리 path 기반 통합 테스트로 생성자 동기 load / 빈 DB / 두 notifier trigger / close 후 무시 / copyWith / Equatable까지 커버.
+- **nit 반영**: `_LabelCard`만 `AppLocalizations.of(context)!`를 내부에서 얻던 비대칭 → `AppLocalizations l` 파라미터로 통일. `_onChanged`는 `unawaited(load())`로 Future discard 의도 명시.
 
 ### 새로 발견한 이슈 / TODO
-- (작성)
+- **SESSION_LOG 핸드오프 노트 오류 정정**: PR 3 완료 핸드오프에 "Navigator.push 후 복귀 시 `setState({})` 호출 → Cubit 전환 후에는 notifier 트리거로 자동 재로드되므로 명시 setState 제거 가능"이라 기재되었으나 **틀림**. `articlesChangedNotifier.value++`는 `share_service.dart:68`(새 공유 URL 수신)과 `sync_service.dart:276`(Firestore 스냅샷 머지)에서만 발동되고, 로컬 DB ops(`markAsRead`, `toggleBookmark`, `deleteArticle`, `updateMemo` 등)는 notifier를 트리거하지 않는다. 따라서 Navigator.push → pop 후 명시 `load()` 호출이 필수. PR 5 이후 동일 패턴 화면에서 같은 실수를 피해야 한다.
+- **`load()`가 동기 실행되는 특성**: `DatabaseService` 통계 API는 모두 동기(Hive in-memory read). `load()` 내부에 `await`가 없어 `async` 함수지만 본문이 동기 완료 → **생성자 반환 시점에 이미 `isLoading=false`**. 테스트에서 `stream.firstWhere`로 대기하면 타임아웃된다. 초기 상태 검증은 생성자 직후 `state`를 직접 읽고, notifier trigger 후 emit은 `stream.listen` 구독 뒤 `Future<void>.delayed(Duration.zero)` 패턴을 사용해야 한다.
+- **`LibraryCubit`이 `main.dart`를 import**: notifier가 `main.dart` 최상위에 정의되어 있어 `show articlesChangedNotifier, labelsChangedNotifier`. PR 11 cleanup에서 notifier 제거 시 이 브릿지 제거가 첫 작업.
 
 ### 참고한 링크
-- (작성)
+- flutter_bloc BlocProvider scoping: https://bloclibrary.dev/flutter-bloc-concepts/#blocprovider
+- Dart records equality: https://dart.dev/language/records#record-types
+- Equatable Map comparison: https://pub.dev/packages/equatable (`DeepCollectionEquality` 자동 사용)
+- PR 1~3 선례: `lib/blocs/{theme,auth,onboarding}/`, `test/blocs/*_test.dart`
 
-### 다음 세션 유의사항
-- (작성)
+### 다음 세션 유의사항 (PR 5 — LabelManagementCubit)
+- **PR 5 플랜의 `Map<String, LabelStats>`는 오기재**: 실제 타입은 레코드 `({int total, int read})`. PR 4처럼 그대로 사용하면 됨.
+- **`DatabaseService.updateLabelNotification` 시그니처 먼저 Read**: 플랜에 named param 순서/이름 확인 필수라고 명기되어 있음.
+- **`DatabaseService.deleteLabel` 내부가 아티클 `topicLabels`에서 자동 제거하는지 확인**: 플랜 6절의 주의사항.
+- **`clearError()` 메서드 필수**: `BlocListener`에서 외부 `emit` 호출 불가하므로 Cubit에 `void clearError() => emit(state.copyWith(clearError: true));` 공개 메서드 추가.
+- **다이얼로그 내부 `StatefulBuilder` 유지**: 요일 선택 / 시간 선택 / 스위치는 다이얼로그 수명 동안만 유효한 로컬 상태. Cubit 관여는 저장 시점만.
+- **이전 컨벤션 불변**: bloc_test 미도입 / Hive 격리 path / 화면 로컬 BlocProvider / 서브에이전트 모델 정책 / 시뮬레이터 스모크는 사용자 요청 시만.
+- **PR 4의 Navigator.pop 후 명시 `load()` 교훈**: PR 5 라벨 관리 화면에서도 동일 패턴 필요. LabelManagementScreen → (다른 화면 없음, 다이얼로그만) → 다이얼로그 닫기 후에는 Cubit이 이미 CRUD 메서드 내부에서 `load()`를 호출하므로 별도 액션 불필요. 단, notifier를 트리거하지 않는 작업은 명시 reload 유지.
 
 ### 검증 결과
-- (작성)
+- `flutter analyze`: ✅ No issues found
+- `flutter test test/blocs/`: ✅ 24/24 passed (theme 3 + auth_state 10 + onboarding 4 + library 7)
+- 실기기 스모크: ⚪ 사용자 요청 시에만 진행 (미수행)
+- `flutter-code-reviewer`(opus): LGTM, nit 1(`_LabelCard` 일관성) + nit 4(`unawaited`) 반영 완료
+
+### 머지 / 배포
+- feature 커밋: `4e5d1d5` (`BLoC PR4: LibraryCubit 도입 — notifier 브릿지 기반 자동 재로드`)
+- `develop` 머지(--no-ff): `f4e5f22` (`Merge feature/bloc-04-library: BLoC PR 4 — LibraryCubit 도입`)
+- `feature/bloc-04-library` 브랜치 보존

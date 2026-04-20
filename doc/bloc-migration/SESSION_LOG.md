@@ -42,7 +42,108 @@
 
 <!-- 이 아래에 세션 엔트리를 추가한다. 최신이 위. -->
 
-## 2026-04-20 PR 03 — OnboardingCubit
+## 2026-04-20 PR 04 — LibraryCubit
+
+**세션 결과**: 🟢 완료
+
+**브랜치**: `feature/bloc-04-library` (feature 커밋: `4e5d1d5`, 머지 커밋: `f4e5f22`)
+
+### 계획대로 된 점
+- `lib/blocs/library/library_cubit.dart` + `library_state.dart` 신규 — 플랜 4절 스니펫과 거의 동일.
+- `articlesChangedNotifier` + `labelsChangedNotifier` 두 전역 notifier를 Cubit 생성자에서 `addListener(_onChanged)` → `close()`에서 `removeListener`. **README L108 브릿지 템플릿 최초 적용**.
+- `LibraryScreen`을 StatefulWidget → StatelessWidget + `BlocProvider(LibraryCubit)` → `_LibraryBody(StatelessWidget)` + `BlocBuilder`로 교체.
+- Navigator.push 후 `context.read<LibraryCubit>().load()` 명시 호출 (스펙 5.3).
+- 카드 4종(`_OverallStatsCard` / `_AllCard` / `_BookmarkCard` / `_LabelCard`)을 별도 StatelessWidget으로 분리.
+- 유닛 테스트 7 PASS.
+
+### 계획과 다르게 된 점
+- **`LibraryState`가 `OverallStats` / `BookmarkStats` / `LabelStats` 값 클래스 미사용**: `DatabaseService`의 실제 반환 타입은 Dart 레코드 `({int total, int read})`. 레코드는 구조적 `==`를 가져 Equatable의 Map 비교에서도 정상 동작 → 래퍼 클래스 / `DeepCollectionEquality` 도입 불필요. 플랜 3절의 "값 클래스" 언급은 무시. **PR 5 플랜의 `Map<String, LabelStats>`도 동일한 오기재이므로 레코드로 교체 필요**.
+- **`_LibraryBody(StatefulWidget)` 분리 패턴 미적용**: PR 3에서 확립한 패턴은 "StatefulWidget + provider-scoped context 동시 필요 시"에만 적용. LibraryScreen은 로컬 상태(PageController 등)가 전혀 없어 StatelessWidget으로 충분. **컨벤션 4 해석 명확화**: 해당 패턴은 기본 선택지가 아니라 조건부 선택지.
+- **플랜의 `bloc_test` 스니펫 → `flutter_test` + `Cubit.stream` 패턴으로 교체**: PR 1~3 컨벤션 일관성.
+- **유닛 테스트 범위 확장**: 플랜 7절은 "copyWith만이라도" 허용했지만, Hive 격리 path(`.dart_tool/test_hive_library_cubit`) + Article/Platform/Label 어댑터 등록으로 통합 테스트 7개 작성 (생성자 동기 load / 빈 DB / 두 notifier trigger / close 후 무시 / copyWith / Equatable).
+- **리뷰 nit 2건 반영**: `_LabelCard`만 `AppLocalizations.of(context)!`를 내부에서 얻던 비대칭 → `AppLocalizations l` 파라미터로 통일. `_onChanged`는 `unawaited(load())`로 Future discard 의도 명시.
+
+### 새로 발견한 이슈 / TODO
+- **(중요) PR 3 핸드오프 노트 오류 정정**: PR 3 핸드오프에 "Navigator.push 후 복귀 시 `setState({})` 호출 → Cubit 전환 후에는 notifier 트리거로 자동 재로드되므로 명시 setState 제거 가능"이라 기재되었으나 **틀림**. `articlesChangedNotifier.value++`는 `share_service.dart:68`(새 공유 URL 수신)과 `sync_service.dart:276`(Firestore 스냅샷 머지)에서만 발동되고, 로컬 DB ops(`markAsRead`, `toggleBookmark`, `deleteArticle`, `updateMemo` 등)는 notifier를 트리거하지 않는다. 따라서 Navigator.push → pop 후 명시 `load()` 호출이 필수. **PR 5~7 동일 패턴 화면 작업 시 본 교훈 준수**.
+- **`load()`의 동기 실행 특성**: `DatabaseService` 통계 API는 모두 동기(Hive in-memory read). `load()` 내부에 `await`가 없어 `async` 함수지만 본문이 동기 완료 → 생성자 반환 시점에 이미 `isLoading=false`. 테스트에서 `stream.firstWhere`로 대기하면 타임아웃되므로, 초기 상태 검증은 생성자 직후 `state`를 직접 읽고, notifier trigger 후 emit은 `stream.listen` 구독 뒤 `Future<void>.delayed(Duration.zero)` 패턴 사용.
+- **`LibraryCubit`이 `main.dart`를 import**: notifier가 `main.dart` 최상위에 정의되어 있어 `show articlesChangedNotifier, labelsChangedNotifier`. PR 11 cleanup의 notifier 제거 작업은 이 브릿지 제거가 첫 단계.
+- **`DECISION_LOG.md` / `PROJECT_STATE.md` (루트)**: 이번 세션 도중 다른 스킬이 생성한 파일로 파악됨. untracked 상태로 방치. PR 4 범위 밖.
+
+### 참고한 링크
+- flutter_bloc BlocProvider scoping: https://bloclibrary.dev/flutter-bloc-concepts/#blocprovider
+- Dart records equality: https://dart.dev/language/records#record-types
+- Equatable Map comparison: https://pub.dev/packages/equatable
+- PR 1~3 선례: `lib/blocs/{theme,auth,onboarding}/`, `test/blocs/*_test.dart`
+
+### 다음 세션 유의사항
+- **PR 5 플랜 오기재 수정 필요**: `Map<String, LabelStats>` → `Map<String, ({int total, int read})>`. state/cubit 모두 해당.
+- **`DatabaseService.updateLabelNotification` 시그니처 먼저 Read**: PR 5 플랜에 "named param 순서/이름 확인 필수" 명기됨.
+- **`DatabaseService.deleteLabel` 내부 동작 확인**: 아티클 `topicLabels`에서 자동 제거되는지.
+- **`clearError()` 공개 메서드 필수**: `BlocListener`에서 외부 `emit` 호출 불가. `void clearError() => emit(state.copyWith(clearError: true));` 추가.
+- **다이얼로그 내부 `StatefulBuilder` 유지**: 요일/시간/스위치는 다이얼로그 수명 로컬 상태. Cubit은 저장 시점만 관여.
+- **Navigator.pop 후 명시 `load()` 관행 유지**: 본 PR 4 교훈. notifier를 쏘지 않는 CRUD는 명시 reload 필요. (PR 5는 CRUD 메서드 내부에서 `load()`를 이미 호출하므로 추가 액션 보통 불필요.)
+- **컨벤션 불변**: bloc_test 미도입 / Hive 격리 path / 화면 로컬 BlocProvider / 서브에이전트 모델 정책(단순 haiku, 분석 sonnet, 최종 리뷰만 opus) / 시뮬레이터 스모크는 사용자 요청 시만.
+- **기존 `test/widget_test.dart`**: 여전히 broken(pre-existing). PR 11 위임.
+
+### 검증 결과
+- `flutter analyze`: ✅ No issues found
+- `flutter test test/blocs/`: ✅ 24/24 passed (theme 3 + auth_state 10 + onboarding 4 + library 7)
+- 실기기 스모크: ⚪ 사용자 요청 시에만 진행 (미수행)
+- `flutter-code-reviewer`(opus): LGTM, nit 2건 반영 완료
+
+### 머지 / 배포
+- `develop` 머지(--no-ff): `f4e5f22` (`Merge feature/bloc-04-library: BLoC PR 4 — LibraryCubit 도입`)
+- `origin/develop` push: **문서 커밋 후 일괄 push 예정**
+- `feature/bloc-04-library` 브랜치 보존
+
+### 다음 세션 즉시 시작 프롬프트 (PR 5 — LabelManagementCubit)
+
+다음 세션 시작 시 아래 프롬프트를 그대로 복사해 사용:
+
+````
+doc/bloc-migration/pr-05-label-management.md를 정독하고 PR 5(LabelManagementCubit) 작업을 시작해줘.
+이전 세션(PR 4) 결과는 SESSION_LOG.md 최상단에 있어. 아래 컨벤션을 반드시 따를 것.
+
+## PR 1~4에서 확립된 컨벤션
+
+1. **bloc_test 미도입**: cubit 단위 테스트는 `flutter_test` + `Cubit.stream.listen` + `expectLater`
+2. **테스트 Hive 격리 path**: `setUpAll`에서 `Hive.init('.dart_tool/test_hive_<name>')` + 필요 box `openBox` + 어댑터 등록 + `setUp`에서 `clear` + `tearDownAll`에서 `deleteFromDisk`
+3. **전역 vs 화면 로컬 BlocProvider** (README L104): 전역 = ThemeCubit + AuthCubit. **LabelManagementCubit은 화면 로컬** `BlocProvider`.
+4. **StatefulWidget + 화면 로컬 BlocProvider 동시 필요 시 `_XxxBody(StatefulWidget)` 분리 패턴**: **조건부 선택지**(PR 4 교훈). 로컬 상태 없으면 StatelessWidget 단일로 충분.
+5. **`articlesChangedNotifier` / `labelsChangedNotifier` 브릿지**: 생성자 `addListener(_onChanged)` → `_onChanged() => unawaited(load())` → `close()`에서 `removeListener`. PR 11까지 브릿지 유지.
+6. **Navigator.pop 후 명시 `load()` 필수** (PR 4 교훈): notifier는 `share_service`/`sync_service`에서만 트리거되므로 로컬 DB ops 후에는 자동 재로드 안 됨. 단, Cubit 내부 CRUD 메서드가 이미 `load()`를 부르면 추가 호출 불필요.
+7. **통계 타입은 Dart 레코드** `({int total, int read})` (PR 4 확인): `OverallStats`/`BookmarkStats`/`LabelStats` 같은 클래스는 DatabaseService에 존재하지 않음. PR 5 플랜의 `Map<String, LabelStats>`는 `Map<String, ({int total, int read})>`로 교체.
+8. **`BlocListener` 내부 외부 `emit` 불가**: Cubit에 `void clearError() => emit(state.copyWith(clearError: true));` 공개 메서드 추가 필수.
+9. **CLAUDE.md/플랜 문서의 잔존 언급 무시**: `themeModeNotifier`/`authStateNotifier` — PR 11 cleanup 위임 확정.
+10. **브랜치 워크플로**: `develop ↔ origin/develop` 동기화 확인 후 `feature/bloc-05-label-mgmt` 분기 → `--no-ff` 머지 + push (PR 생성 X, 사용자 승인 후 push)
+11. **서브에이전트 모델**: 단순 haiku / 분석 sonnet / 최종 리뷰만 opus `flutter-code-reviewer`
+12. **시뮬레이터 스모크**: 사용자가 요청할 때만 진행
+13. **기존 `test/widget_test.dart`는 broken**: PR 11 위임
+
+## PR 5 시작 시 즉시 할 일
+
+1. `git status` + `develop`/`origin/develop` 동기화 확인
+2. `doc/bloc-migration/pr-05-label-management.md` 정독 + `lib/screens/label_management_screen.dart`(514 LOC) Read
+3. `lib/services/database_service.dart`에서 `updateLabelNotification` / `deleteLabel` / `updateLabel` 시그니처 확인 (특히 named 파라미터)
+4. `lib/services/notification_service.dart`에서 `requestPermission` / `scheduleForLabel` / `cancelForLabel` 확인
+5. `git checkout -b feature/bloc-05-label-mgmt`
+6. `flutter analyze` 기준선 확인
+7. 작업 계획 한 줄 요약 + 영향 범위 보고 후 시작
+
+## PR 5 알려진 주의사항 (pr-05-label-management.md 정독 전 참고)
+
+- 상태: `labels` / `labelStats: Map<String, ({int total, int read})>` (플랜의 `LabelStats`는 레코드로 교체) / `isLoading` / `isSaving` / `errorMessage`.
+- 메서드: `load()` / `createLabel(name, color)` / `updateLabel(label, {newName, newColor})` / `deleteLabel(label)` / `updateNotification(label, {enabled, days, time})` / `clearError()`.
+- **`labelsChangedNotifier`만 구독**(아티클 통계도 보지만 라벨 변경 시만 재로드). 필요 시 `articlesChangedNotifier`도 추가 검토.
+- 다이얼로그 내부 `StatefulBuilder` 유지 (요일/시간/스위치 로컬 상태). 저장 버튼에서 `context.read<LabelManagementCubit>()` 호출.
+- 에러 메시지는 `errorMessage` 상태로 승격 + `BlocListener` SnackBar + `clearError()` 호출.
+- 라벨 삭제 시 `NotificationService.cancelForLabel(label)` 먼저 호출, 그 다음 `DatabaseService.deleteLabel(label)`.
+- 알림 토글 ON: `requestPermission` → 허가 시 `scheduleForLabel`. OFF: `cancelForLabel`.
+- `DatabaseService.deleteLabel` 내부에서 아티클 `topicLabels`에서 자동 제거되는지 사전 확인 필요.
+- 테스트 최소 범위: state `copyWith(clearError: true)` 등 순수 유닛. Cubit 통합 테스트는 여력 있을 때 (권장).
+````
+
+---
 
 **세션 결과**: 🟢 완료
 
