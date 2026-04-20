@@ -337,24 +337,48 @@ BLoC PR2: AuthCubit 도입 — authStateNotifier 제거
 
 ---
 
-## 12. 핸드오프 노트 (세션 종료 시 작성)
+## 12. 핸드오프 노트 (2026-04-20 완료)
 
 ### 계획대로 된 점
-- (작성)
+- `lib/blocs/auth/auth_cubit.dart` + `auth_state.dart` 신규 (플랜 스니펫과 거의 동일)
+- `authStateChanges` 구독 + `SyncService.init/dispose` 책임을 Cubit으로 이관
+- `main.dart`에서 `authStateNotifier` + 직접 listen 블록 + 초기 currentUser 처리까지 전부 제거
+- `MultiBlocProvider`에 `AuthCubit(lazy: false)` 추가
+- `SettingsScreen`의 `ValueListenableBuilder<User?>` → `BlocBuilder<AuthCubit, AuthState>` + 로그인/로그아웃/삭제 4개 핸들러를 `context.read<AuthCubit>()` 경유로 교체
+- `AuthState` copyWith + equality 유닛 테스트 10개 PASS
 
 ### 계획과 다르게 된 점
-- (작성)
+- **AuthCubit 유닛 테스트 미작성**: 플랜 9.1 허용. AuthService.authStateChanges가 Firebase 의존(`FirebaseAuth.instance.authStateChanges()`)이라 테스트 초기화 불가. PR 11에서 `firebase_auth_mocks` 도입 검토.
+- **nit 반영 2건** (opus flutter-code-reviewer): (1) `close()`에서 `await _sub.cancel()`로 변경. (2) `_onAuthChanged`에서 `SyncService.init/dispose`를 try/catch로 래핑 — 예외 발생 시에도 `isInitialized=true` emit이 보장되어 `SettingsScreen`이 `SizedBox.shrink()`에 영구히 머물지 않도록 방어.
+- **`main.dart`에서 `firebase_auth` import 제거**: `AuthService.isLoggedIn`으로 치환해 직접 의존성 정리.
+- **초기 currentUser 처리 블록 제거**: AuthCubit 생성자가 `authStateChanges`를 구독하면 Firebase가 첫 이벤트로 currentUser를 재발행하므로 main에서의 동기 await 불필요. 다만 runApp 이전 vs 이후로 `SyncService.init` 타이밍이 약간 지연된다 — 초기 HomeScreen은 Hive 데이터로 먼저 렌더되고 이후 Firestore 스냅샷이 덮어쓴다. 치명적 레이스 없음.
 
 ### 새로 발견한 이슈 / TODO
-- (작성)
+- **`AuthState.copyWith(setUserNull:true)` 패턴**: 기능적으론 문제 없으나, sentinel / Optional wrapper 대비 덜 명시적. 현재 주석으로 의도 명시. PR 11 cleanup에서 재고려 가능.
+- **seed() 타이밍**: `AuthService.isLoggedIn` 체크는 `FirebaseAuth.instance.currentUser`를 그대로 리턴하므로 기존과 동일 분기. 그대로 유지.
+- **(공통 컨벤션 재확인)** cubit 테스트는 AuthState 예시처럼 Firebase 의존 없을 때만 full coverage, 의존 있을 때는 상태 객체만 테스트 → PR 11 mocks 도입 전까지 유효.
 
 ### 참고한 링크
-- (작성)
+- flutter_bloc: https://bloclibrary.dev/bloc-concepts/#cubit-vs-bloc
+- equatable: https://pub.dev/packages/equatable
+- `FirebaseAuth.authStateChanges()` 첫 이벤트 시멘틱: Firebase 공식 문서 "emits the current user upon subscription"
 
 ### 다음 세션 유의사항
-- (작성)
+- **PR 3(OnboardingCubit)**: 난이도 ⭐, 가장 단순. state가 `int` 하나라 ThemeCubit처럼 별도 state 클래스 없이 `Cubit<int>` 패턴.
+- **전역 BlocProvider 규칙**: README.md L104 "전역: ThemeCubit, AuthCubit / 화면 로컬: 나머지 모두". OnboardingCubit은 화면 로컬.
+- **Hive 테스트 격리 path 컨벤션** 그대로: `.dart_tool/test_hive_<name>`.
+- **기존 `test/widget_test.dart`**: 여전히 broken. PR 11에서 헬퍼 + 재작성.
+- **CLAUDE.md/플랜 문서의 `themeModeNotifier`/`authStateNotifier` 잔존 언급**: PR 11 cleanup으로 위임 확정, 무시.
 
 ### 검증 결과
-- `flutter analyze`: (작성)
-- `flutter test`: (작성)
-- 실기기 스모크: (작성)
+- `flutter analyze`: ✅ No issues
+- `flutter test test/blocs/`: ✅ 13/13 passed (AuthState 10 + ThemeCubit 3)
+- `flutter test`(전체): ⚠️ +13 / -1, 실패 1건은 pre-existing `test/widget_test.dart` (PR 11 위임, 회귀 아님)
+- 실기기/시뮬레이터 스모크: 미실행 (사용자 요청 시 진행)
+- opus `flutter-code-reviewer`: PASS, 0 must-fix, nit 2건 반영
+
+### 머지 / 배포
+- Feature 커밋: `22e3702` (`BLoC PR2: AuthCubit 도입 — authStateNotifier 제거`)
+- `develop` 머지(--no-ff): `ce44d23` (`Merge feature/bloc-02-auth: BLoC PR 2 — AuthCubit 도입`)
+- `origin/develop` push 완료 (`bd0e45b..ce44d23`)
+- `feature/bloc-02-auth` 브랜치 보존

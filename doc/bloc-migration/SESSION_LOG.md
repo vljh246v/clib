@@ -42,6 +42,92 @@
 
 <!-- 이 아래에 세션 엔트리를 추가한다. 최신이 위. -->
 
+## 2026-04-20 PR 02 — AuthCubit
+
+**세션 결과**: 🟢 완료
+
+**브랜치**: `feature/bloc-02-auth` (feature 커밋: `22e3702`, 머지 커밋: `ce44d23`)
+
+### 계획대로 된 점
+- `lib/blocs/auth/auth_cubit.dart` + `auth_state.dart` 신규 (플랜 스니펫과 거의 동일)
+- `FirebaseAuth.authStateChanges` 구독 + `SyncService.init/dispose` 책임을 AuthCubit으로 이관
+- `main.dart`에서 `authStateNotifier` 전역 제거 + 직접 listen 블록 + 초기 currentUser 처리 제거
+- `MultiBlocProvider`에 `AuthCubit(lazy: false)` 추가
+- `SettingsScreen`: `ValueListenableBuilder<User?>` → `BlocBuilder<AuthCubit, AuthState>`, 4개 핸들러 `context.read<AuthCubit>()` 경유로 교체
+- `AuthState` copyWith + equality 유닛 테스트 10개 PASS
+
+### 계획과 다르게 된 점
+- **AuthCubit 자체 유닛 테스트 미작성**: Firebase 의존으로 PR 11(firebase_auth_mocks 도입 시)로 위임. 플랜 9.1에서 허용한 범위.
+- **`_onAuthChanged` try/catch 래핑**: 리뷰어 nit 반영. `SyncService.init/dispose`에서 예외가 터지더라도 `isInitialized=true` emit이 보장되어야 `SettingsScreen`이 `SizedBox.shrink()`에 영구히 머무는 상태를 방지.
+- **`close()`에서 `await _sub.cancel()`**: 리뷰어 nit 반영. 대칭성/안전성 개선.
+- **`main.dart`에서 `firebase_auth` import 제거**: `FirebaseAuth.instance.currentUser == null` → `!AuthService.isLoggedIn`로 치환. 의도적 정리.
+- **runApp 타이밍**: 기존 `await SyncService.init(currentUser)`가 runApp 이전에 끝나던 것이, 신규는 AuthCubit 생성자 이후 비동기 실행. 초기 HomeScreen은 Hive 데이터 먼저 렌더 → Firestore 첫 스냅샷이 덮어씀. 치명적 레이스 없음.
+
+### 새로 발견한 이슈 / TODO
+- **AuthState.copyWith(setUserNull)** 패턴은 기능 OK지만 sentinel/Optional 대비 덜 명시적. PR 11에서 재고려 가능.
+- **`AuthService.isLoggedIn` 활용 확산**: 앞으로도 `FirebaseAuth.instance.currentUser` 직접 의존은 `AuthService` 경유로 정리 권장.
+- **(공통 컨벤션 재확인)** cubit 테스트 작성 규칙: Firebase 의존 없으면 full coverage, 의존 있으면 상태 객체 테스트만 → PR 11 mocks 도입 전까지 동일.
+
+### 참고한 링크
+- flutter_bloc: https://bloclibrary.dev/bloc-concepts/#cubit-vs-bloc
+- `FirebaseAuth.authStateChanges()` 첫 이벤트 시멘틱 (구독 시 현재 user 재발행)
+
+### 다음 세션 유의사항
+- **PR 3(OnboardingCubit)**: 난이도 ⭐, 가장 단순. state가 `int` 하나라 `Cubit<int>` 패턴(ThemeCubit과 동일).
+- **전역 BlocProvider 규칙** (README L104): 전역 = ThemeCubit, AuthCubit. OnboardingCubit은 **화면 로컬** `BlocProvider`.
+- **Hive 테스트 격리 path 컨벤션** 동일: `.dart_tool/test_hive_onboarding_cubit`.
+- **기존 `test/widget_test.dart`**: 여전히 broken(pre-existing). PR 11 위임.
+- **CLAUDE.md/플랜 문서의 `themeModeNotifier`/`authStateNotifier` 잔존 언급**: PR 11 cleanup 확정, 무시.
+
+### 검증 결과
+- `flutter analyze`: ✅ No issues
+- `flutter test test/blocs/`: ✅ 13/13 passed (AuthState 10 + ThemeCubit 3)
+- `flutter test`(전체): ⚠️ +13 / -1, 실패 1건은 pre-existing `widget_test.dart` (PR 11 위임, 회귀 아님)
+- 시뮬레이터/실기기 스모크: 미실행 (사용자 요청 없음)
+- opus `flutter-code-reviewer`: PASS, 0 must-fix, nit 2건 반영
+
+### 머지 / 배포
+- `develop` 머지(--no-ff): `ce44d23` (`Merge feature/bloc-02-auth: BLoC PR 2 — AuthCubit 도입`)
+- `origin/develop` push 완료 (`bd0e45b..ce44d23`)
+- `feature/bloc-02-auth` 브랜치 보존
+
+### 다음 세션 즉시 시작 프롬프트 (PR 3 — OnboardingCubit)
+
+다음 세션 시작 시 아래 프롬프트를 그대로 복사해 사용:
+
+````
+doc/bloc-migration/pr-03-onboarding.md를 정독하고 PR 3(OnboardingCubit) 작업을 시작해줘.
+이전 세션(PR 2) 결과는 SESSION_LOG.md 최상단에 있어. 아래 컨벤션을 반드시 따를 것.
+
+## PR 1~2에서 확립된 컨벤션
+
+1. **bloc_test 미도입**: cubit 단위 테스트는 일반 `flutter_test` + `Cubit.stream.listen` + `expectLater`
+2. **테스트 Hive 격리 path**: `setUpAll`에서 `Hive.init('.dart_tool/test_hive_<name>')` + `openBox`, `tearDownAll`에서 `deleteFromDisk`
+3. **전역 vs 화면 로컬 BlocProvider** (README L104): 전역 = ThemeCubit + AuthCubit. **OnboardingCubit은 화면 로컬** `BlocProvider`(OnboardingScreen.build 최상단).
+4. **CLAUDE.md/플랜 문서의 잔존 언급 무시**: `themeModeNotifier`/`authStateNotifier` — PR 11 cleanup 위임 확정.
+5. **브랜치 워크플로**: `develop ↔ origin/develop` 동기화 확인 후 `feature/bloc-03-onboarding` 분기 → `--no-ff` 머지 + push (PR 생성 X, 사용자 승인 후 push)
+6. **서브에이전트 모델**: 단순 haiku / 분석 sonnet / 최종 리뷰만 opus `flutter-code-reviewer`
+7. **시뮬레이터 스모크**: 사용자가 요청할 때만 진행
+8. **기존 `test/widget_test.dart`는 broken**: PR 11 위임
+
+## PR 3 시작 시 즉시 할 일
+
+1. `git status` + `develop`/`origin/develop` 동기화 확인
+2. `doc/bloc-migration/pr-03-onboarding.md` 정독 + `lib/screens/onboarding_screen.dart`(283 LOC) Read
+3. `git checkout -b feature/bloc-03-onboarding`
+4. `flutter analyze` 기준선 확인
+5. 작업 계획 한 줄 요약 + 영향 범위 보고 후 시작
+
+## PR 3 알려진 주의사항 (pr-03-onboarding.md 정독 전 참고)
+
+- OnboardingCubit은 state가 `int` 하나(페이지 인덱스) → 별도 state 클래스 없이 `Cubit<int>` (ThemeCubit과 동일 패턴)
+- `PageController`는 위젯 생명주기 결합으로 로컬 state 유지 (비전환 대상)
+- `isGuideMode`에 따라 완료 동작 분기 (false → /main push + setOnboardingComplete, true → Navigator.pop)
+- `DatabaseService.setOnboardingComplete()` 호출을 Cubit의 `complete()`로 이동
+````
+
+---
+
 ## 2026-04-20 PR 01 — Foundation + ThemeCubit
 
 **세션 결과**: 🟢 완료
