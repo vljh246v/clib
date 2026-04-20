@@ -42,6 +42,48 @@
 
 <!-- 이 아래에 세션 엔트리를 추가한다. 최신이 위. -->
 
+## 2026-04-20 PR 03 — OnboardingCubit
+
+**세션 결과**: 🟢 완료
+
+**브랜치**: `feature/bloc-03-onboarding` (feature 커밋: `dbf9028`, 머지 커밋: `71acc3c`)
+
+### 계획대로 된 점
+- `lib/blocs/onboarding/onboarding_cubit.dart` 신규 — `Cubit<int>` 패턴(state 클래스 생략), `setPage`(동일값 가드) + `complete()`
+- `OnboardingScreen._currentPage` 제거, `setOnboardingComplete()` 호출을 Cubit의 `complete()`로 이동
+- 화면 로컬 `BlocProvider`(README L104) 준수
+- `PageController`는 위젯 local state로 유지
+- 유닛 테스트 4 PASS (생성자, setPage 변화, 동일값 skip, complete → DB persist)
+
+### 계획과 다르게 된 점
+- **StatefulWidget → StatelessWidget(BlocProvider) + `_OnboardingBody(StatefulWidget)` 분리**: provider 하위에서 `context.read`를 쓰면서 PageController를 로컬로 유지하려면 분리가 필요. 이 패턴은 PR 4~ 이후 동일 상황에서 그대로 재사용 가능.
+- **플랜의 `bloc_test` 스니펫 → `flutter_test` + `Cubit.stream.listen`으로 교체**: PR 1~2 컨벤션 일관성.
+- **`complete()` 테스트 작성**: Hive `.dart_tool/test_hive_onboarding_cubit` 격리로 `DatabaseService.hasSeenOnboarding` 토글까지 검증(플랜은 "없으면 skip" 허용 범위).
+- **`_onNext/_onSkip/_onComplete`가 `async Future<void>`로 전환**: `onPressed`/`GestureDetector`에서 fire-and-forget. 기존도 동일 패턴이었고 `_onComplete` 내부 `if (!mounted) return;` 가드로 안전.
+
+### 새로 발견한 이슈 / TODO
+- `onboarding_screen.dart`의 `SizedBox(height: 20)` 매직 넘버는 기존 코드 유지된 것이며 PR 범위 밖. 레이아웃 정리 시 `Spacing` 토큰 적용 고려.
+- OnboardingCubit은 `articlesChangedNotifier`/`labelsChangedNotifier` 브릿지 해당 없음(순수 페이지 인덱스).
+
+### 참고한 링크
+- flutter_bloc BlocProvider scoping: https://bloclibrary.dev/flutter-bloc-concepts/#blocprovider
+- PR 1~2 선례: `lib/blocs/theme/theme_cubit.dart`, `test/blocs/theme_cubit_test.dart`
+
+### 다음 세션 유의사항
+- **PR 4(LibraryCubit)**: `articlesChangedNotifier`/`labelsChangedNotifier` 브릿지 패턴을 처음 적용. README L108 템플릿 숙지 필수.
+- **StatefulWidget + 화면 로컬 BlocProvider 동시 필요 시**: PR 3에서 확립한 `_XxxBody(StatefulWidget)` 분리 패턴을 기본 선택지로.
+- **Cubit 유닛 테스트 컨벤션 불변**: `flutter_test` + `Cubit.stream.listen` + `expectLater`. `bloc_test` 미도입 유지. 플랜 문서의 스니펫은 무시.
+- **Hive 테스트 격리 path 컨벤션 불변**: `.dart_tool/test_hive_<name>` + `setUpAll(openBox)` + `setUp(clear)` + `tearDownAll(deleteFromDisk)`.
+- **기존 `test/widget_test.dart`**: 여전히 broken(pre-existing). PR 11 위임.
+
+### 검증 결과
+- `flutter analyze`: ✅ No issues found
+- `flutter test test/blocs/`: ✅ 17/17 passed (theme 3 + auth_state 10 + onboarding 4)
+- 실기기 스모크: ⚪ 사용자 요청 시에만 진행 (미수행)
+- `flutter-code-reviewer`(opus): LGTM
+
+---
+
 ## 2026-04-20 PR 02 — AuthCubit
 
 **세션 결과**: 🟢 완료

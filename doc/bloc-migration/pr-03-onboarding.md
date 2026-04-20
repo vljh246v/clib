@@ -212,20 +212,38 @@ BLoC PR3: OnboardingCubit 도입 — 페이지 인덱스 상태 이동
 
 ## 8. 핸드오프 노트 (세션 종료 시 작성)
 
+**세션 완료일**: 2026-04-20
+**브랜치**: `feature/bloc-03-onboarding` (feature 커밋 `dbf9028`, 머지 커밋 `71acc3c`)
+
 ### 계획대로 된 점
-- (작성)
+- `lib/blocs/onboarding/onboarding_cubit.dart` 신규 — 플랜 스니펫 그대로 (`Cubit<int>` + `setPage` 동일값 가드 + `complete()`)
+- `OnboardingScreen._currentPage` 제거 + `setOnboardingComplete()` 호출을 Cubit의 `complete()`로 이동
+- 화면 로컬 `BlocProvider` 규칙(README L104) 준수 — 전역 등록 X
+- `PageController`는 위젯 local state로 유지 (플랜 2장 "비전환 대상")
+- 테스트 4개 PASS (생성자, setPage 변화, 동일값 skip, complete → `hasSeenOnboarding=true`)
 
 ### 계획과 다르게 된 점
-- (작성)
+- **`OnboardingScreen` 구조를 StatefulWidget → StatelessWidget + 내부 `_OnboardingBody(StatefulWidget)` 분리**. 이유: `BlocProvider` 하위에서 `context.read<OnboardingCubit>()`를 쓰려면 provider가 build tree의 하위여야 하는데, 같은 State 안에서는 `_controller` 필드를 유지하면서 read가 불가능. 분리하면 PageController는 body state에 남기고 read도 가능.
+- **플랜의 `bloc_test` 사용 스니펫을 PR 1~2 컨벤션(`flutter_test` + `Cubit.stream.listen` + `expectLater`)으로 대체**. PR 1에서 확립된 패턴 일관성 유지.
+- **`complete()` 테스트를 skip하지 않고 작성**. Hive `.dart_tool/test_hive_onboarding_cubit` 격리로 `DatabaseService.hasSeenOnboarding` 토글까지 검증.
+- **`_onNext/_onSkip/_onComplete`가 `async Future<void>`로 바뀜**. `onPressed`/`GestureDetector`에서 fire-and-forget. 기존 코드(`void _onNext()` 내부에서 `_onComplete()` 호출)도 동일 패턴이었고, `_onComplete` 내부에 `if (!mounted) return;` 가드가 있어 안전.
 
 ### 새로 발견한 이슈 / TODO
-- (작성)
+- `onboarding_screen.dart` line 113 근처 `SizedBox(height: 20)` 매직 넘버 — 기존 코드 유지된 것이며 PR 범위 밖. 추후 레이아웃 정리 PR에서 `Spacing` 토큰 적용 고려.
+- OnboardingCubit은 `articlesChangedNotifier`/`labelsChangedNotifier`와 무관(순수 페이지 인덱스) — README L108의 브릿지 규칙 해당 없음.
 
 ### 참고한 링크
-- (작성)
+- flutter_bloc BlocProvider scoping: https://bloclibrary.dev/flutter-bloc-concepts/#blocprovider
+- PR 1~2 선례: `lib/blocs/theme/theme_cubit.dart`, `test/blocs/theme_cubit_test.dart`
 
 ### 다음 세션 유의사항
-- (작성)
+- **PR 4(LibraryCubit)**: `articlesChangedNotifier`/`labelsChangedNotifier` 브릿지 패턴을 처음 적용하는 PR. README L108 템플릿 확인 필수.
+- **화면 로컬 BlocProvider + State 분리 패턴**: StatefulWidget 내부에서 read가 필요하면 `_XxxBody(StatefulWidget)` 분리를 기본 선택지로. PR 3에서 확립.
+- **Cubit 단위 테스트 컨벤션**: `flutter_test` + `Cubit.stream.listen` + `expectLater`. `bloc_test` 패키지는 여전히 미도입 (플랜 문서의 스니펫은 무시).
+- **Hive 테스트 격리 path**: `.dart_tool/test_hive_<name>` + `setUpAll(openBox)` + `setUp(clear)` + `tearDownAll(deleteFromDisk)` 패턴 고정.
 
 ### 검증 결과
-- (작성)
+- `flutter analyze`: ✅ No issues found
+- `flutter test test/blocs/`: ✅ 17/17 passed (theme 3 + auth_state 10 + onboarding 4)
+- 실기기 스모크: ⚪ 사용자 요청 시에만 진행 (미수행)
+- `flutter-code-reviewer`(opus): LGTM — BlocProvider 위치·BlocBuilder 범위·dispose 안전·PR 1~2 컨벤션 일관
