@@ -328,20 +328,52 @@ BLoC PR5: LabelManagementCubit 도입 — 라벨 CRUD + 알림 설정 이동
 
 ## 10. 핸드오프 노트
 
+**세션 결과**: 🟢 완료 (2026-04-20)
+**브랜치**: `feature/bloc-05-label-mgmt` (feature 커밋: `65ab02f`, 머지 커밋: `1ece09e`)
+
 ### 계획대로 된 점
-- (작성)
+- `lib/blocs/label_management/label_management_state.dart` + `label_management_cubit.dart` 신규 (플랜 3~4절과 대체로 동일).
+- `LabelManagementScreen` StatefulWidget → StatelessWidget + `BlocProvider(LabelManagementCubit)` + `_LabelManagementBody` 교체.
+- 다이얼로그 내부 `StatefulBuilder` 그대로 유지 — 요일/시간/스위치/색상 로컬 상태 보존.
+- 저장 경계(`createLabel` / `updateLabel` / `deleteLabel` / `updateNotification`)만 Cubit으로 이동.
+- `clearError()` public 메서드 + `BlocConsumer` listener에서 SnackBar 노출 후 즉시 `clearError` 호출.
+- 유닛 테스트 3 PASS (`copyWith clearError` / `copyWith` 보존 / 초기 기본값).
+- 서브에이전트 병렬 dispatch (Haiku: state + test, Sonnet: cubit, Sonnet: screen) → Opus 최종 리뷰 LGTM.
 
 ### 계획과 다르게 된 점
-- (작성)
+- **`Map<String, LabelStats>` → `Map<String, ({int total, int read})>`**: 플랜 3절 오기재. DatabaseService는 Dart record를 반환하므로 PR 4 교훈대로 record로 교체.
+- **`updateLabelNotification` 파라미터명**: 플랜 4절의 `notificationEnabled` / `notificationDays` / `notificationTime`은 오기재 → 실제 시그니처 `enabled:` / `days:` / `time:`에 맞춤.
+- **`articlesChangedNotifier`도 구독**: 플랜 4절은 `labelsChangedNotifier`만 언급. 그러나 라벨 통계(`getLabelStats`)가 아티클 `isRead`에 의존하므로 양쪽 notifier 모두 구독해야 stats가 최신화된다. `articlesChangedNotifier.addListener(_onChanged)` + `close()`에서 `removeListener` 짝 유지.
+- **`_LabelManagementBody`는 StatelessWidget**: PR 3의 "StatefulWidget + BlocProvider 분리" 패턴은 PR 4에서 조건부 선택지로 재해석됨. 본 화면은 로컬 상태 0 → StatelessWidget 단일로 충분.
+- **다이얼로그 cubit capture**: 플랜 5.2의 `ctx.read<LabelManagementCubit>()`는 `showDialog` 내부 route에서 provider 범위 이탈로 동작 불가. `final cubit = context.read<LabelManagementCubit>();`를 **`showDialog` 호출 전에 캡처**한 뒤 `StatefulBuilder` 내부 클로저가 참조.
+- **`_showLabelDialog` try/catch 제거**: 기존 inline `ScaffoldMessenger.showSnackBar`는 Cubit `errorMessage` + `BlocListener` 경로로 일원화. 저장 버튼은 `cubit.state.errorMessage == null`로 성공 여부 판정 후에만 `Navigator.pop` — 실패 시 다이얼로그 열린 채 SnackBar만 표시되어 재시도 가능.
+- **`_confirmDelete` stats를 파라미터로 수신**: screen에서 `DatabaseService` 의존을 완전히 제거하기 위해 `itemBuilder`에서 `state.labelStats[label.name]!`을 캡처해 `_confirmDelete(context, label, stats)`로 전달. `NotificationService.cancelForLabel` 호출도 `cubit.deleteLabel` 내부로 흡수 → screen 파일에서 `database_service.dart` / `notification_service.dart` import 완전 제거.
+- **`listenWhen` 가드**: `prev.errorMessage != curr.errorMessage && curr.errorMessage != null`로 동일 메시지 재진입 시 SnackBar 중복 방지. PR 4보다 한 단계 엄격.
+- **병렬 서브에이전트**: 사용자 지시로 3개 에이전트 병렬 실행(단순 파일은 Haiku, 로직은 Sonnet, 검토만 Opus). 글로벌 서브에이전트 모델 정책 그대로 적용.
 
 ### 새로 발견한 이슈 / TODO
-- (작성)
+- **`state.labels`와 `state.labelStats` 동기성**: `load()`에서 두 필드를 한 번에 emit하므로 현재는 안전. 추후 부분 emit(`copyWith(labels: ...)`만)이 추가되면 `itemBuilder`의 `state.labelStats[label.name]!` 강제 언랩에서 crash 가능. 메서드 추가 시 동시 emit 유지 규약.
+- **`_showNotificationDialog` 타임피커 취소 거동**: `showModalBottomSheet`를 스와이프로 닫아도 `onDateTimeChanged`의 최종 `tempTime`이 `selectedTime`에 반영됨. 기존 Stateful 구현과 동일(회귀 아님). 명확한 취소 UX가 필요하면 confirmed flag 도입.
+- **`updateNotification` 권한 거부 시 상태 불일치 가능성**: 알림 ON + `requestPermission()` 거부 → DB는 `enabled: true`로 저장되지만 실제 예약은 skip. 후속에서 권한 거부 시 `enabled` 롤백 또는 사용자 안내 추가 검토.
+- **Cubit 통합 테스트 미작성**: state `copyWith` 3종만. `createLabel` / `updateLabel` / `deleteLabel` / `updateNotification` Hive 격리 통합은 PR 4 패턴으로 확장 가능. 현재는 실기기 QA로 커버(CLAUDE.md 컨벤션 허용 범위).
+- **리뷰 nit(현재 미반영)**: (1) `createLabel` catch 직후 `emit(errorMessage)` + finally `emit(isSaving:false)`가 동일 프레임 2회 emit — `listenWhen` 가드 덕에 UX 영향 없으나 마이크로 중복. (2) `load()`의 `for (final l in labels)` 변수명이 다른 파일의 `AppLocalizations l`와 시각적 충돌(서로 다른 스코프라 컴파일 영향 없음). 모두 의도적 보류.
+- **루트 untracked 파일**(`DECISION_LOG.md` / `PROJECT_STATE.md` / `doc/img/`): PR 4와 동일, 다른 스킬 산출물. PR 5 범위 밖.
 
 ### 참고한 링크
-- (작성)
+- flutter_bloc BlocConsumer: https://bloclibrary.dev/flutter-bloc-concepts/#blocconsumer
+- Dart records: https://dart.dev/language/records#record-types
+- PR 4 선례: `lib/blocs/library/`, `test/blocs/library_cubit_test.dart`
 
 ### 다음 세션 유의사항
-- (작성)
+- **PR 6(ArticleListCubit + AllArticles)**: Bookmarked/LabelDetail까지 공통화할 단일 Cubit 도입. `source` enum(`all` / `bookmarked` / `byLabel(name)`)으로 분기.
+- **다중 선택(`_isSelecting` + `Set<dynamic> _selectedKeys`)**: Cubit 상태로 승격. Hive key는 `dynamic` 유지 — 타입 동일성 주의.
+- **`articlesChangedNotifier`만 구독으로 충분**: PR 6은 라벨 목록 자체를 보여주지 않으므로 `labelsChangedNotifier` 불필요. (단 PR 7의 LabelDetail은 헤더에 라벨 정보 쓰면 별도 검토.)
+- **screen 진입점 3개(AllArticles / Bookmarked / LabelDetail)** → 각 화면에서 `BlocProvider(create: (_) => ArticleListCubit(source: ...))`.
+- **`InlineBannerAd` 8개마다 삽입**: UI 패턴. Cubit 상태엔 영향 없고 `itemBuilder` 책임.
+- **라벨 통계 자동 갱신은 이미 보장**: PR 4/5의 양쪽 notifier 브릿지로 아티클 읽음/삭제 시 Library/LabelManagement가 자동 재로드됨. PR 6이 아티클을 변경하면 자동 파급.
 
 ### 검증 결과
-- (작성)
+- `flutter analyze`: ✅ No issues found (ran in 2.2s)
+- `flutter test test/blocs/label_management_cubit_test.dart`: ✅ 3/3 passed
+- 실기기 스모크: ⚪ 사용자 요청 시에만 (미수행)
+- Opus 최종 리뷰: ✅ LGTM (nit 2건은 의도적 보류 — 위 TODO 참조)
