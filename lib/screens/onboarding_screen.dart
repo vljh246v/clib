@@ -1,50 +1,63 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:clib/blocs/onboarding/onboarding_cubit.dart';
 import 'package:clib/l10n/app_localizations.dart';
-import 'package:clib/services/database_service.dart';
 import 'package:clib/theme/design_tokens.dart';
 
-class OnboardingScreen extends StatefulWidget {
+class OnboardingScreen extends StatelessWidget {
   /// true이면 설정 > 사용 방법에서 진입 (완료 시 pop)
   final bool isGuideMode;
 
   const OnboardingScreen({super.key, this.isGuideMode = false});
 
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => OnboardingCubit(),
+      child: _OnboardingBody(isGuideMode: isGuideMode),
+    );
+  }
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
-  final _controller = PageController();
-  int _currentPage = 0;
+class _OnboardingBody extends StatefulWidget {
+  final bool isGuideMode;
 
-  void _onNext() {
+  const _OnboardingBody({required this.isGuideMode});
+
+  @override
+  State<_OnboardingBody> createState() => _OnboardingBodyState();
+}
+
+class _OnboardingBodyState extends State<_OnboardingBody> {
+  final _controller = PageController();
+
+  Future<void> _onNext(int currentPage, int lastIndex) async {
     HapticFeedback.lightImpact();
-    if (_currentPage < 2) {
+    if (currentPage < lastIndex) {
       _controller.nextPage(
         duration: AppDurations.medium,
         curve: Curves.easeInOut,
       );
     } else {
-      _onComplete();
+      await _onComplete();
     }
   }
 
-  void _onSkip() {
+  Future<void> _onSkip() async {
     HapticFeedback.lightImpact();
-    _onComplete();
+    await _onComplete();
   }
 
   Future<void> _onComplete() async {
     if (!widget.isGuideMode) {
-      await DatabaseService.setOnboardingComplete();
+      await context.read<OnboardingCubit>().complete();
     }
-    if (mounted) {
-      if (widget.isGuideMode) {
-        Navigator.pop(context, true);
-      } else {
-        Navigator.pushReplacementNamed(context, '/main');
-      }
+    if (!mounted) return;
+    if (widget.isGuideMode) {
+      Navigator.pop(context, true);
+    } else {
+      Navigator.pushReplacementNamed(context, '/main');
     }
   }
 
@@ -80,6 +93,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         hint: l.onboardingLibraryHint,
       ),
     ];
+    final lastIndex = pages.length - 1;
 
     return Scaffold(
       body: SafeArea(
@@ -93,17 +107,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   top: Spacing.md,
                   right: Spacing.lg,
                 ),
-                child: _currentPage < pages.length - 1
-                    ? GestureDetector(
-                        onTap: _onSkip,
-                        child: Text(
-                          l.skip,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                child: BlocBuilder<OnboardingCubit, int>(
+                  builder: (context, currentPage) {
+                    if (currentPage >= lastIndex) {
+                      return const SizedBox(height: 20);
+                    }
+                    return GestureDetector(
+                      onTap: _onSkip,
+                      child: Text(
+                        l.skip,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
-                      )
-                    : const SizedBox(height: 20),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
 
@@ -112,7 +131,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: PageView.builder(
                 controller: _controller,
                 itemCount: pages.length,
-                onPageChanged: (i) => setState(() => _currentPage = i),
+                onPageChanged: (i) =>
+                    context.read<OnboardingCubit>().setPage(i),
                 itemBuilder: (context, index) {
                   final page = pages[index];
                   return _OnboardingPage(page: page, isDark: isDark);
@@ -128,59 +148,64 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 Spacing.xxl,
                 Spacing.xxxl,
               ),
-              child: Column(
-                children: [
-                  // 도트 인디케이터
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(pages.length, (i) {
-                      final isActive = i == _currentPage;
-                      return AnimatedContainer(
-                        duration: AppDurations.fast,
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: Spacing.xs,
-                        ),
-                        width: isActive ? 24 : 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: isActive
-                              ? theme.colorScheme.secondary
-                              : theme.colorScheme.onSurfaceVariant
-                                  .withValues(alpha: 0.25),
-                          borderRadius: Radii.borderFull,
-                        ),
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: Spacing.xxl),
+              child: BlocBuilder<OnboardingCubit, int>(
+                builder: (context, currentPage) {
+                  final isLast = currentPage >= lastIndex;
+                  return Column(
+                    children: [
+                      // 도트 인디케이터
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(pages.length, (i) {
+                          final isActive = i == currentPage;
+                          return AnimatedContainer(
+                            duration: AppDurations.fast,
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: Spacing.xs,
+                            ),
+                            width: isActive ? 24 : 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: isActive
+                                  ? theme.colorScheme.secondary
+                                  : theme.colorScheme.onSurfaceVariant
+                                      .withValues(alpha: 0.25),
+                              borderRadius: Radii.borderFull,
+                            ),
+                          );
+                        }),
+                      ),
+                      const SizedBox(height: Spacing.xxl),
 
-                  // 다음/시작 버튼
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: FilledButton(
-                      onPressed: _onNext,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: theme.colorScheme.secondary,
-                        foregroundColor: theme.colorScheme.onSecondary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: Radii.borderMd,
+                      // 다음/시작 버튼
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: FilledButton(
+                          onPressed: () => _onNext(currentPage, lastIndex),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: theme.colorScheme.secondary,
+                            foregroundColor: theme.colorScheme.onSecondary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: Radii.borderMd,
+                            ),
+                          ),
+                          child: Text(
+                            !isLast
+                                ? l.next
+                                : widget.isGuideMode
+                                    ? l.confirm
+                                    : l.start,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
-                      child: Text(
-                        _currentPage < pages.length - 1
-                            ? l.next
-                            : widget.isGuideMode
-                                ? l.confirm
-                                : l.start,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                    ],
+                  );
+                },
               ),
             ),
           ],
