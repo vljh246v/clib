@@ -83,7 +83,8 @@
 - `flutter analyze`: ✅ No issues
 - `flutter test test/blocs/theme_cubit_test.dart`: ✅ 3/3 passed
 - `flutter test`(전체): ⚠️ 신규 3 PASS / 기존 widget_test 1 FAIL(pre-existing, 회귀 아님)
-- 실기기 스모크: 미실행 (사용자 측 검증 권장)
+- 시뮬레이터 스모크(iPhone 17, iOS 26.4, debug): ✅ 첫 프레임 + 테마 토글/유지 OK
+- 실기기 release 스모크: 미실행 (사용자 권장)
 - opus `flutter-code-reviewer`: PASS, must-fix 없음
 
 ---

@@ -345,5 +345,6 @@ BLoC PR1: ThemeCubit 도입 — themeModeNotifier 제거
 - `flutter analyze`: ✅ No issues found! (1.6s)
 - `flutter test test/blocs/theme_cubit_test.dart`: ✅ 3/3 passed
 - `flutter test`(전체): ⚠️ 신규 3 PASS / 기존 widget_test.dart 1 FAIL (PR 1 이전부터 broken, 회귀 아님)
-- 실기기 스모크: 미실행 (사용자 측 검증 필요 — Settings>테마 토글 즉시 반영, 재실행 시 유지, `flutter run --release` 1회)
+- 시뮬레이터 스모크(iPhone 17, iOS 26.4, debug): ✅ 첫 프레임 정상, 테마 토글 즉시 반영 + 화면 이동 후 유지 확인
+- 실기기 release 스모크: 미실행 (사용자 측 `flutter run --release` 1회 권장)
 - opus 모델 `flutter-code-reviewer` 리뷰: PASS, must-fix 없음, blocker 없음
