@@ -1,14 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:clib/blocs/auth/auth_cubit.dart';
+import 'package:clib/blocs/auth/auth_state.dart';
 import 'package:clib/blocs/theme/theme_cubit.dart';
 import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/screens/label_management_screen.dart';
 import 'package:clib/screens/onboarding_screen.dart';
 import 'package:clib/screens/theme_settings_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:clib/services/auth_service.dart';
-import 'package:clib/main.dart';
 import 'package:clib/theme/design_tokens.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -32,11 +32,14 @@ class SettingsScreen extends StatelessWidget {
         ),
         const SizedBox(height: Spacing.xxl),
         // 계정 섹션
-        ValueListenableBuilder<User?>(
-          valueListenable: authStateNotifier,
-          builder: (context, user, _) {
+        BlocBuilder<AuthCubit, AuthState>(
+          builder: (context, state) {
+            // 첫 authStateChanges 이벤트 수신 전에는 로그인/로그아웃 분기 보류
+            if (!state.isInitialized) {
+              return const SizedBox.shrink();
+            }
             return _AccountSection(
-              user: user,
+              user: state.user,
               theme: theme,
               isDark: isDark,
               l: l,
@@ -225,14 +228,20 @@ class _AccountSection extends StatelessWidget {
         ),
         const SizedBox(height: Spacing.lg),
         _SignInButton(
-          onTap: () => _handleSignIn(context, AuthService.signInWithGoogle),
+          onTap: () => _handleSignIn(
+            context,
+            () => context.read<AuthCubit>().signInWithGoogle(),
+          ),
           icon: Icons.g_mobiledata_rounded,
           label: l.signInWithGoogle,
           theme: theme,
         ),
         const SizedBox(height: Spacing.sm),
         _SignInButton(
-          onTap: () => _handleSignIn(context, AuthService.signInWithApple),
+          onTap: () => _handleSignIn(
+            context,
+            () => context.read<AuthCubit>().signInWithApple(),
+          ),
           icon: Icons.apple_rounded,
           label: l.signInWithApple,
           theme: theme,
@@ -336,7 +345,7 @@ class _AccountSection extends StatelessWidget {
 
   Future<void> _handleSignIn(
     BuildContext context,
-    Future<dynamic> Function() signInMethod,
+    Future<void> Function() signInMethod,
   ) async {
     try {
       await signInMethod();
@@ -371,9 +380,10 @@ class _AccountSection extends StatelessWidget {
       ),
     );
     if (confirmed != true) return;
+    if (!context.mounted) return;
 
     try {
-      await AuthService.deleteAccount();
+      await context.read<AuthCubit>().deleteAccount();
     } catch (e) {
       debugPrint('계정 삭제 실패: $e');
       if (context.mounted) {
@@ -403,8 +413,8 @@ class _AccountSection extends StatelessWidget {
         ],
       ),
     );
-    if (confirmed == true) {
-      await AuthService.signOut();
+    if (confirmed == true && context.mounted) {
+      await context.read<AuthCubit>().signOut();
     }
   }
 }

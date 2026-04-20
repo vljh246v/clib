@@ -1,20 +1,20 @@
 import 'dart:io' as io;
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:clib/blocs/auth/auth_cubit.dart';
 import 'package:clib/blocs/theme/theme_cubit.dart';
 import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/screens/home_screen.dart';
 import 'package:clib/screens/library_screen.dart';
 import 'package:clib/screens/settings_screen.dart';
+import 'package:clib/services/auth_service.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/services/notification_service.dart';
 import 'package:clib/services/ad_service.dart';
 import 'package:clib/services/demo_data_service.dart';
 import 'package:clib/services/share_service.dart';
-import 'package:clib/services/sync_service.dart';
 import 'package:clib/theme/app_theme.dart';
 import 'package:clib/theme/design_tokens.dart';
 import 'package:clib/screens/onboarding_screen.dart';
@@ -26,9 +26,6 @@ final articlesChangedNotifier = ValueNotifier<int>(0);
 
 /// 라벨 변경 시 LibraryScreen 등에 알리는 notifier
 final labelsChangedNotifier = ValueNotifier<int>(0);
-
-/// 인증 상태 notifier
-final authStateNotifier = ValueNotifier<User?>(null);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,30 +43,11 @@ void main() async {
   });
   // debug 모드 + 미로그인 상태에서만 데모 데이터 생성
   // (로그인 상태에서 seed하면 Firestore 동기화와 충돌)
-  if (kDebugMode && FirebaseAuth.instance.currentUser == null) {
+  if (kDebugMode && !AuthService.isLoggedIn) {
     await DemoDataService.seed();
   }
-  // 모든 초기화 완료 후 인증 상태 감지 + 동기화 시작
-  // (seed()보다 뒤에 와야 레이스 컨디션 방지)
-  final currentUser = FirebaseAuth.instance.currentUser;
-  authStateNotifier.value = currentUser;
-  if (currentUser != null) {
-    await SyncService.init(currentUser);
-  }
-  // 첫 이벤트(현재 상태)는 위에서 처리했으므로 건너뜀
-  bool isFirstAuthEvent = true;
-  FirebaseAuth.instance.authStateChanges().listen((user) {
-    if (isFirstAuthEvent) {
-      isFirstAuthEvent = false;
-      return;
-    }
-    authStateNotifier.value = user;
-    if (user != null) {
-      SyncService.init(user);
-    } else {
-      SyncService.dispose();
-    }
-  });
+  // 인증 상태 감지 + SyncService.init/dispose 는 AuthCubit이 소유한다
+  // (ClibApp의 MultiBlocProvider에서 lazy: false로 즉시 인스턴스화)
   runApp(const ClibApp());
 }
 
@@ -81,6 +59,7 @@ class ClibApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => ThemeCubit()),
+        BlocProvider(create: (_) => AuthCubit(), lazy: false),
       ],
       child: BlocBuilder<ThemeCubit, ThemeMode>(
         builder: (context, mode) {
