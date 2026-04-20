@@ -311,24 +311,39 @@ BLoC PR1: ThemeCubit 도입 — themeModeNotifier 제거
 
 ## 7. 핸드오프 노트 (세션 종료 시 작성)
 
-<!-- 이 섹션을 실제 작업 후 채워 넣는다. -->
-
 ### 계획대로 된 점
-- (세션 후 작성)
+- `flutter_bloc ^8.1.6`, `equatable ^2.0.5` 도입
+- `lib/blocs/theme/theme_cubit.dart` 신규(state=ThemeMode, persist→emit 순서, idempotency)
+- `main.dart` `themeModeNotifier` 정의/할당/사용 3지점 모두 제거 + `MultiBlocProvider`+`BlocBuilder<ThemeCubit, ThemeMode>` 교체
+- `SettingsScreen`은 `context.watch<ThemeCubit>().state` 한 줄로 전환 → `_buildItem(String subtitle)` 시그니처 보존
+- 단위 테스트 3개 PASS
 
 ### 계획과 다르게 된 점
-- (세션 후 작성)
+- **`bloc_test ^9.1.7` 미도입**: `hive_generator ^2.0.1`이 `analyzer >=4.6.0 <7.0.0`에 묶여 있어 `bloc_test`(test 1.16+ → analyzer 8+) 와 version solving 실패. 일반 `flutter_test` + `Cubit.stream.listen` + `expectLater`로 동등한 검증 작성. 결과 동일.
+- **`ThemeSettingsScreen`은 기존 디자인 유지**: PR 문서의 단순 `ListView+RadioListTile` 스니펫 대신 기존의 `RadioGroup<ThemeMode>(groupValue, onChanged, child:…)` 신규 API + `Container shadow + Divider + secondary 아이콘` 구조를 보존하고 `ValueListenableBuilder` → `BlocBuilder`만 치환. ARB 키는 `themeSettings/themeSystem/...`이 아니라 실제 사용 중인 `theme/systemSettings/systemSettingsSubtitle/darkMode/lightMode`로 유지(추가/변경 0).
+- **테스트 환경**: `DatabaseService.init()`는 `Hive.initFlutter()`(path_provider 의존)이라 unit test에서 깨짐. `Hive.init('.dart_tool/test_hive_theme_cubit')` + `Hive.openBox('preferences')` 직접 호출로 우회. `_prefsBox` getter 형태라 호환됨.
 
 ### 새로 발견한 이슈 / TODO
-- (세션 후 작성)
+- **(PR 2~ 모든 cubit 테스트 공통 컨벤션)**: 각 테스트 파일은 자기 격리 path(`.dart_tool/test_hive_<cubit>`)를 쓰고 `setUpAll`에서 `Hive.init`+필요 box open, `tearDownAll`에서 `Hive.deleteFromDisk`. 다른 파일과의 process-level 충돌 방지.
+- **`CLAUDE.md` 문서 잔존 참조**: L103/L107의 `themeModeNotifier` 설명은 PR 11 cleanup으로 위임(계획서 `pr-11-cleanup.md:46-49`에 명시됨).
+- **기존 `test/widget_test.dart` pre-existing broken**: `tester.pumpWidget(const ClibApp())`만 호출하고 `Firebase.initializeApp()`·`DatabaseService.init()`을 안 하므로 PR 1 변경 전부터 throw. PR 1 회귀 아님(stash로 사전 확인 완료). `flutter test` 결과 신규 3 PASS / 기존 1 FAIL이지만 baseline broken으로 진단됨.
+- **`pubspec.yaml`에 `environment.flutter` floor 미명시**: `RadioGroup<T>` 신규 API는 Flutter 3.32+. 현재 dev 환경 통과하지만 협업/CI 안정성을 위해 향후 floor 추가 검토 권장.
+- **bloc_test 재시도 시점**: hive 4.x 마이그레이션 또는 hive_ce_generator 도입 시점에 재검토.
 
 ### 참고한 링크
-- (세션 후 작성)
+- flutter_bloc: https://bloclibrary.dev/bloc-concepts/#cubit-vs-bloc
+- 의존성 충돌 해결 단서: `flutter pub deps --no-dev` analyzer pin 분석
 
 ### 다음 세션 유의사항 (PR 2 또는 다른 PR로 넘어갈 때)
-- (세션 후 작성)
+- **bloc_test 없음**: 모든 후속 cubit/bloc 테스트는 `Cubit.stream.listen` + `expectLater` 또는 직접 emit 누적 검증으로 작성.
+- **Hive 테스트 컨벤션** 위 TODO 따를 것.
+- **PR 2(AuthCubit) 시작 시**: `MultiBlocProvider`에 `AuthCubit` providers 항목만 추가하면 됨(`main.dart:82` 근방). ThemeCubit과 동일한 패턴 적용.
+- **CLAUDE.md/플랜 문서의 `themeModeNotifier` 잔존 언급**은 의도된 deferral. PR 11에서 일괄 정리.
+- **기존 `widget_test.dart`는 broken**: PR 11에서 Hive 초기화를 포함한 테스트 헬퍼와 함께 재작성하는 게 적절.
 
 ### 검증 결과
-- `flutter analyze`: (세션 후 작성)
-- `flutter test`: (세션 후 작성)
-- 실기기 스모크: (세션 후 작성)
+- `flutter analyze`: ✅ No issues found! (1.6s)
+- `flutter test test/blocs/theme_cubit_test.dart`: ✅ 3/3 passed
+- `flutter test`(전체): ⚠️ 신규 3 PASS / 기존 widget_test.dart 1 FAIL (PR 1 이전부터 broken, 회귀 아님)
+- 실기기 스모크: 미실행 (사용자 측 검증 필요 — Settings>테마 토글 즉시 반영, 재실행 시 유지, `flutter run --release` 1회)
+- opus 모델 `flutter-code-reviewer` 리뷰: PASS, must-fix 없음, blocker 없음

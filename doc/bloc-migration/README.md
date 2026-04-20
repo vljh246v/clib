@@ -19,7 +19,7 @@
 
 | PR | 제목 | 의존성 | 상태 | 브랜치 | 세션 완료일 |
 |----|------|--------|------|--------|------------|
-| 1 | Foundation + ThemeCubit | - | ⬜ Not Started | `feature/bloc-01-theme` | - |
+| 1 | Foundation + ThemeCubit | - | 🟢 Done | `feature/bloc-01-theme` | 2026-04-20 |
 | 2 | AuthCubit + SyncService 연동 이동 | PR 1 | ⬜ Not Started | `feature/bloc-02-auth` | - |
 | 3 | OnboardingCubit | PR 1 | ⬜ Not Started | `feature/bloc-03-onboarding` | - |
 | 4 | LibraryCubit | PR 1 | ⬜ Not Started | `feature/bloc-04-library` | - |
