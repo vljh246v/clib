@@ -82,6 +82,50 @@
 - 실기기 스모크: ⚪ 사용자 요청 시에만 진행 (미수행)
 - `flutter-code-reviewer`(opus): LGTM
 
+### 머지 / 배포
+- `develop` 머지(--no-ff): `71acc3c` (`Merge feature/bloc-03-onboarding: BLoC PR 3 — OnboardingCubit 도입`)
+- `origin/develop` push 완료 (`c79fddc..71acc3c` → 문서 커밋 포함 `71acc3c..b81b5d1`)
+- `feature/bloc-03-onboarding` 브랜치 보존 (push 완료)
+
+### 다음 세션 즉시 시작 프롬프트 (PR 4 — LibraryCubit)
+
+다음 세션 시작 시 아래 프롬프트를 그대로 복사해 사용:
+
+````
+doc/bloc-migration/pr-04-library.md를 정독하고 PR 4(LibraryCubit) 작업을 시작해줘.
+이전 세션(PR 3) 결과는 SESSION_LOG.md 최상단에 있어. 아래 컨벤션을 반드시 따를 것.
+
+## PR 1~3에서 확립된 컨벤션
+
+1. **bloc_test 미도입**: cubit 단위 테스트는 `flutter_test` + `Cubit.stream.listen` + `expectLater`
+2. **테스트 Hive 격리 path**: `setUpAll`에서 `Hive.init('.dart_tool/test_hive_<name>')` + 필요 box `openBox`, `setUp`에서 `clear`, `tearDownAll`에서 `deleteFromDisk`
+3. **전역 vs 화면 로컬 BlocProvider** (README L104): 전역 = ThemeCubit + AuthCubit. **LibraryCubit은 화면 로컬** `BlocProvider`.
+4. **StatefulWidget + 화면 로컬 BlocProvider 동시 필요 시**: PR 3에서 확립한 `_XxxBody(StatefulWidget)` 분리 패턴을 기본 선택지로. (provider는 상위 Stateless, 내부 Stateful에서 context.read 접근)
+5. **`articlesChangedNotifier`/`labelsChangedNotifier` 브릿지** (README L108 템플릿): PR 4에서 처음 적용. Cubit 생성자에서 `addListener(_onChanged)` → `_onChanged()` = `load()`, `close()`에서 `removeListener`.
+6. **CLAUDE.md/플랜 문서의 잔존 언급 무시**: `themeModeNotifier`/`authStateNotifier` — PR 11 cleanup 위임 확정.
+7. **브랜치 워크플로**: `develop ↔ origin/develop` 동기화 확인 후 `feature/bloc-04-library` 분기 → `--no-ff` 머지 + push (PR 생성 X, 사용자 승인 후 push)
+8. **서브에이전트 모델**: 단순 haiku / 분석 sonnet / 최종 리뷰만 opus `flutter-code-reviewer`
+9. **시뮬레이터 스모크**: 사용자가 요청할 때만 진행
+10. **기존 `test/widget_test.dart`는 broken**: PR 11 위임
+
+## PR 4 시작 시 즉시 할 일
+
+1. `git status` + `develop`/`origin/develop` 동기화 확인
+2. `doc/bloc-migration/pr-04-library.md` 정독 + `lib/screens/library_screen.dart`(445 LOC) Read
+3. `git checkout -b feature/bloc-04-library`
+4. `flutter analyze` 기준선 확인
+5. 작업 계획 한 줄 요약 + 영향 범위 보고 후 시작
+
+## PR 4 알려진 주의사항 (pr-04-library.md 정독 전 참고)
+
+- `LibraryState`는 `Equatable` 기반 상태 클래스 (labels, overall, bookmark, labelStats Map, isLoading). `copyWith` 필수.
+- `articlesChangedNotifier` + `labelsChangedNotifier` **두 notifier 동시 구독**. 하나만이라도 변경되면 `load()` 재실행. PR 11까지 브릿지 유지.
+- `LibraryScreen`은 로컬 상태 없음 — 기존에도 두 notifier `addListener`로 `setState({})`만 하던 단순 패턴.
+- Navigator.push 후 복귀 시에도 `setState({})` 호출하는 라인(L184, L263, L329) → Cubit 전환 후에는 notifier 트리거로 자동 재로드되므로 명시 setState 제거 가능.
+- 2열 GridView 구조 (index 0 = 전체, 1 = 북마크, 2+ = 라벨 카드) 유지.
+- 데이터 소스 getter: `DatabaseService.getAllLabelObjects / getOverallStats / getBookmarkStats / getLabelStats`.
+````
+
 ---
 
 ## 2026-04-20 PR 02 — AuthCubit
