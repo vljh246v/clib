@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:clib/blocs/theme/theme_cubit.dart';
 import 'package:clib/l10n/app_localizations.dart';
-import 'package:clib/main.dart';
-import 'package:clib/services/database_service.dart';
 import 'package:clib/theme/design_tokens.dart';
 
 class ThemeSettingsScreen extends StatelessWidget {
@@ -15,9 +15,8 @@ class ThemeSettingsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(l.theme)),
-      body: ValueListenableBuilder<ThemeMode>(
-        valueListenable: themeModeNotifier,
-        builder: (context, mode, _) {
+      body: BlocBuilder<ThemeCubit, ThemeMode>(
+        builder: (context, mode) {
           return Padding(
             padding: const EdgeInsets.all(Spacing.lg),
             child: Container(
@@ -30,8 +29,7 @@ class ThemeSettingsScreen extends StatelessWidget {
                 groupValue: mode,
                 onChanged: (v) {
                   if (v != null) {
-                    themeModeNotifier.value = v;
-                    DatabaseService.saveThemeMode(v);
+                    context.read<ThemeCubit>().setTheme(v);
                   }
                 },
                 child: Column(
