@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:clib/blocs/theme/theme_cubit.dart';
 import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/screens/label_management_screen.dart';
 import 'package:clib/screens/onboarding_screen.dart';
@@ -19,6 +21,7 @@ class SettingsScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final l = AppLocalizations.of(context)!;
+    final themeMode = context.watch<ThemeCubit>().state;
 
     return ListView(
       padding: const EdgeInsets.all(Spacing.lg),
@@ -73,7 +76,7 @@ class SettingsScreen extends StatelessWidget {
                 icon: Icons.palette_outlined,
                 iconColor: theme.colorScheme.primary,
                 title: l.theme,
-                subtitle: _themeModeLabel(themeModeNotifier.value, l),
+                subtitle: _themeModeLabel(themeMode, l),
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(

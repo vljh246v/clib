@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:clib/blocs/theme/theme_cubit.dart';
 import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/screens/home_screen.dart';
 import 'package:clib/screens/library_screen.dart';
@@ -18,9 +20,6 @@ import 'package:clib/theme/design_tokens.dart';
 import 'package:clib/screens/onboarding_screen.dart';
 import 'package:clib/widgets/share_label_sheet.dart';
 import 'package:clib/widgets/home_overlay_guide.dart';
-
-/// 앱 전역 테마 모드
-final themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
 
 /// 아티클 추가/삭제 시 HomeScreen에 알리는 notifier
 final articlesChangedNotifier = ValueNotifier<int>(0);
@@ -71,7 +70,6 @@ void main() async {
       SyncService.dispose();
     }
   });
-  themeModeNotifier.value = DatabaseService.savedThemeMode;
   runApp(const ClibApp());
 }
 
@@ -80,26 +78,30 @@ class ClibApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: themeModeNotifier,
-      builder: (context, mode, _) {
-        final showOnboarding = !DatabaseService.hasSeenOnboarding;
-        return MaterialApp(
-          title: 'Clib',
-          debugShowCheckedModeBanner: false,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          theme: AppTheme.light(),
-          darkTheme: AppTheme.dark(),
-          themeMode: mode,
-          home: showOnboarding
-              ? const OnboardingScreen()
-              : const MainScreen(),
-          routes: {
-            '/main': (_) => const MainScreen(),
-          },
-        );
-      },
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => ThemeCubit()),
+      ],
+      child: BlocBuilder<ThemeCubit, ThemeMode>(
+        builder: (context, mode) {
+          final showOnboarding = !DatabaseService.hasSeenOnboarding;
+          return MaterialApp(
+            title: 'Clib',
+            debugShowCheckedModeBanner: false,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            theme: AppTheme.light(),
+            darkTheme: AppTheme.dark(),
+            themeMode: mode,
+            home: showOnboarding
+                ? const OnboardingScreen()
+                : const MainScreen(),
+            routes: {
+              '/main': (_) => const MainScreen(),
+            },
+          );
+        },
+      ),
     );
   }
 }
