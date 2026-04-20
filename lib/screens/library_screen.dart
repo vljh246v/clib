@@ -1,82 +1,115 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:clib/blocs/library/library_cubit.dart';
+import 'package:clib/blocs/library/library_state.dart';
 import 'package:clib/l10n/app_localizations.dart';
-import 'package:clib/main.dart';
 import 'package:clib/models/label.dart';
-import 'package:clib/services/database_service.dart';
 import 'package:clib/screens/all_articles_screen.dart';
 import 'package:clib/screens/bookmarked_articles_screen.dart';
 import 'package:clib/screens/label_detail_screen.dart';
 import 'package:clib/theme/design_tokens.dart';
 
-class LibraryScreen extends StatefulWidget {
+class LibraryScreen extends StatelessWidget {
   const LibraryScreen({super.key});
 
   @override
-  State<LibraryScreen> createState() => _LibraryScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => LibraryCubit(),
+      child: const _LibraryBody(),
+    );
+  }
 }
 
-class _LibraryScreenState extends State<LibraryScreen> {
-  @override
-  void initState() {
-    super.initState();
-    articlesChangedNotifier.addListener(_refresh);
-    labelsChangedNotifier.addListener(_refresh);
-  }
-
-  @override
-  void dispose() {
-    articlesChangedNotifier.removeListener(_refresh);
-    labelsChangedNotifier.removeListener(_refresh);
-    super.dispose();
-  }
-
-  void _refresh() {
-    if (mounted) setState(() {});
-  }
+class _LibraryBody extends StatelessWidget {
+  const _LibraryBody();
 
   @override
   Widget build(BuildContext context) {
-    final labels = DatabaseService.getAllLabelObjects();
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final l = AppLocalizations.of(context)!;
 
-    return ListView(
-      padding: const EdgeInsets.all(Spacing.lg),
-      children: [
-        Text(l.library, style: theme.textTheme.displaySmall),
-        const SizedBox(height: Spacing.sm),
-        _buildOverallStats(labels, theme, isDark, l),
-        const SizedBox(height: Spacing.xl),
-        Text(l.labelStatus, style: theme.textTheme.titleMedium),
-        const SizedBox(height: Spacing.md),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisSpacing: Spacing.md,
-            crossAxisSpacing: Spacing.md,
-            childAspectRatio: 0.95,
-          ),
-          itemCount: labels.length + 2,
-          itemBuilder: (context, index) {
-            if (index == 0) return _buildAllCard(theme, isDark, l);
-            if (index == 1) return _buildBookmarkCard(theme, isDark, l);
-            return _buildLabelCard(labels[index - 2], theme, isDark, l);
-          },
-        ),
-      ],
+    return BlocBuilder<LibraryCubit, LibraryState>(
+      builder: (context, state) {
+        if (state.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return ListView(
+          padding: const EdgeInsets.all(Spacing.lg),
+          children: [
+            Text(l.library, style: theme.textTheme.displaySmall),
+            const SizedBox(height: Spacing.sm),
+            _OverallStatsCard(state: state, theme: theme, l: l),
+            const SizedBox(height: Spacing.xl),
+            Text(l.labelStatus, style: theme.textTheme.titleMedium),
+            const SizedBox(height: Spacing.md),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: Spacing.md,
+                crossAxisSpacing: Spacing.md,
+                childAspectRatio: 0.95,
+              ),
+              itemCount: state.labels.length + 2,
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return _AllCard(
+                    stats: state.overall,
+                    theme: theme,
+                    isDark: isDark,
+                    l: l,
+                  );
+                }
+                if (index == 1) {
+                  return _BookmarkCard(
+                    stats: state.bookmark,
+                    theme: theme,
+                    isDark: isDark,
+                    l: l,
+                  );
+                }
+                final label = state.labels[index - 2];
+                final stats = state.labelStats[label.name] ??
+                    const (total: 0, read: 0);
+                return _LabelCard(
+                  label: label,
+                  stats: stats,
+                  theme: theme,
+                  isDark: isDark,
+                  l: l,
+                );
+              },
+            ),
+          ],
+        );
+      },
     );
   }
+}
 
-  /// 전체 통계 요약 카드
-  Widget _buildOverallStats(List<Label> labels, ThemeData theme, bool isDark, AppLocalizations l) {
+/// 전체 통계 요약 카드 (라벨 기반 합산).
+class _OverallStatsCard extends StatelessWidget {
+  const _OverallStatsCard({
+    required this.state,
+    required this.theme,
+    required this.l,
+  });
+
+  final LibraryState state;
+  final ThemeData theme;
+  final AppLocalizations l;
+
+  @override
+  Widget build(BuildContext context) {
     var totalArticles = 0;
     var totalRead = 0;
-    for (final label in labels) {
-      final stats = DatabaseService.getLabelStats(label.name);
+    for (final label in state.labels) {
+      final stats = state.labelStats[label.name] ?? const (total: 0, read: 0);
       totalArticles += stats.total;
       totalRead += stats.read;
     }
@@ -125,7 +158,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(l.overallReadingStatus, style: theme.textTheme.titleSmall),
+                          Text(l.overallReadingStatus,
+                              style: theme.textTheme.titleSmall),
                           const SizedBox(height: Spacing.xs),
                           Text(
                             l.articlesRead(totalRead, totalArticles),
@@ -133,7 +167,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            l.labelCount(labels.length),
+                            l.labelCount(state.labels.length),
                             style: theme.textTheme.labelSmall,
                           ),
                         ],
@@ -148,28 +182,42 @@ class _LibraryScreenState extends State<LibraryScreen> {
       ),
     );
   }
+}
 
-  Widget _statBadge(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: Radii.borderSm,
+Widget _statBadge(String text, Color color) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.08),
+      borderRadius: Radii.borderSm,
+    ),
+    child: Text(
+      text,
+      style: TextStyle(
+        color: color,
+        fontSize: 10,
+        fontWeight: FontWeight.w600,
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
+    ),
+  );
+}
 
-  /// 전체 아티클 카드
-  Widget _buildAllCard(ThemeData theme, bool isDark, AppLocalizations l) {
-    final stats = DatabaseService.getOverallStats();
+/// 전체 아티클 카드.
+class _AllCard extends StatelessWidget {
+  const _AllCard({
+    required this.stats,
+    required this.theme,
+    required this.isDark,
+    required this.l,
+  });
+
+  final ({int total, int read}) stats;
+  final ThemeData theme;
+  final bool isDark;
+  final AppLocalizations l;
+
+  @override
+  Widget build(BuildContext context) {
     final color = theme.colorScheme.primary;
     final progress = stats.total > 0 ? stats.read / stats.total : 0.0;
     final unread = stats.total - stats.read;
@@ -181,7 +229,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
           context,
           MaterialPageRoute(builder: (_) => const AllArticlesScreen()),
         );
-        setState(() {});
+        if (!context.mounted) return;
+        await context.read<LibraryCubit>().load();
       },
       child: Container(
         padding: const EdgeInsets.all(Spacing.lg),
@@ -192,7 +241,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ),
         child: Column(
           children: [
-            // 상단 컬러 바
             Container(
               height: 3,
               margin: const EdgeInsets.only(bottom: Spacing.md),
@@ -248,10 +296,24 @@ class _LibraryScreenState extends State<LibraryScreen> {
       ),
     );
   }
+}
 
-  /// 북마크 카드 (그리드 아이템)
-  Widget _buildBookmarkCard(ThemeData theme, bool isDark, AppLocalizations l) {
-    final stats = DatabaseService.getBookmarkStats();
+/// 북마크 카드.
+class _BookmarkCard extends StatelessWidget {
+  const _BookmarkCard({
+    required this.stats,
+    required this.theme,
+    required this.isDark,
+    required this.l,
+  });
+
+  final ({int total, int read}) stats;
+  final ThemeData theme;
+  final bool isDark;
+  final AppLocalizations l;
+
+  @override
+  Widget build(BuildContext context) {
     final color = theme.colorScheme.secondary;
     final unread = stats.total - stats.read;
 
@@ -261,7 +323,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
           context,
           MaterialPageRoute(builder: (_) => const BookmarkedArticlesScreen()),
         );
-        setState(() {});
+        if (!context.mounted) return;
+        await context.read<LibraryCubit>().load();
       },
       child: Container(
         padding: const EdgeInsets.all(Spacing.lg),
@@ -310,10 +373,26 @@ class _LibraryScreenState extends State<LibraryScreen> {
       ),
     );
   }
+}
 
-  /// 라벨 카드 (그리드 아이템)
-  Widget _buildLabelCard(Label label, ThemeData theme, bool isDark, AppLocalizations l) {
-    final stats = DatabaseService.getLabelStats(label.name);
+/// 라벨 카드.
+class _LabelCard extends StatelessWidget {
+  const _LabelCard({
+    required this.label,
+    required this.stats,
+    required this.theme,
+    required this.isDark,
+    required this.l,
+  });
+
+  final Label label;
+  final ({int total, int read}) stats;
+  final ThemeData theme;
+  final bool isDark;
+  final AppLocalizations l;
+
+  @override
+  Widget build(BuildContext context) {
     final color = Color(label.colorValue);
     final progress = stats.total > 0 ? stats.read / stats.total : 0.0;
     final unread = stats.total - stats.read;
@@ -325,7 +404,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
           context,
           MaterialPageRoute(builder: (_) => LabelDetailScreen(label: label)),
         );
-        setState(() {});
+        if (!context.mounted) return;
+        await context.read<LibraryCubit>().load();
       },
       child: Container(
         padding: const EdgeInsets.all(Spacing.lg),
@@ -336,7 +416,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ),
         child: Column(
           children: [
-            // 상단 라벨 컬러 바
             Container(
               height: 3,
               margin: const EdgeInsets.only(bottom: Spacing.md),
@@ -396,19 +475,19 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 }
 
-/// 원형 프로그레스 바 Painter
+/// 원형 프로그레스 바 Painter.
 class _CircularProgressPainter extends CustomPainter {
-  final double progress;
-  final Color color;
-  final Color backgroundColor;
-  final double strokeWidth;
-
   _CircularProgressPainter({
     required this.progress,
     required this.color,
     required this.backgroundColor,
     required this.strokeWidth,
   });
+
+  final double progress;
+  final Color color;
+  final Color backgroundColor;
+  final double strokeWidth;
 
   @override
   void paint(Canvas canvas, Size size) {
