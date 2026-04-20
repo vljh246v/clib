@@ -87,6 +87,46 @@
 - 실기기 release 스모크: 미실행 (사용자 권장)
 - opus `flutter-code-reviewer`: PASS, must-fix 없음
 
+### 머지 / 배포
+- `develop` 머지(--no-ff): `f592689` (`Merge feature/bloc-01-theme: BLoC PR 1 — ThemeCubit 도입`)
+- `origin/develop` push 완료 (`0bc7fc7..f592689`)
+- `feature/bloc-01-theme` 브랜치는 보존 (히스토리/리퍼런스용)
+
+### 다음 세션 즉시 시작 프롬프트 (PR 2 — AuthCubit)
+
+다음 세션 시작 시 아래 프롬프트를 그대로 복사해 사용:
+
+````
+doc/bloc-migration/pr-02-auth.md를 정독하고 PR 2(AuthCubit) 작업을 시작해줘.
+이전 세션(PR 1) 결과는 SESSION_LOG.md 최상단에 있어. 아래 컨벤션을 반드시 따를 것.
+
+## PR 1에서 확립된 컨벤션 (PR 2 이후 모두 적용)
+
+1. **bloc_test 미도입**: `hive_generator 2.0.1` ↔ `bloc_test 9.x`(test 1.16+ → analyzer 8+) 의존성 충돌. cubit/bloc 단위 테스트는 일반 `flutter_test` + `Cubit.stream.listen` + `expectLater`로 작성. 효과 동일.
+2. **테스트 Hive 우회**: 각 테스트 파일은 격리 path 사용 — `setUpAll`에서 `Hive.init('.dart_tool/test_hive_<name>')` + 필요 box `openBox`, `tearDownAll`에서 `Hive.deleteFromDisk`. `DatabaseService.init()`은 path_provider 의존이라 단위 테스트에서 호출 불가. `_prefsBox` 등은 getter라 직접 openBox만 해도 호환됨.
+3. **MultiBlocProvider 확장**: `lib/main.dart` `ClibApp.build` 안의 기존 `MultiBlocProvider.providers`에 `AuthCubit` `BlocProvider`만 append. ThemeCubit과 동일 패턴.
+4. **CLAUDE.md/플랜 문서의 `themeModeNotifier` 잔존 언급은 무시**(PR 11 cleanup으로 위임 확정).
+5. **브랜치 워크플로**: `develop`이 `origin/develop`과 동기화 확인 후 `feature/bloc-02-auth` 분기 → 작업/커밋 → 머지는 `--no-ff` + 사용자 승인 후 push (PR 생성 없음).
+6. **서브에이전트 모델**: 단순 작업 haiku, 분석/판단 sonnet, 최종 리뷰만 `opus` 모델로 `flutter-code-reviewer` 호출.
+7. **시뮬레이터 스모크**: 사용자가 "버추얼머신 테스트"라고 요청하면 진행. 빌드는 약 7분 소요(첫 빌드 기준).
+8. **기존 `test/widget_test.dart`는 broken**: PR 11에서 헬퍼와 함께 재작성 예정. PR 2에서 우회/수정 시도하지 말 것.
+
+## PR 2 시작 시 즉시 할 일
+
+1. `git status` + `git rev-list --left-right --count develop...origin/develop` 동기화 확인
+2. `doc/bloc-migration/pr-02-auth.md` 정독 + 사전 요건 파일들 Read
+3. `git checkout -b feature/bloc-02-auth`
+4. `flutter analyze`로 기준선 No issues 확인
+5. 작업 계획 한 줄 요약 + 영향 범위 보고 후 사용자 승인 받고 시작
+
+## PR 2 알려진 주의사항 (pr-02-auth.md 정독 전 참고)
+
+- `lib/main.dart`의 `authStateNotifier`(L32 부근)와 `FirebaseAuth.instance.authStateChanges()` 리스너, `SyncService.init/dispose` 호출이 AuthCubit 책임으로 이관됨
+- `lib/services/auth_service.dart`의 static API는 유지(라이트 스코프)
+- `lib/screens/settings_screen.dart`의 `ValueListenableBuilder<User?>(valueListenable: authStateNotifier)`는 `BlocBuilder<AuthCubit, ...>`로 교체 필요
+- 데모 데이터 시드 / Firebase 초기화 순서 / pending share 처리와의 race 조건 주의
+````
+
 ---
 
 ## 2026-04-20 세션 0 — 문서 체계 구축
