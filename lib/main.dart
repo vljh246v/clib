@@ -26,9 +26,47 @@ export 'package:clib/state/app_notifiers.dart'
     show articlesChangedNotifier, labelsChangedNotifier;
 
 void main() async {
+  await bootstrap(forTest: false);
+  runApp(const ClibApp());
+}
+
+/// 앱 초기화 파이프라인.
+///
+/// 실행/테스트 공통 경로.
+///
+/// `forTest: true` 이면 `integration_test`용 경로로 동작한다:
+/// - `Firebase.initializeApp()` + `DatabaseService.init()` 은 수행
+///   (AuthCubit 이 `FirebaseAuth.idTokenChanges` 를 구독하므로 Firebase 자체는 필요)
+/// - `DatabaseService.skipSync = true` 로 Firestore 동기화 경로 차단
+/// - `NotificationService` / `AdService` / `DemoDataService` / `ShareService`
+///   관련 초기화는 건너뜀 (네이티브 의존 + 테스트 간섭 방지)
+///
+/// 테스트에서는 `bootstrap(forTest: true)` 후 `runApp(const ClibApp())`.
+/// 기본 사용자 흐름은 그대로지만 미로그인 + seed 데이터 없는 빈 상태로 시작.
+Future<void> bootstrap({required bool forTest}) async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+
+  // Firebase 초기화.
+  // - 테스트: 네트워크/설정 문제로 hang 되지 않도록 timeout + duplicate-app 예외 무시.
+  // - 프로덕션: 기존 동작(예외 발생 시 크래시)을 유지.
+  if (forTest) {
+    try {
+      await Firebase.initializeApp()
+          .timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint('Firebase init skipped in test: $e');
+    }
+  } else {
+    await Firebase.initializeApp();
+  }
+
   await DatabaseService.init();
+
+  if (forTest) {
+    DatabaseService.skipSync = true;
+    return;
+  }
+
   await DatabaseService.syncLabelsToAppGroup();
   await NotificationService.init();
   await NotificationService.rescheduleAll();
@@ -46,7 +84,6 @@ void main() async {
   }
   // 인증 상태 감지 + SyncService.init/dispose 는 AuthCubit이 소유한다
   // (ClibApp의 MultiBlocProvider에서 lazy: false로 즉시 인스턴스화)
-  runApp(const ClibApp());
 }
 
 class ClibApp extends StatelessWidget {
