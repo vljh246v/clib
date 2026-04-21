@@ -30,6 +30,9 @@ class _HomeOverlayGuideState extends State<HomeOverlayGuide>
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
 
+  // step 0 spotlight bottom을 GuideCard top에 맞추기 위한 key
+  final GlobalKey _guideCardKey = GlobalKey();
+
   static const _totalSteps = 4;
 
   @override
@@ -84,23 +87,29 @@ class _HomeOverlayGuideState extends State<HomeOverlayGuide>
 
   Rect? _getTargetRect() {
     if (_currentStep >= widget.targetKeys.length) return null;
+
+    // step 0: 카드 트래킹 포기. "+" row 아래 ~ 메뉴바 위까지 화면 전체 너비 고정 사각형.
+    // Column 상단 간격: md(12) + filter row(36) + SizedBox(10) + count row(≈28) + sm(8) ≈ 94
+    // 하단 nav 영역: SafeArea bottom + margin(16) + padding(8) + icon(≈24) + padding(8) ≈ bottomSafe + 56
+    if (_currentStep == 0) {
+      final mq = MediaQuery.of(context);
+      final size = mq.size;
+      final topInset = mq.padding.top + 94;
+      final bottomInset = mq.padding.bottom + 56;
+      return Rect.fromLTWH(
+        0,
+        topInset,
+        size.width,
+        size.height - topInset - bottomInset,
+      );
+    }
+
     final key = widget.targetKeys[_currentStep];
     final renderBox =
         key.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null || !renderBox.hasSize) return null;
     final offset = renderBox.localToGlobal(Offset.zero);
-    final fullRect = offset & renderBox.size;
-
-    // 카드 영역(step 0)은 전체 높이의 절반만 spotlight — 하단에 GuideCard 공간 확보
-    if (_currentStep == 0) {
-      return Rect.fromLTWH(
-        fullRect.left,
-        fullRect.top,
-        fullRect.width,
-        fullRect.height * 0.5,
-      );
-    }
-    return fullRect;
+    return offset & renderBox.size;
   }
 
   @override
@@ -146,6 +155,8 @@ class _HomeOverlayGuideState extends State<HomeOverlayGuide>
                 painter: _SpotlightPainter(
                   targetRect: targetRect,
                   overlayColor: Colors.black.withValues(alpha: 0.6),
+                  // 카드 step은 카드 경계와 정확히 일치시키기 위해 inflate 제거
+                  inflate: _currentStep == 0 ? 0 : 8,
                 ),
               ),
             ),
@@ -161,6 +172,7 @@ class _HomeOverlayGuideState extends State<HomeOverlayGuide>
                       Spacing.xxl, 0, Spacing.xxl, Spacing.xl,
                     ),
                     child: _GuideCard(
+                      key: _guideCardKey,
                       step: step,
                       currentStep: _currentStep,
                       totalSteps: _totalSteps,
@@ -207,8 +219,13 @@ class _StepData {
 class _SpotlightPainter extends CustomPainter {
   final Rect? targetRect;
   final Color overlayColor;
+  final double inflate;
 
-  _SpotlightPainter({this.targetRect, required this.overlayColor});
+  _SpotlightPainter({
+    this.targetRect,
+    required this.overlayColor,
+    this.inflate = 8,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -219,13 +236,17 @@ class _SpotlightPainter extends CustomPainter {
     canvas.drawRect(Offset.zero & size, paint);
 
     if (targetRect != null) {
-      // 패딩 추가
-      final padded = targetRect!.inflate(8);
+      final padded =
+          inflate > 0 ? targetRect!.inflate(inflate) : targetRect!;
       final clearPaint = Paint()..blendMode = BlendMode.clear;
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(padded, const Radius.circular(Radii.lg)),
-        clearPaint,
-      );
+      if (inflate > 0) {
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(padded, const Radius.circular(Radii.xl)),
+          clearPaint,
+        );
+      } else {
+        canvas.drawRect(padded, clearPaint);
+      }
     }
 
     canvas.restore();
@@ -233,7 +254,8 @@ class _SpotlightPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_SpotlightPainter oldDelegate) =>
-      targetRect != oldDelegate.targetRect;
+      targetRect != oldDelegate.targetRect ||
+      inflate != oldDelegate.inflate;
 }
 
 // ─── 설명 카드 ───
@@ -245,6 +267,7 @@ class _GuideCard extends StatelessWidget {
   final String tapHint;
 
   const _GuideCard({
+    super.key,
     required this.step,
     required this.currentStep,
     required this.totalSteps,

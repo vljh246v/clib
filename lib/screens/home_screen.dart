@@ -613,9 +613,6 @@ class _HomeBodyState extends State<_HomeBody> {
                     ),
                     if (widget.cardAreaKey != null)
                       Positioned.fill(
-                        left: 20,
-                        right: 20,
-                        bottom: 56,
                         child: IgnorePointer(
                           child: Container(
                             key: widget.cardAreaKey,
