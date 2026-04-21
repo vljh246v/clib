@@ -1,3 +1,4 @@
+import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import 'helpers/test_harness.dart';
@@ -13,10 +14,15 @@ import 'scenarios/home_smoke.dart';
 /// ```
 ///
 /// 자세한 실행 가이드: `doc/bloc-migration/integration-test-guide.md`.
-Future<void> main() async {
+void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  await TestHarness.bootstrap();
+  // `bootstrap()` 은 `setUpAll` 에서 호출한다.
+  // `main()` 최상위에서 `await` 하면 test binding 이 활성화되기 전에 hang 될 수
+  // 있어 실기기에서 스플래시 단계에 멈춘다.
+  setUpAll(() async {
+    await TestHarness.bootstrap();
+  });
 
   registerHomeSmokeTests();
 }

@@ -45,7 +45,21 @@ void main() async {
 /// 기본 사용자 흐름은 그대로지만 미로그인 + seed 데이터 없는 빈 상태로 시작.
 Future<void> bootstrap({required bool forTest}) async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+
+  // Firebase 초기화.
+  // - 테스트: 네트워크/설정 문제로 hang 되지 않도록 timeout + duplicate-app 예외 무시.
+  // - 프로덕션: 기존 동작(예외 발생 시 크래시)을 유지.
+  if (forTest) {
+    try {
+      await Firebase.initializeApp()
+          .timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint('Firebase init skipped in test: $e');
+    }
+  } else {
+    await Firebase.initializeApp();
+  }
+
   await DatabaseService.init();
 
   if (forTest) {
