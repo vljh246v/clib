@@ -41,6 +41,9 @@ class _AllArticlesBodyState extends State<_AllArticlesBody>
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
         context.read<ArticleListCubit>().clearSelection();
+        // clearSelection()이 Equatable에 의해 스킵될 수 있으므로
+        // setState로 항상 rebuild를 보장해 탭 헤더가 stale 되지 않게 한다.
+        setState(() {});
       }
     });
   }
@@ -318,9 +321,7 @@ class _AllArticlesBodyState extends State<_AllArticlesBody>
     Article article,
     ArticleListCubit cubit,
   ) {
-    final controller = TextEditingController(text: article.memo);
     final theme = Theme.of(context);
-    final l = AppLocalizations.of(context)!;
 
     showModalBottomSheet<void>(
       context: context,
@@ -329,107 +330,7 @@ class _AllArticlesBodyState extends State<_AllArticlesBody>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xl)),
       ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: Spacing.md),
-              Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.onSurfaceVariant
-                      .withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(2.5),
-                ),
-              ),
-              const SizedBox(height: Spacing.lg),
-              Text(l.memo, style: theme.textTheme.titleSmall),
-              const SizedBox(height: Spacing.lg),
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: Spacing.xxl),
-                child: TextField(
-                  controller: controller,
-                  maxLength: 100,
-                  maxLines: 1,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    hintText: l.memoHint,
-                    counterText: '',
-                    filled: true,
-                    fillColor: theme.colorScheme.surfaceContainerHighest,
-                    border: OutlineInputBorder(
-                      borderRadius: Radii.borderMd,
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: Spacing.lg,
-                      vertical: Spacing.md,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: Spacing.lg),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  Spacing.xxl,
-                  0,
-                  Spacing.xxl,
-                  Spacing.lg,
-                ),
-                child: Row(
-                  children: [
-                    if (article.memo != null) ...[
-                      Expanded(
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: theme.colorScheme.error,
-                            side: BorderSide(
-                              color: theme.colorScheme.error
-                                  .withValues(alpha: 0.3),
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: Radii.borderMd,
-                            ),
-                          ),
-                          onPressed: () async {
-                            await cubit.updateMemo(article, null);
-                            if (ctx.mounted) Navigator.pop(ctx);
-                          },
-                          child: Text(l.delete),
-                        ),
-                      ),
-                      const SizedBox(width: Spacing.sm),
-                    ],
-                    Expanded(
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: theme.colorScheme.secondary,
-                          foregroundColor: theme.colorScheme.onSecondary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: Radii.borderMd,
-                          ),
-                        ),
-                        onPressed: () async {
-                          await cubit.updateMemo(
-                            article,
-                            controller.text.isEmpty ? null : controller.text,
-                          );
-                          if (ctx.mounted) Navigator.pop(ctx);
-                        },
-                        child: Text(l.save),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      builder: (ctx) => _MemoSheet(article: article, cubit: cubit),
     );
   }
 
@@ -462,5 +363,144 @@ class _AllArticlesBodyState extends State<_AllArticlesBody>
     if (confirmed == true) {
       await cubit.bulkDelete();
     }
+  }
+}
+
+/// 메모 입력 바텀시트.
+///
+/// [TextEditingController]를 StatefulWidget 라이프사이클로 관리해
+/// 시트가 닫힐 때 반드시 dispose된다.
+class _MemoSheet extends StatefulWidget {
+  const _MemoSheet({required this.article, required this.cubit});
+
+  final Article article;
+  final ArticleListCubit cubit;
+
+  @override
+  State<_MemoSheet> createState() => _MemoSheetState();
+}
+
+class _MemoSheetState extends State<_MemoSheet> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.article.memo);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: Spacing.md),
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color:
+                    theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(2.5),
+              ),
+            ),
+            const SizedBox(height: Spacing.lg),
+            Text(l.memo, style: theme.textTheme.titleSmall),
+            const SizedBox(height: Spacing.lg),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Spacing.xxl),
+              child: TextField(
+                controller: _controller,
+                maxLength: 100,
+                maxLines: 1,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: l.memoHint,
+                  counterText: '',
+                  filled: true,
+                  fillColor: theme.colorScheme.surfaceContainerHighest,
+                  border: OutlineInputBorder(
+                    borderRadius: Radii.borderMd,
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: Spacing.lg,
+                    vertical: Spacing.md,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: Spacing.lg),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                Spacing.xxl,
+                0,
+                Spacing.xxl,
+                Spacing.lg,
+              ),
+              child: Row(
+                children: [
+                  if (widget.article.memo != null) ...[
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: theme.colorScheme.error,
+                          side: BorderSide(
+                            color:
+                                theme.colorScheme.error.withValues(alpha: 0.3),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: Radii.borderMd,
+                          ),
+                        ),
+                        onPressed: () async {
+                          final nav = Navigator.of(context);
+                          await widget.cubit.updateMemo(widget.article, null);
+                          if (mounted) nav.pop();
+                        },
+                        child: Text(l.delete),
+                      ),
+                    ),
+                    const SizedBox(width: Spacing.sm),
+                  ],
+                  Expanded(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: theme.colorScheme.secondary,
+                        foregroundColor: theme.colorScheme.onSecondary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: Radii.borderMd,
+                        ),
+                      ),
+                      onPressed: () async {
+                        final nav = Navigator.of(context);
+                        await widget.cubit.updateMemo(
+                          widget.article,
+                          _controller.text.isEmpty ? null : _controller.text,
+                        );
+                        if (mounted) nav.pop();
+                      },
+                      child: Text(l.save),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -24,14 +24,15 @@ class ArticleListCubit extends Cubit<ArticleListState> {
   void _onChanged() => unawaited(load());
 
   Future<void> load() async {
-    final articles = switch (state.source) {
-      ArticleListSourceAll() => DatabaseService.getAllArticles(),
-      ArticleListSourceBookmarked() => DatabaseService.getBookmarkedArticles(),
-      ArticleListSourceByLabel(:final labelName) =>
-        DatabaseService.getArticlesByLabel(labelName),
-    };
-    emit(state.copyWith(articles: articles, generation: state.generation + 1));
+    emit(state.copyWith(articles: _fetch(), generation: state.generation + 1));
   }
+
+  List<Article> _fetch() => switch (state.source) {
+        ArticleListSourceAll() => DatabaseService.getAllArticles(),
+        ArticleListSourceBookmarked() => DatabaseService.getBookmarkedArticles(),
+        ArticleListSourceByLabel(:final labelName) =>
+          DatabaseService.getArticlesByLabel(labelName),
+      };
 
   // ── 선택 모드 ──────────────────────────────────────────────
 
@@ -92,14 +93,8 @@ class ArticleListCubit extends Cubit<ArticleListState> {
   }
 
   Future<void> _reloadAndClearSelection() async {
-    final articles = switch (state.source) {
-      ArticleListSourceAll() => DatabaseService.getAllArticles(),
-      ArticleListSourceBookmarked() => DatabaseService.getBookmarkedArticles(),
-      ArticleListSourceByLabel(:final labelName) =>
-        DatabaseService.getArticlesByLabel(labelName),
-    };
     emit(state.copyWith(
-      articles: articles,
+      articles: _fetch(),
       isSelecting: false,
       selectedKeys: [],
       generation: state.generation + 1,
