@@ -11,6 +11,7 @@ import 'package:clib/theme/design_tokens.dart';
 import 'package:clib/widgets/article_actions_sheet.dart';
 import 'package:clib/widgets/article_list_view.dart';
 import 'package:clib/widgets/bulk_action_bar.dart';
+import 'package:clib/widgets/bulk_delete_confirm.dart';
 
 /// 라벨 상세 화면 — 해당 라벨의 아티클 리스트 + 읽음/안읽음 필터.
 class LabelDetailScreen extends StatelessWidget {
@@ -150,7 +151,7 @@ class _LabelDetailBodyState extends State<_LabelDetailBody>
                           context.read<ArticleListCubit>().bulkMarkRead(false),
                       onMarkRead: () =>
                           context.read<ArticleListCubit>().bulkMarkRead(true),
-                      onDelete: () => _confirmBulkDelete(context),
+                      onDelete: () => showBulkDeleteConfirm(context),
                     )
                   : null,
         );
@@ -202,6 +203,7 @@ class _LabelDetailBodyState extends State<_LabelDetailBody>
       isSelecting: state.isSelecting,
       selectedKeys: state.selectedKeys,
       emptyWidget: emptyWidget,
+      accentColor: _labelColor,
       onTap: (article) async {
         final uri = Uri.tryParse(article.url);
         if (uri != null) {
@@ -218,34 +220,4 @@ class _LabelDetailBodyState extends State<_LabelDetailBody>
     );
   }
 
-  Future<void> _confirmBulkDelete(BuildContext context) async {
-    final cubit = context.read<ArticleListCubit>();
-    final l = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
-    final count = cubit.state.selectedKeys.length;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.deleteArticle),
-        content: Text(l.deleteSelectedConfirm(count)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.cancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: theme.colorScheme.error,
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l.delete),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      await cubit.bulkDelete();
-    }
-  }
 }

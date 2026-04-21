@@ -17,6 +17,7 @@ class ArticleListItem extends StatelessWidget {
     required this.onTap,
     required this.onSelectionToggle,
     this.onLongPress,
+    this.accentColor,
   });
 
   final Article article;
@@ -26,12 +27,17 @@ class ArticleListItem extends StatelessWidget {
   final VoidCallback onSelectionToggle;
   final VoidCallback? onLongPress;
 
+  /// 라벨 상세 화면 등 컨텍스트 색을 행 뱃지(읽음/북마크)에 강조하기 위한 옵션.
+  /// 미지정 시 `theme.colorScheme.secondary` 사용.
+  final Color? accentColor;
+
   @override
   Widget build(BuildContext context) {
     final meta = platformMeta(article.platform);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final l = AppLocalizations.of(context)!;
+    final accent = accentColor ?? theme.colorScheme.secondary;
 
     final createdDaysAgo =
         DateTime.now().difference(article.createdAt).inDays;
@@ -119,8 +125,7 @@ class ArticleListItem extends StatelessWidget {
                           Icon(
                             Icons.check_circle,
                             size: 12,
-                            color: theme.colorScheme.secondary
-                                .withValues(alpha: 0.6),
+                            color: accent.withValues(alpha: 0.6),
                           ),
                         ],
                         if (article.isBookmarked) ...[
@@ -128,8 +133,7 @@ class ArticleListItem extends StatelessWidget {
                           Icon(
                             Icons.bookmark,
                             size: 12,
-                            color: theme.colorScheme.secondary
-                                .withValues(alpha: 0.6),
+                            color: accent.withValues(alpha: 0.6),
                           ),
                         ],
                       ],

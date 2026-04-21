@@ -10,6 +10,7 @@ import 'package:clib/theme/design_tokens.dart';
 import 'package:clib/widgets/article_actions_sheet.dart';
 import 'package:clib/widgets/article_list_view.dart';
 import 'package:clib/widgets/bulk_action_bar.dart';
+import 'package:clib/widgets/bulk_delete_confirm.dart';
 
 /// 전체 아티클 화면 — 읽음/안읽음 필터 탭.
 class AllArticlesScreen extends StatelessWidget {
@@ -129,7 +130,7 @@ class _AllArticlesBodyState extends State<_AllArticlesBody>
                           context.read<ArticleListCubit>().bulkMarkRead(false),
                       onMarkRead: () =>
                           context.read<ArticleListCubit>().bulkMarkRead(true),
-                      onDelete: () => _confirmBulkDelete(context),
+                      onDelete: () => showBulkDeleteConfirm(context),
                     )
                   : null,
         );
@@ -195,36 +196,5 @@ class _AllArticlesBodyState extends State<_AllArticlesBody>
       onSelectionToggle: (key) =>
           context.read<ArticleListCubit>().toggleSelection(key),
     );
-  }
-
-  Future<void> _confirmBulkDelete(BuildContext context) async {
-    final cubit = context.read<ArticleListCubit>();
-    final l = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
-    final count = cubit.state.selectedKeys.length;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.deleteArticle),
-        content: Text(l.deleteSelectedConfirm(count)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.cancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: theme.colorScheme.error,
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l.delete),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      await cubit.bulkDelete();
-    }
   }
 }

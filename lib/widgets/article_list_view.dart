@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:clib/models/article.dart';
+import 'package:clib/services/ad_service.dart';
 import 'package:clib/theme/design_tokens.dart';
 import 'package:clib/widgets/article_list_item.dart';
 import 'package:clib/widgets/inline_banner_ad.dart';
@@ -18,21 +19,26 @@ class ArticleListView extends StatelessWidget {
     required this.onLongPress,
     required this.onSelectionToggle,
     required this.emptyWidget,
+    this.accentColor,
   });
 
   final List<Article> articles;
   final bool isSelecting;
-  final List<dynamic> selectedKeys;
+  final List<int> selectedKeys;
   final void Function(Article article) onTap;
   final void Function(Article article) onLongPress;
-  final void Function(dynamic key) onSelectionToggle;
+  final void Function(int key) onSelectionToggle;
   final Widget emptyWidget;
+
+  /// 컨텍스트 강조 색(라벨 상세 화면 등)을 [ArticleListItem.accentColor]로
+  /// 전달한다. 미지정 시 테마의 secondary 색이 사용된다.
+  final Color? accentColor;
 
   @override
   Widget build(BuildContext context) {
     if (articles.isEmpty) return emptyWidget;
 
-    const adInterval = 8;
+    const adInterval = AdService.adInterval;
     final adCount = articles.length >= adInterval
         ? (articles.length / adInterval).floor()
         : 0;
@@ -57,8 +63,9 @@ class ArticleListView extends StatelessWidget {
           isSelecting: isSelecting,
           isSelected: selectedKeys.contains(article.key),
           onTap: () => onTap(article),
-          onSelectionToggle: () => onSelectionToggle(article.key),
+          onSelectionToggle: () => onSelectionToggle(article.key as int),
           onLongPress: () => onLongPress(article),
+          accentColor: accentColor,
         );
       },
     );
