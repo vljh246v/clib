@@ -509,6 +509,7 @@ class _LabelManagementBody extends StatelessWidget {
         ),
       ),
     );
+    nameController.dispose();
   }
 
   Future<void> _confirmDelete(

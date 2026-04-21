@@ -120,6 +120,7 @@ class _ShareLabelSheetState extends State<ShareLabelSheet> {
       ),
     );
 
+    nameController.dispose();
     if (created != null) {
       setState(() => _selected.add(created.name));
     }
