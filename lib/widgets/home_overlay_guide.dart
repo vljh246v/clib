@@ -89,7 +89,18 @@ class _HomeOverlayGuideState extends State<HomeOverlayGuide>
         key.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null || !renderBox.hasSize) return null;
     final offset = renderBox.localToGlobal(Offset.zero);
-    return offset & renderBox.size;
+    final fullRect = offset & renderBox.size;
+
+    // 카드 영역(step 0)은 전체 높이의 절반만 spotlight — 하단에 GuideCard 공간 확보
+    if (_currentStep == 0) {
+      return Rect.fromLTWH(
+        fullRect.left,
+        fullRect.top,
+        fullRect.width,
+        fullRect.height * 0.5,
+      );
+    }
+    return fullRect;
   }
 
   @override
@@ -139,18 +150,37 @@ class _HomeOverlayGuideState extends State<HomeOverlayGuide>
               ),
             ),
 
-            // 설명 카드 — 화면 중앙에 고정
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Spacing.xxl),
-                child: _GuideCard(
-                  step: step,
-                  currentStep: _currentStep,
-                  totalSteps: _totalSteps,
-                  tapHint: l.guideTapToContinue,
+            // 설명 카드 — step 0은 하단 고정(spotlight 아래), 나머지는 화면 중앙
+            if (_currentStep == 0)
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      Spacing.xxl, 0, Spacing.xxl, Spacing.xl,
+                    ),
+                    child: _GuideCard(
+                      step: step,
+                      currentStep: _currentStep,
+                      totalSteps: _totalSteps,
+                      tapHint: l.guideTapToContinue,
+                    ),
+                  ),
+                ),
+              )
+            else
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Spacing.xxl),
+                  child: _GuideCard(
+                    step: step,
+                    currentStep: _currentStep,
+                    totalSteps: _totalSteps,
+                    tapHint: l.guideTapToContinue,
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
