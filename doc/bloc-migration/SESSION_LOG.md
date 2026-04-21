@@ -42,6 +42,118 @@
 
 <!-- 이 아래에 세션 엔트리를 추가한다. 최신이 위. -->
 
+## 2026-04-21 PR 07 — BookmarkedArticlesScreen + LabelDetailScreen (Cubit 재사용)
+
+**세션 결과**: 🟢 완료 (develop 머지 + push는 사용자 승인 대기)
+
+**브랜치**: `feature/bloc-07-bookmarked-label` (feature 커밋: `ea6de85`, docs 커밋: `e61d857`)
+**선행 커밋**: `a46d96e` (docs(bloc): PR 6 실제 구현 반영 + PR 7 사전 정리 — develop 직접 반영)
+
+### 계획대로 된 점
+- `BookmarkedArticlesScreen` / `LabelDetailScreen` 모두 `ArticleListCubit` + 공통 위젯 재사용으로 전환.
+- 공통 위젯 2종 신규 분리:
+  - `lib/widgets/memo_sheet.dart` — `MemoSheet.show()` 정적 헬퍼, TextEditingController 라이프사이클 안전.
+  - `lib/widgets/article_actions_sheet.dart` — `ArticleActionsSheet.show()` 정적 헬퍼, 롱프레스 액션 5종 + 삭제 confirm + MemoSheet 연계.
+- 3개 화면(All/Bookmarked/LabelDetail) 모두 공통 위젯 사용. `AllArticlesScreen`도 PR 7 리팩터 부수 효과로 shared widgets 채택.
+- LabelDetail 고유 요소 유지: AppBar CircleAvatar(라벨명 첫 글자) / TabBar indicator/label color / empty 아이콘 labelColor.
+- 통계 헤더는 state 파생 계산으로 전환 (`state.total/readCount/unreadCount`) — `DatabaseService.getLabelStats()` 직접 호출 제거.
+- Tab listener `setState(() {})` 포함 — PR 6 교훈 그대로.
+- `flutter analyze` No issues, `flutter test test/blocs/` 49 PASS.
+
+### 계획과 다르게 된 점
+- **PR 7 문서의 "테스트 추가" 항목 불필요**: Bookmarked/ByLabel 테스트는 PR 6에서 이미 추가됨(`test/blocs/article_list_cubit_test.dart` L125-153). 기존 49 PASS 유지.
+- **`_showArticleActions`의 labelColor 파라미터 드롭**: 기존 LabelDetail 코드는 labelColor를 전달받았지만 body에서 미사용(데드 코드). 공통 `ArticleActionsSheet`는 파라미터 불요.
+- **`ArticleListItem`에 labelColor 미추가**: 디자인 일관성 위해 item 내부 뱃지 색은 secondary 유지. 라벨색은 AppBar/TabBar/empty 아이콘만 적용.
+- **`ArticleActionsSheet.rootContext` 주입**: 삭제 confirm / MemoSheet 진입은 시트 pop 이후 BuildContext 필요 → 호출 측 context를 `rootContext`로 명시 전달. 내부 _SheetBody context는 pop 후 deactivated.
+
+### 새로 발견한 이슈 / TODO
+- `selectedKeys: List<dynamic>` → `List<int>`로 좁히기 검토 (Hive key는 int).
+- `_confirmBulkDelete` 3화면 중복 — `bulk_delete_dialog.dart` 추출 가능 (우선순위 낮음).
+- `adInterval = 8` 매직 넘버 — PR 11 cleanup에서 AdService 인접 상수로 이동.
+
+### 참고한 링크
+- PR 6 선례: `lib/screens/all_articles_screen.dart`, `lib/blocs/article_list/`
+- flutter_bloc BlocProvider scoping: https://bloclibrary.dev/flutter-bloc-concepts/#blocprovider
+
+### 다음 세션 유의사항 (PR 8 — AddArticleCubit)
+- **AddArticleCubit은 공유/수동 저장 플로우**. 인라인 form 상태(`TextEditingController`, 로딩 flag)를 Cubit state로 승격.
+- 상태: `isLoading` / `errorMessage`. `clearError()` 공개 메서드.
+- `ScrapingService` 호출을 Cubit 내부에서 직접. 실패 시 errorMessage state, SnackBar는 BlocListener + listenWhen 가드.
+- **공통 위젯 재사용 현황**: `ArticleListCubit` / `ArticleListView` / `BulkActionBar` / `ArticleActionsSheet` / `MemoSheet` 모두 PR 6~7에서 분리 완료. PR 8은 추가 위젯 분리 없음.
+- 컨벤션 불변 (PR 1~7): bloc_test 미도입 / Hive 격리 path / 화면 로컬 BlocProvider / 서브에이전트 병렬 dispatch / 시뮬레이터 스모크는 사용자 요청 시만.
+
+### 검증 결과
+- `flutter analyze`: ✅ No issues
+- `flutter test test/blocs/`: ✅ 49 PASS
+- 실기기 스모크: ⚪ 미수행
+
+### LOC 감소 결과
+- `bookmarked_articles_screen.dart`: **664 → 228 LOC** (-65.7%)
+- `label_detail_screen.dart`: **685 → 251 LOC** (-63.4%)
+- `all_articles_screen.dart`: 506 → 230 LOC (-54.5%, 부수 효과)
+- 신규: `memo_sheet.dart` 162 + `article_actions_sheet.dart` 160 = 322 LOC
+- **순 감소**: 1855 → 1031 LOC (**-824, -44.4%**)
+
+### 완료 못한 항목 (후속 세션 또는 PR 8 시작 전 결정)
+- **`flutter-code-reviewer`(opus) 최종 리뷰 미실행**: PR 1~5 관행 대비 생략됨. 머지 전 호출 권장.
+- **실기기/시뮬레이터 스모크 미실행**: 사용자 요청 없어 생략. Bookmarked/LabelDetail 핵심 플로우(다중 선택 / 일괄 액션 / 메모 / 라벨 pop) 실기기 확인 필요.
+- **`develop --no-ff` 머지 + `origin/develop` push 미실행**: 사용자 승인 대기.
+- **PR 6 문서(pr-06) diff 선행 커밋**: develop 직접 반영(a46d96e) — 이후 develop pushd 시 함께 푸시됨.
+
+### 머지 / 배포
+- feature 커밋: `ea6de85` (BLoC PR7: Bookmarked/LabelDetail 화면 ArticleListCubit 재사용)
+- docs 커밋: `e61d857` (docs(bloc): PR 7 완료 핸드오프 노트 + SESSION_LOG + README 트래커 업데이트)
+- develop 머지: ⏳ pending (사용자 승인 후 `--no-ff`)
+- origin push: ⏳ pending (develop 머지 후)
+- 브랜치 보존: `feature/bloc-07-bookmarked-label` 유지
+
+### 다음 세션 즉시 시작 프롬프트 (PR 8 — AddArticleCubit)
+
+다음 세션 시작 시 아래 프롬프트를 그대로 복사해 사용:
+
+````
+doc/bloc-migration/pr-08-add-article.md를 정독하고 PR 8(AddArticleCubit) 작업을 시작해줘.
+이전 세션(PR 7) 결과는 SESSION_LOG.md 최상단에 있어. 아래 컨벤션을 반드시 따를 것.
+
+## PR 1~7에서 확립된 컨벤션
+
+1. **bloc_test 미도입**: Cubit 단위 테스트는 `flutter_test` + `Cubit.stream.listen` + `expectLater` + `await Future<void>.delayed(Duration.zero)`
+2. **Hive 테스트 격리 path**: `setUpAll`에서 `Hive.init('.dart_tool/test_hive_<name>')` + 필요 box `openBox` + 어댑터 등록, `setUp`에서 `clear` + `DatabaseService.skipSync = true`, `tearDownAll`에서 `deleteFromDisk`
+3. **전역 vs 화면 로컬 BlocProvider**: 전역 = ThemeCubit + AuthCubit. **AddArticleCubit은 화면 로컬** `BlocProvider` (AddArticleSheet 또는 수동 저장 화면 로컬)
+4. **StatefulWidget + BlocProvider 조건부 분리**: 로컬 상태(TextEditingController 등) 있으면 `_XxxBody(StatefulWidget)` 분리, 없으면 StatelessWidget 단일
+5. **`articlesChangedNotifier` 브릿지**: Cubit의 성공 저장 후 `articlesChangedNotifier.value++` 트리거 (기존 `DatabaseService.saveArticle`이 이미 처리 중인지 확인). `ShareService.processAndSave()` 내부와 중복 발사 유의
+6. **`BlocListener` 내 외부 `emit` 불가**: Cubit에 `void clearError()` 공개 메서드 필수
+7. **`listenWhen` 엄격 가드**: `prev.errorMessage != curr.errorMessage && curr.errorMessage != null` — 동일 에러 재진입 시 SnackBar 중복 방지
+8. **다이얼로그/시트에서 cubit 사용 시 `showDialog`/`showModalBottomSheet` 호출 **전** `final cubit = context.read<AddArticleCubit>()` 캡처**
+9. **공통 위젯 재사용 현황 (PR 6~7)**: `ArticleListCubit` / `ArticleListView` / `BulkActionBar` / `ArticleActionsSheet` / `MemoSheet` 완료. PR 8 신규 공통 위젯 추출은 불필요(예상).
+10. **브랜치 워크플로**: `develop ↔ origin/develop` 동기화 확인 → `feature/bloc-08-add-article` 분기 → feature 푸시 → `--no-ff` develop 머지 → 문서 커밋 → develop 푸시. PR 생성 X. 사용자 승인 후 push
+11. **서브에이전트 병렬 dispatch + 모델 정책**: 단순 파일 haiku / 로직 파일 sonnet / 최종 검토만 opus `flutter-code-reviewer`
+12. **시뮬레이터 스모크**: 사용자가 요청할 때만 진행
+13. **기존 `test/widget_test.dart`는 broken**: PR 11 위임
+
+## PR 8 시작 시 즉시 할 일
+
+1. `git status` + `develop`/`origin/develop` 동기화 확인 (PR 7 머지/push 사전 진행 여부 확인)
+2. `doc/bloc-migration/pr-08-add-article.md` 정독
+3. `lib/widgets/add_article_sheet.dart` 전체 Read + 진입점 확인 (`MainScreen._checkPendingShares` / 설정화면 수동 추가)
+4. `lib/services/scraping_service.dart` 시그니처 확인 (`scrape(url)` 반환 타입, 실패 케이스)
+5. `lib/services/database_service.dart`의 `saveArticle` / `articlesChangedNotifier` 트리거 경로 재확인
+6. `git checkout -b feature/bloc-08-add-article`
+7. `flutter analyze` 기준선 확인
+8. 작업 계획 한 줄 요약 + 영향 범위 보고 후 시작
+
+## PR 8 알려진 주의사항
+
+- **상태**: `url` (입력) / `isScraping` / `scrapedArticle: Article?` / `selectedLabels: List<String>` / `errorMessage` / `isSaving`. 정확 필드는 pr-08 정독 후 결정.
+- **메서드(예상)**: `urlChanged(String)` / `scrape()` / `toggleLabel(String)` / `save()` / `clearError()` / `reset()`.
+- **URL 검증**: `Uri.tryParse(url)?.hasAbsolutePath` — 빈값/상대경로 거절. 검증 실패 시 errorMessage 즉시 emit.
+- **스크래핑 실패 fallback**: `ScrapingService.scrape()` 예외 시에도 URL + fallback title로 저장 허용 여부 기존 UX 확인.
+- **`TextEditingController`**: 화면 StatefulWidget 로컬. Cubit에는 `url` state만. 중복 단일 진실원천(SSOT) 주의 — 입력 변경을 cubit에 밀어넣을지 최종 save 시점에만 넘길지 결정.
+- **ShareLabelSheet / add_article_sheet 공용화 가능성**: 두 진입점 UX가 유사하므로 공통 위젯 추출 검토.
+- **articlesChangedNotifier 발사**: `DatabaseService.saveArticle` 내부에서 이미 발사하면 Cubit 내 추가 발사 금지(레이스).
+- **테스트**: state copyWith + Hive 격리 + `scrape()` happy path (http mock 불필요 시) + `save()` + `clearError()`.
+````
+
 ## 2026-04-21 PR 06 — ArticleListCubit + AllArticlesScreen
 
 **세션 결과**: 🟢 완료

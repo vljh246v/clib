@@ -123,3 +123,20 @@ doc/bloc-migration/SESSION_LOG.md 에 따르면 PR 6이 In Progress 상태야.
 | 동기화 서비스 | `lib/services/sync_service.dart` |
 | 디자인 토큰 | `lib/theme/design_tokens.dart` |
 | ARB 템플릿 | `lib/l10n/app_ko.arb` |
+
+### Cubit / 공통 위젯 (PR 1~7 누적)
+
+| 용도 | 경로 |
+|------|------|
+| ThemeCubit | `lib/blocs/theme/theme_cubit.dart` |
+| AuthCubit + State | `lib/blocs/auth/auth_{cubit,state}.dart` |
+| OnboardingCubit | `lib/blocs/onboarding/onboarding_cubit.dart` |
+| LibraryCubit + State | `lib/blocs/library/library_{cubit,state}.dart` |
+| LabelManagementCubit + State | `lib/blocs/label_management/label_management_{cubit,state}.dart` |
+| ArticleListCubit/Source/State | `lib/blocs/article_list/article_list_{cubit,source,state}.dart` |
+| ArticleListView (리스트 + 광고 8개마다 삽입) | `lib/widgets/article_list_view.dart` |
+| ArticleListItem (개별 행) | `lib/widgets/article_list_item.dart` |
+| BulkActionBar (다중 선택 하단 액션바) | `lib/widgets/bulk_action_bar.dart` |
+| ArticleActionsSheet (롱프레스 액션시트) | `lib/widgets/article_actions_sheet.dart` |
+| MemoSheet (메모 입력 바텀시트) | `lib/widgets/memo_sheet.dart` |
+| 공통 테스트 패턴 | `test/blocs/*_test.dart` |
