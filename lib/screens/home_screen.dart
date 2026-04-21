@@ -526,7 +526,6 @@ class _HomeBodyState extends State<_HomeBody> {
             if (state.articles.isNotEmpty)
               Expanded(
                 child: Stack(
-                  key: widget.cardAreaKey,
                   children: [
                     Padding(
                       padding:
@@ -612,6 +611,18 @@ class _HomeBodyState extends State<_HomeBody> {
                         },
                       ),
                     ),
+                    if (widget.cardAreaKey != null)
+                      Positioned.fill(
+                        left: 20,
+                        right: 20,
+                        bottom: 56,
+                        child: IgnorePointer(
+                          child: Container(
+                            key: widget.cardAreaKey,
+                            color: Colors.transparent,
+                          ),
+                        ),
+                      ),
                     Positioned(
                       left: 28,
                       right: 28,
