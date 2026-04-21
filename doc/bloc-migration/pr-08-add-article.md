@@ -368,19 +368,40 @@ BLoC PR8: AddArticleCubit 도입 — 수동 추가 시트 상태 이동
 ## 10. 핸드오프 노트
 
 ### 계획대로 된 점
-- (작성)
+- `lib/blocs/add_article/{cubit,state}.dart` 신규. `AddArticleState`는 Equatable + copyWith, `AddArticleCubit`은 `labelsChangedNotifier` 구독으로 `allLabels` 자동 갱신.
+- `AddArticleSheet` 리팩터: 347 LOC StatefulWidget(_selected/_saving/_urlError 로컬) → Cubit 이동. TextEditingController만 `_AddArticleBody(StatefulWidget)` 로컬 유지(SSOT).
+- `BlocProvider(create: AddArticleCubit())`를 `show()`의 builder에 삽입(화면 로컬 provider 규칙 준수).
+- `BlocConsumer.listenWhen`: `isDone` / `saveFailure` / `labelErrorMessage` 3채널 전이 가드. 중복 SnackBar 방지.
+- URL 검증 로직 유지: `Uri.tryParse + hasScheme + host.isNotEmpty` (기존 UX 동치). 실패 시 `urlError='invalid_url'` 센티넬 → UI에서 `AppLocalizations.invalidUrl` 해석.
+- `articlesChangedNotifier` 중복 발사 방지: `ShareService.processAndSave` 내부 발사 경로 존중, Cubit에서 추가 발사 없음.
+- `test/blocs/add_article_cubit_test.dart` 11 PASS. 기존 49 + 신규 11 = 60 PASS.
 
 ### 계획과 다르게 된 점
-- (작성)
+- **PR 8 문서의 `ShareService.extractURL` 검증 제안 미채택**: 기존 코드는 `Uri.tryParse` 기반 엄격 검증 사용 중. `extractURL`은 정규식으로 URL 추출(너무 관대). 회귀 방지 위해 기존 로직 유지.
+- **`url` state 필드 드롭**: PR 8 문서 스니펫은 `url: String`을 Cubit state에 포함했으나, TextEditingController와 이중 SSOT가 되어 페이스트/onChanged 동기화가 복잡해짐. Cubit은 `urlError` 센티넬만 소유하고, `save(rawUrl)`은 파라미터로 URL 수신. 단방향 데이터 흐름.
+- **에러 채널 3분리 (리뷰 must-fix 반영)**: 초기 구현은 `failureMessage: String?` 단일 필드였으나, 저장 실패(i18n 'saveFailed' SnackBar) ↔ 라벨 생성 실패(원문 메시지) 의미가 달라 SnackBar 문구가 잘못 매핑되는 회귀 발견. `saveFailure: bool` + `labelErrorMessage: String?`로 분리.
+- **`AddArticleSheet` private ctor (리뷰 should-fix 반영)**: 초기 구현은 StatelessWidget + 중복 `BlocProvider`였으나, `show()`가 유일 진입점이므로 위젯 트리 직접 삽입 방지를 위해 일반 클래스 + `_()` private 생성자로 변경. `build()` 메서드 dead code 제거.
+- **`_showAddLabelDialog` 단순화**: 기존 다이얼로그가 내부에서 `DatabaseService.createLabel` 직접 호출 + try/catch로 SnackBar까지 띄우던 구조를, 다이얼로그는 `(name, color)` 선택만 담당하고 Cubit.`createLabel(name, color)`로 위임. 실패 시 Cubit → listener → SnackBar(원문).
+- **`DatabaseService.createLabel`이 생성 `Label`을 직접 반환**하므로 `getAllLabelObjects().firstWhere(...)` 재조회 제거(nit 반영).
 
 ### 새로 발견한 이슈 / TODO
-- (작성)
+- **`labelsChangedNotifier`가 로컬 라벨 CRUD에서 발사되지 않음**: `DatabaseService.createLabel/updateLabel/deleteLabel`은 현재 `labelsChangedNotifier.value++`를 발사하지 않고, `SyncService`의 원격 스냅샷 머지에서만 발사된다(`sync_service.dart:392`). AddArticleSheet가 열린 동안 다른 화면에서 라벨이 바뀌어도 `_refreshLabels`가 트리거되지 않음. 본 PR 범위 밖(LibraryCubit/LabelManagementCubit도 동일 가정). PR 11 또는 별도 PR에서 로컬 CRUD 발사 통합 필요.
+- **하드코딩 매직 넘버** (기존 유지분): 핸들바 `36×4`, 컬러 칩 `36×36`, `circular(2.5)`, 알파 `0.15/0.25/0.3/0.4` 등. 디자인 토큰 미적용. 본 PR 범위 밖.
+- **`_showAddLabelDialog`의 `nameController` lifecycle**: `showDialog` 완료 후 dispose. 호스트 시트 dismiss 시 Future가 null로 완료되어 도달 보장. 기존 코드부터 동일(회귀 아님).
 
 ### 참고한 링크
-- (작성)
+- 리뷰어 지적: must-fix 1(에러 채널 충돌) + should-fix 2(중복 BlocProvider)
+- flutter_bloc BlocConsumer listenWhen: https://bloclibrary.dev/flutter-bloc-concepts/#blocconsumer
+- `DatabaseService.createLabel` 시그니처: `Future<Label> createLabel(String name, Color color)` — 생성 인스턴스 반환(`database_service.dart:234`)
 
-### 다음 세션 유의사항
-- (작성)
+### 다음 세션 유의사항 (PR 9 — HomeBloc)
+- **PR 9는 유일한 `Bloc`** (Cubit 아님). HomeScreen의 swipe 제스처 이벤트(`markAsRead`, `skip`, `undo`) + deck 상태 + `CardSwiperController` 재생성이 이벤트 기반이라 Bloc 적합.
+- **의존성**: PR 1 + PR 6(`ArticleListCubit`). 재사용 여부 판단 필요 — HomeScreen의 deck은 읽지 않은 아티클만 스트리밍, `ArticleListCubit`과 소스 다름. 별도 HomeBloc 권장.
+- **복잡성 경고**: `CardSwiperController` dispose 이중 방지(`try-catch`), 8카드마다 `SwipeAdCard` 삽입, 오버레이 가이드, 컨트롤러 교체 시 `addPostFrameCallback` 패턴. 상태 전환을 이벤트로 캡슐화해야 setState 남용이 제거됨.
+- **컨벤션 불변** (PR 1~8): bloc_test 미도입 / Hive 격리 path / 화면 로컬 BlocProvider / 서브에이전트 병렬 dispatch / 시뮬레이터 스모크 사용자 요청 시만.
 
 ### 검증 결과
-- (작성)
+- `flutter analyze`: ✅ No issues (2.0s)
+- `flutter test test/blocs/`: ✅ 60 PASS (기존 49 + 신규 11)
+- 실기기 스모크: ⚪ 미수행 (사용자 방침: 전 PR 정리 후 일괄 진행)
+- opus `flutter-code-reviewer`: ✅ must-fix 1 + should-fix 1 모두 반영, nit 4건은 범위 외 이관
