@@ -44,9 +44,9 @@
 
 ## 2026-04-21 PR 08 — AddArticleCubit
 
-**세션 결과**: 🟢 완료 (feature 커밋 완료, 머지/push는 사용자 승인 대기)
+**세션 결과**: 🟢 완료 (develop 머지 + push 완료)
 
-**브랜치**: `feature/bloc-08-add-article` (feature 커밋: `69b77cf`)
+**브랜치**: `feature/bloc-08-add-article` (feature 커밋: `69b77cf`, docs 커밋: `6849649`, 머지 커밋: `14910bb`)
 
 ### 계획대로 된 점
 - `lib/blocs/add_article/{cubit,state}.dart` 신규. Equatable + copyWith 표준 패턴.
@@ -85,6 +85,13 @@
 - `flutter test test/blocs/`: ✅ 60 PASS (기존 49 + 신규 11)
 - 실기기 스모크: ⚪ 사용자 방침(전 PR 정리 후 일괄)
 - opus `flutter-code-reviewer`: ✅ must-fix 1 + should-fix 1 모두 반영, nit 4건 범위 외 이관
+
+### 머지 / 배포
+- feature 커밋: `69b77cf` (BLoC PR8: AddArticleCubit 도입 — 수동 추가 시트 상태 이동)
+- docs 커밋: `6849649` (docs(bloc): PR 8 완료 핸드오프 노트 + SESSION_LOG + README 트래커 업데이트)
+- **develop 머지**: `14910bb` (`--no-ff` Merge feature/bloc-08-add-article)
+- **origin push 완료**: `feature/bloc-08-add-article` 최초 push, `develop` 9c897bf..14910bb
+- 브랜치 보존: `feature/bloc-08-add-article`
 
 ### 다음 세션 즉시 시작 프롬프트 (PR 9 — HomeBloc)
 

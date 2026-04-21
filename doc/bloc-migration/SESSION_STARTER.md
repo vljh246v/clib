@@ -124,7 +124,7 @@ doc/bloc-migration/SESSION_LOG.md 에 따르면 PR 6이 In Progress 상태야.
 | 디자인 토큰 | `lib/theme/design_tokens.dart` |
 | ARB 템플릿 | `lib/l10n/app_ko.arb` |
 
-### Cubit / 공통 위젯 (PR 1~7 누적)
+### Cubit / 공통 위젯 (PR 1~8 누적)
 
 | 용도 | 경로 |
 |------|------|
@@ -134,9 +134,24 @@ doc/bloc-migration/SESSION_LOG.md 에 따르면 PR 6이 In Progress 상태야.
 | LibraryCubit + State | `lib/blocs/library/library_{cubit,state}.dart` |
 | LabelManagementCubit + State | `lib/blocs/label_management/label_management_{cubit,state}.dart` |
 | ArticleListCubit/Source/State | `lib/blocs/article_list/article_list_{cubit,source,state}.dart` |
+| AddArticleCubit + State | `lib/blocs/add_article/add_article_{cubit,state}.dart` |
 | ArticleListView (리스트 + 광고 8개마다 삽입) | `lib/widgets/article_list_view.dart` |
 | ArticleListItem (개별 행) | `lib/widgets/article_list_item.dart` |
 | BulkActionBar (다중 선택 하단 액션바) | `lib/widgets/bulk_action_bar.dart` |
 | ArticleActionsSheet (롱프레스 액션시트) | `lib/widgets/article_actions_sheet.dart` |
 | MemoSheet (메모 입력 바텀시트) | `lib/widgets/memo_sheet.dart` |
+| AddArticleSheet (수동 URL 추가) | `lib/widgets/add_article_sheet.dart` |
 | 공통 테스트 패턴 | `test/blocs/*_test.dart` |
+
+### 누적 주의사항 (PR 1~8에서 도출)
+
+- **글로벌 Provider 규칙**: 전역 = `ThemeCubit` + `AuthCubit`만. 나머지는 화면 로컬 `BlocProvider`.
+- **bloc_test 미도입**: `hive_generator 2.0.1` ↔ `bloc_test`(test 1.16+) 충돌. 일반 `flutter_test` + `Cubit.stream.listen` + `expectLater` + `await Future<void>.delayed(Duration.zero)`로 작성.
+- **Hive 테스트 격리 path**: `setUpAll`에서 `.dart_tool/test_hive_<name>` + 어댑터 등록 + box open, `setUp`에서 `clear` + `DatabaseService.skipSync = true`, `tearDownAll`에서 `deleteFromDisk`.
+- **컨트롤러는 위젯 로컬 SSOT**: `TextEditingController`, `CardSwiperController`, `PageController` 등은 StatefulWidget 로컬. Cubit/Bloc state에 넣지 않음.
+- **에러 채널 분리**: inline 필드 오류(urlError 센티넬), SnackBar 트리거(bool flag 또는 transient nonce + clearXxx()), 원문 메시지(String?) 혼용하지 말 것. listenWhen 가드 필수.
+- **다이얼로그/시트 호출 전 `final cubit = context.read<X>()` 캡처**: `showDialog`/`showModalBottomSheet`는 provider scope 이탈.
+- **notifier 브릿지**: `articlesChangedNotifier` / `labelsChangedNotifier`는 Cubit 생성자에서 addListener, close()에서 removeListener. **중복 발사 금지** — `ShareService.processAndSave` 같은 DB 서비스가 이미 발사하는 경로 확인 후 Cubit에서 추가 발사 X.
+- **ARB 10개 동기화**: 신규 UI 문자열은 `ko/en/de/es/fr/ja/pt/zh/zh_CN/zh_TW` 전부에 동일 키 + ICU 플레이스홀더.
+- **기존 `test/widget_test.dart`는 broken**: PR 11 위임. 만지지 말 것.
+- **`labelsChangedNotifier` 로컬 CRUD 미발사 이슈** (PR 8에서 발견): `DatabaseService.createLabel/updateLabel/deleteLabel`는 현재 notifier 미발사, `SyncService` 원격 스냅샷만 발사. PR 11 또는 별도 PR로 통합 예정.
