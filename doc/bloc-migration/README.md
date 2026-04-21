@@ -34,22 +34,23 @@
 | 8 | AddArticleCubit | 🟢 Done | `feature/bloc-08-add-article` | 2026-04-21 |
 | 9 | HomeBloc (유일한 Bloc) | 🟢 Done | `feature/bloc-09-home` | 2026-04-21 |
 | 10 | MainScreen ShareFlowCubit | ⚪ Skip | - | - |
-| 11 | Cleanup + 문서화 | 🟡 In Progress | `feature/bloc-11-cleanup` | 2026-04-21 (코드/문서) |
+| 11 | Cleanup + 문서화 | 🟡 In Progress | `feature/bloc-11-cleanup`, `feature/bloc-11-widget-test` | 2026-04-21 (코드/문서 + §2.6) |
 
 상태 기호: ⬜ Not Started / 🟡 In Progress / 🟢 Done / 🔴 Blocked / ⚪ Skip
 
 ---
 
-## 현재 상태 (2026-04-21 PR 11 코드/문서 정리 완료)
+## 현재 상태 (2026-04-21 PR 11 §2.6 widget_test 재작성 완료)
 
-- **브랜치**: `feature/bloc-11-cleanup`, 7 커밋 (`51ecd9f` ~ `01c4a78`)
-- **검증**: `flutter analyze` 0건, `flutter test test/blocs/` **74 PASS**
-- **남은 작업** (다음 세션, `pr-11-cleanup.md` §2.6 + §3):
-  1. `test/widget_test.dart` 재작성 + `test/helpers/hive_bootstrap.dart` 헬퍼 추출
-  2. 실기기 회귀 스모크 17개 항목
-  3. 위 둘 완료 후 PR 11 머지 + 트래커 🟢
+- **브랜치**: `feature/bloc-11-cleanup`(develop 머지 완료) +
+  `feature/bloc-11-widget-test`(§2.6 추가 작업, develop 기반)
+- **검증**: `flutter analyze` 0건, `flutter test` **77 PASS**
+  (74 bloc + 3 widget smoke)
+- **남은 작업** (`pr-11-cleanup.md` §3):
+  1. 실기기 회귀 스모크 17개 항목 — 사용자 수행
+  2. 완료 후 PR 11 머지 + 트래커 🟢
 
-자세한 핸드오프(계획대로/계획과 다르게/후속 PR 후보)는 `SESSION_LOG.md` PR 11 엔트리.
+자세한 핸드오프는 `SESSION_LOG.md` PR 11 §2.6 엔트리.
 
 ---
 

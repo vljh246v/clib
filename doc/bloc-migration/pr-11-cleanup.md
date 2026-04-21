@@ -3,8 +3,10 @@
 > PR 1~9 전환 완료 후 누적된 후속 정리 + CLAUDE.md 갱신 + 최종 회귀 테스트.
 
 **의존성**: PR 1~9 완료
-**브랜치**: `feature/bloc-11-cleanup` (코드/문서 7 커밋 적용 완료)
-**현재 상태**: 🟡 In Progress — 코드/문서 정리 종료, **§2.6 widget_test + §3 실기기 스모크만 남음**
+**브랜치**: `feature/bloc-11-cleanup` → develop 머지 완료(2026-04-21),
+`feature/bloc-11-widget-test`에서 §2.6 추가 작업
+**현재 상태**: 🟡 In Progress — §2.6 widget_test 재작성 완료,
+**§3 실기기 스모크만 남음**(사용자 수행)
 
 ---
 
@@ -94,18 +96,31 @@
 
 ---
 
-## 3. 남은 작업 (다음 세션) 🚧
+## 3. 남은 작업 🚧
 
-### 3.1 §2.6 widget_test 재작성
+### 3.1 §2.6 widget_test 재작성 ✅ (2026-04-21)
 
-- [ ] `test/helpers/hive_bootstrap.dart` 추출
-  - `setUpAll`: `.dart_tool/test_hive_<name>` 격리 path + Adapter 등록 + box open
-  - `setUp`: `box.clear()` + `DatabaseService.skipSync = true`
+- [x] `test/helpers/hive_bootstrap.dart` 추출
+  - `HiveTestHarness(pathName)` 클래스 — `.dart_tool/test_hive_<name>` 격리 path
+  - `setUpAll`: Adapter 등록(중복 방지) + 3박스(articles/labels/preferences) open
+  - `setUp`: 3박스 `clear()` + `DatabaseService.skipSync = true` + notifier 리셋
   - `tearDownAll`: `Hive.deleteFromDisk()`
-- [ ] Firebase 초기화 처리 결정 (mock 패키지 도입 vs 분기 vs skip)
-- [ ] `test/widget_test.dart` 재작성 — `MainScreen` / `HomeScreen` 스모크 수준
+  - `seedArticle()` / `seedLabel()` 헬퍼 포함
+- [x] Firebase 초기화 처리 = **스모크 범위 축소**로 우회.
+  전체 `ClibApp` / `MainScreen` / `HomeScreen`은 Firebase + 네이티브 채널 +
+  CustomPaint+GridView+BlocBuilder 조합 hang 이슈로 widget_test에서 배제.
+  Cubit/Bloc 동작은 `test/blocs/*_test.dart` 74 케이스로 이미 커버.
+- [x] `test/widget_test.dart` 재작성 — 3 케이스:
+  - `HiveTestHarness`가 3박스를 연다.
+  - setUp 이 이전 시드를 제거한다.
+  - `AppLocalizations` delegate 가 한국어를 해석한다.
 
-### 3.2 §3 실기기 회귀 스모크 (`flutter run --release`)
+**발견 사항**: `LibraryScreen` 등 실화면을 `tester.pumpWidget` + `pump`/`pumpAndSettle`
+로 띄우면 빈 DB는 통과하지만 라벨 1개 이상 시드된 상태에서는 수렴하지 않고 5분+ 행
+(원인 미확정: `CustomPaint(_CircularProgressPainter)` 포함 `GridView` + BlocBuilder
+조합 추정). 실화면 검증은 실기기 스모크로 위임.
+
+### 3.2 §3 실기기 회귀 스모크 (`flutter run --release`) 🚧
 
 - [ ] 첫 실행(Hive 초기화) → 온보딩 3페이지 → 메인
 - [ ] 아티클 저장 (시스템 공유 시트 → 앱)
