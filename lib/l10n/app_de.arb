@@ -136,8 +136,6 @@
   "deleteAccount": "Konto löschen",
   "deleteAccountConfirm": "Konto wirklich löschen?",
   "deleteAccountDescription": "Alle Cloud-Daten werden gelöscht. Die Daten auf diesem Gerät bleiben erhalten.",
-  "syncComplete": "Synchronisiert",
-  "syncing": "Wird synchronisiert …",
   "loginFailed": "Anmeldung fehlgeschlagen",
   "notificationDeviceOnly": "Erinnerungen klingeln nur auf diesem Gerät. Richte sie auf anderen Geräten separat ein.",
 

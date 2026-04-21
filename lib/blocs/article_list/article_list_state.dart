@@ -7,8 +7,9 @@ class ArticleListState extends Equatable {
   final List<Article> articles;
   final bool isSelecting;
 
-  /// Hive key 목록. Set 대신 List로 저장해 Equatable 비교가 정상 동작하도록 한다.
-  final List<dynamic> selectedKeys;
+  /// 선택된 아티클의 Hive key 목록. Hive autoincrement key는 int.
+  /// Set 대신 List로 저장해 Equatable 비교가 정상 동작하도록 한다.
+  final List<int> selectedKeys;
 
   /// `load()` 호출마다 1씩 증가해 Equatable 깊은 비교를 우회한다.
   ///
@@ -38,7 +39,7 @@ class ArticleListState extends Equatable {
   ArticleListState copyWith({
     List<Article>? articles,
     bool? isSelecting,
-    List<dynamic>? selectedKeys,
+    List<int>? selectedKeys,
     int? generation,
   }) {
     return ArticleListState(

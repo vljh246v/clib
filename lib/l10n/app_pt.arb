@@ -136,8 +136,6 @@
   "deleteAccount": "Excluir conta",
   "deleteAccountConfirm": "Tem certeza que quer excluir sua conta?",
   "deleteAccountDescription": "Todos os dados na nuvem serão apagados. Os dados neste dispositivo serão mantidos.",
-  "syncComplete": "Sincronizado",
-  "syncing": "Sincronizando…",
   "loginFailed": "Não foi possível entrar",
   "notificationDeviceOnly": "Os lembretes só funcionam neste dispositivo. Configure separadamente nos outros.",
 

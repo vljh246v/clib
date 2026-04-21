@@ -400,12 +400,6 @@ class AppLocalizationsPt extends AppLocalizations {
       'Todos os dados na nuvem serão apagados. Os dados neste dispositivo serão mantidos.';
 
   @override
-  String get syncComplete => 'Sincronizado';
-
-  @override
-  String get syncing => 'Sincronizando…';
-
-  @override
   String get loginFailed => 'Não foi possível entrar';
 
   @override

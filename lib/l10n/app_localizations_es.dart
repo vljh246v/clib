@@ -402,12 +402,6 @@ class AppLocalizationsEs extends AppLocalizations {
       'Se eliminarán todos los datos en la nube. Los datos en este dispositivo se conservarán.';
 
   @override
-  String get syncComplete => 'Sincronización completa';
-
-  @override
-  String get syncing => 'Sincronizando...';
-
-  @override
   String get loginFailed => 'Error al iniciar sesión';
 
   @override

@@ -808,18 +808,6 @@ abstract class AppLocalizations {
   /// **'클라우드 데이터가 모두 삭제됩니다. 이 기기의 데이터는 유지됩니다.'**
   String get deleteAccountDescription;
 
-  /// No description provided for @syncComplete.
-  ///
-  /// In ko, this message translates to:
-  /// **'동기화 완료'**
-  String get syncComplete;
-
-  /// No description provided for @syncing.
-  ///
-  /// In ko, this message translates to:
-  /// **'동기화 중...'**
-  String get syncing;
-
   /// No description provided for @loginFailed.
   ///
   /// In ko, this message translates to:

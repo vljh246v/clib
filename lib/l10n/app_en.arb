@@ -136,8 +136,6 @@
   "deleteAccount": "Delete Account",
   "deleteAccountConfirm": "Delete your account?",
   "deleteAccountDescription": "All cloud data will be deleted. Data on this device will be kept.",
-  "syncComplete": "Sync complete",
-  "syncing": "Syncing...",
   "loginFailed": "Sign in failed",
   "notificationDeviceOnly": "Notifications only ring on this device. Set up separately on other devices.",
 

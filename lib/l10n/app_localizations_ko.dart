@@ -390,12 +390,6 @@ class AppLocalizationsKo extends AppLocalizations {
       '클라우드 데이터가 모두 삭제됩니다. 이 기기의 데이터는 유지됩니다.';
 
   @override
-  String get syncComplete => '동기화 완료';
-
-  @override
-  String get syncing => '동기화 중...';
-
-  @override
   String get loginFailed => '로그인에 실패했습니다';
 
   @override

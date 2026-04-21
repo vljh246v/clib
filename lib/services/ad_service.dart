@@ -3,6 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 class AdService {
+  /// 아티클 리스트 / 홈 덱에서 N개마다 광고를 1개 삽입한다.
+  /// 변경 시 [HomeBloc] 덱 카운트와 [ArticleListView] 모두 영향.
+  static const int adInterval = 8;
+
   static BannerAd? _bannerAd;
   static bool _isLoaded = false;
 

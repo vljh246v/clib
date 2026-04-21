@@ -136,8 +136,6 @@
   "deleteAccount": "刪除帳號",
   "deleteAccountConfirm": "確定刪除帳號嗎？",
   "deleteAccountDescription": "雲端資料將會全部刪除。這台裝置上的資料會保留。",
-  "syncComplete": "同步完成",
-  "syncing": "同步中…",
   "loginFailed": "登入失敗",
   "notificationDeviceOnly": "通知僅在目前裝置上生效，其他裝置需另外設定。",
 

@@ -6,7 +6,7 @@ import 'package:clib/models/article.dart';
 import 'package:clib/models/label.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/services/firestore_service.dart';
-import 'package:clib/main.dart';
+import 'package:clib/state/app_notifiers.dart';
 
 class SyncService {
   static StreamSubscription? _articleSub;

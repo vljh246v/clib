@@ -136,8 +136,6 @@
   "deleteAccount": "Supprimer le compte",
   "deleteAccountConfirm": "Supprimer votre compte ?",
   "deleteAccountDescription": "Toutes les données dans le cloud seront supprimées. Les données sur cet appareil seront conservées.",
-  "syncComplete": "Synchronisé",
-  "syncing": "Synchronisation…",
   "loginFailed": "Échec de la connexion",
   "notificationDeviceOnly": "Les rappels ne sonnent que sur cet appareil. Configurez-les séparément sur vos autres appareils.",
 

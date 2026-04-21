@@ -9,6 +9,7 @@ import 'package:clib/blocs/home/home_event.dart';
 import 'package:clib/blocs/home/home_state.dart';
 import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/models/article.dart';
+import 'package:clib/services/ad_service.dart';
 import 'package:clib/theme/app_theme.dart';
 import 'package:clib/theme/design_tokens.dart';
 import 'package:clib/widgets/add_article_sheet.dart';
@@ -51,7 +52,7 @@ class _HomeBodyState extends State<_HomeBody> {
   final ValueNotifier<double> _thresholdNotifier = ValueNotifier<double>(0.0);
   int _currentDeckVersion = 0;
 
-  static const _adInterval = 8;
+  static const _adInterval = AdService.adInterval;
 
   @override
   void dispose() {
@@ -296,7 +297,7 @@ class _HomeBodyState extends State<_HomeBody> {
           ),
         ),
       ),
-    );
+    ).whenComplete(controller.dispose);
   }
 
   Widget _buildEmptyContent(Set<String> selectedLabels) {
@@ -365,7 +366,7 @@ class _HomeBodyState extends State<_HomeBody> {
 
         return Column(
           children: [
-            const SizedBox(height: 12),
+            const SizedBox(height: Spacing.md),
             if (allLabelNames.isNotEmpty)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -375,7 +376,7 @@ class _HomeBodyState extends State<_HomeBody> {
                     child: Row(
                       children: [
                         Padding(
-                          padding: const EdgeInsets.only(left: 16),
+                          padding: const EdgeInsets.only(left: Spacing.lg),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -384,13 +385,13 @@ class _HomeBodyState extends State<_HomeBody> {
                                 selected: selectedLabels.isEmpty,
                                 onTap: _clearLabels,
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: Spacing.sm),
                               Container(
                                 width: 1,
-                                height: 20,
+                                height: Spacing.xl,
                                 color: Theme.of(context).dividerColor,
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: Spacing.sm),
                             ],
                           ),
                         ),
@@ -401,7 +402,7 @@ class _HomeBodyState extends State<_HomeBody> {
                             itemBuilder: (context, index) => Padding(
                               padding: EdgeInsets.only(
                                 right: index < allLabelNames.length - 1
-                                    ? 8
+                                    ? Spacing.sm
                                     : 0,
                               ),
                               child: _FilterChip(
@@ -420,8 +421,8 @@ class _HomeBodyState extends State<_HomeBody> {
                               .read<HomeBloc>()
                               .add(const HomeToggleExpand()),
                           child: Padding(
-                            padding:
-                                const EdgeInsets.only(left: 12, right: 16),
+                            padding: const EdgeInsets.only(
+                                left: Spacing.md, right: Spacing.lg),
                             child: AnimatedRotation(
                               turns: state.isExpanded ? 0.5 : 0,
                               duration: const Duration(milliseconds: 200),
@@ -457,10 +458,13 @@ class _HomeBodyState extends State<_HomeBody> {
                                 const BoxConstraints(maxHeight: 160),
                             child: SingleChildScrollView(
                               padding: const EdgeInsets.fromLTRB(
-                                  16, 8, 16, 4),
+                                  Spacing.lg,
+                                  Spacing.sm,
+                                  Spacing.lg,
+                                  Spacing.xs),
                               child: Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
+                                spacing: Spacing.sm,
+                                runSpacing: Spacing.sm,
                                 children: [
                                   for (final name in allLabelNames)
                                     _FilterChip(
@@ -479,7 +483,7 @@ class _HomeBodyState extends State<_HomeBody> {
               ),
             const SizedBox(height: 10),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(horizontal: Spacing.xxl),
               child: Row(
                 children: [
                   Text(
@@ -511,7 +515,7 @@ class _HomeBodyState extends State<_HomeBody> {
                 ],
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: Spacing.sm),
             if (state.articles.isEmpty)
               Expanded(
                 child: Container(
@@ -596,7 +600,7 @@ class _HomeBodyState extends State<_HomeBody> {
                             },
                             child: Container(
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: Radii.borderXl,
                                 border: borderColor != null
                                     ? Border.all(
                                         color: borderColor, width: 2.5)
