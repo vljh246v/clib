@@ -389,12 +389,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get deleteAccountDescription => '云端数据将被全部删除。本设备上的数据会保留。';
 
   @override
-  String get syncComplete => '同步完成';
-
-  @override
-  String get syncing => '同步中…';
-
-  @override
   String get loginFailed => '登录失败';
 
   @override
@@ -840,12 +834,6 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get deleteAccountDescription => '云端数据将被全部删除。本设备上的数据会保留。';
 
   @override
-  String get syncComplete => '同步完成';
-
-  @override
-  String get syncing => '同步中…';
-
-  @override
   String get loginFailed => '登录失败';
 
   @override
@@ -1289,12 +1277,6 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get deleteAccountDescription => '雲端資料將會全部刪除。這台裝置上的資料會保留。';
-
-  @override
-  String get syncComplete => '同步完成';
-
-  @override
-  String get syncing => '同步中…';
 
   @override
   String get loginFailed => '登入失敗';

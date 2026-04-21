@@ -389,12 +389,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get deleteAccountDescription => 'クラウドデータはすべて削除されます。このデバイスのデータは保持されます。';
 
   @override
-  String get syncComplete => '同期完了';
-
-  @override
-  String get syncing => '同期中...';
-
-  @override
   String get loginFailed => 'サインインに失敗しました';
 
   @override

@@ -220,8 +220,6 @@
   "deleteAccount": "계정 삭제",
   "deleteAccountConfirm": "계정을 삭제하시겠어요?",
   "deleteAccountDescription": "클라우드 데이터가 모두 삭제됩니다. 이 기기의 데이터는 유지됩니다.",
-  "syncComplete": "동기화 완료",
-  "syncing": "동기화 중...",
   "loginFailed": "로그인에 실패했습니다",
   "notificationDeviceOnly": "알림은 이 기기에서만 울립니다. 다른 기기에서는 별도로 설정해 주세요.",
 

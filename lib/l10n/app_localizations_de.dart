@@ -402,12 +402,6 @@ class AppLocalizationsDe extends AppLocalizations {
       'Alle Cloud-Daten werden gelöscht. Die Daten auf diesem Gerät bleiben erhalten.';
 
   @override
-  String get syncComplete => 'Synchronisiert';
-
-  @override
-  String get syncing => 'Wird synchronisiert …';
-
-  @override
   String get loginFailed => 'Anmeldung fehlgeschlagen';
 
   @override

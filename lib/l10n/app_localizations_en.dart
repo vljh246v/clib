@@ -396,12 +396,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'All cloud data will be deleted. Data on this device will be kept.';
 
   @override
-  String get syncComplete => 'Sync complete';
-
-  @override
-  String get syncing => 'Syncing...';
-
-  @override
   String get loginFailed => 'Sign in failed';
 
   @override

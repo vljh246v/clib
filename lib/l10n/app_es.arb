@@ -136,8 +136,6 @@
   "deleteAccount": "Eliminar cuenta",
   "deleteAccountConfirm": "¿Eliminar tu cuenta?",
   "deleteAccountDescription": "Se eliminarán todos los datos en la nube. Los datos en este dispositivo se conservarán.",
-  "syncComplete": "Sincronización completa",
-  "syncing": "Sincronizando...",
   "loginFailed": "Error al iniciar sesión",
   "notificationDeviceOnly": "Las notificaciones solo suenan en este dispositivo. Configúralas por separado en otros dispositivos.",
 

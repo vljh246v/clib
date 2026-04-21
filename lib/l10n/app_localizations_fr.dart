@@ -403,12 +403,6 @@ class AppLocalizationsFr extends AppLocalizations {
       'Toutes les données dans le cloud seront supprimées. Les données sur cet appareil seront conservées.';
 
   @override
-  String get syncComplete => 'Synchronisé';
-
-  @override
-  String get syncing => 'Synchronisation…';
-
-  @override
   String get loginFailed => 'Échec de la connexion';
 
   @override
