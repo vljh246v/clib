@@ -1,7 +1,7 @@
 import 'dart:ui' show Color;
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clib/main.dart' show labelsChangedNotifier;
+import 'package:clib/state/app_notifiers.dart' show labelsChangedNotifier;
 import 'package:clib/services/database_service.dart';
 import 'package:clib/services/share_service.dart';
 import 'add_article_state.dart';
@@ -13,8 +13,8 @@ import 'add_article_state.dart';
 ///   host` 동치). 실패 시 `urlError='invalid_url'` 센티넬.
 /// - 저장 성공 시 `isDone=true` → 위젯이 Navigator.pop. Cubit이 직접 pop 불가.
 /// - 저장 예외 시 `failureMessage` 셋 → listener가 SnackBar 후 `clearFailure()`.
-/// - `ShareService.processAndSave()`가 내부에서 `articlesChangedNotifier.value++`
-///   를 이미 발사하므로 Cubit에서 중복 발사 금지.
+/// - `articlesChangedNotifier`는 `DatabaseService.saveArticle`이 발사하므로
+///   Cubit에서 중복 발사 금지.
 class AddArticleCubit extends Cubit<AddArticleState> {
   AddArticleCubit() : super(const AddArticleState()) {
     labelsChangedNotifier.addListener(_refreshLabels);

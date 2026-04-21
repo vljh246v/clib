@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:clib/main.dart'
+import 'package:clib/state/app_notifiers.dart'
     show articlesChangedNotifier, labelsChangedNotifier;
 import 'package:clib/models/article.dart';
 import 'package:clib/models/label.dart';
@@ -14,9 +14,11 @@ import 'home_state.dart';
 /// - `CardSwiperController` / `_pendingDispose` / `_thresholdNotifier`는
 ///   위젯 로컬 SSOT(bloc 금지).
 /// - 필터는 **AND**(`every`)로 기존 UX 보존.
-/// - `articlesChangedNotifier` 발사원: `ShareService.processAndSave`,
-///   `SyncService` 원격 스냅샷 — 로컬 CRUD(`markAsRead`/`toggleBookmark` 등)는
-///   발사하지 않으므로 Bloc이 각 액션 핸들러에서 직접 [HomeLoadDeck]을 emit한다.
+/// - `articlesChangedNotifier` 발사원은 `DatabaseService` mutation 메서드 +
+///   `SyncService` 원격 스냅샷. 로컬 CRUD 후 추가 [HomeLoadDeck]을 dispatch
+///   하지 않아도 listener 경로로 자동 재로드된다(중복 호출 방지).
+///   다만 swipe-read는 즉시 응답성 + `deckVersion` 정합성을 위해 핸들러 안에서
+///   직접 `articles` 리스트를 갱신한다(이후 listener 재로드는 idempotent).
 class HomeBloc extends Bloc<HomeEvent, HomeState> {
   HomeBloc() : super(const HomeState()) {
     on<HomeLoadDeck>(_onLoad);
@@ -109,16 +111,16 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     HomeToggleBookmark event,
     Emitter<HomeState> emit,
   ) async {
+    // DatabaseService가 articlesChangedNotifier를 발사 → listener 경로로 재로드.
     await DatabaseService.toggleBookmark(event.article);
-    add(const HomeLoadDeck(resetPosition: false));
   }
 
   Future<void> _onUpdateMemo(
     HomeUpdateMemo event,
     Emitter<HomeState> emit,
   ) async {
+    // DatabaseService가 articlesChangedNotifier를 발사 → listener 경로로 재로드.
     await DatabaseService.updateMemo(event.article, event.memo);
-    add(const HomeLoadDeck(resetPosition: false));
   }
 
   @override

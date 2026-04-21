@@ -6,6 +6,7 @@ import 'package:clib/models/article.dart';
 import 'package:clib/models/label.dart';
 import 'package:clib/services/auth_service.dart';
 import 'package:clib/services/sync_service.dart';
+import 'package:clib/state/app_notifiers.dart';
 
 class DatabaseService {
   static const _boxName = 'articles';
@@ -81,6 +82,7 @@ class DatabaseService {
     if (!skipSync && AuthService.isLoggedIn) {
       await SyncService.syncArticle(article);
     }
+    articlesChangedNotifier.value++;
     return key;
   }
 
@@ -120,6 +122,7 @@ class DatabaseService {
     if (!skipSync && AuthService.isLoggedIn) {
       await SyncService.syncArticleFields(article, {'isRead': true});
     }
+    articlesChangedNotifier.value++;
   }
 
   // 안 읽음 처리
@@ -130,6 +133,7 @@ class DatabaseService {
     if (!skipSync && AuthService.isLoggedIn) {
       await SyncService.syncArticleFields(article, {'isRead': false});
     }
+    articlesChangedNotifier.value++;
   }
 
   // 일괄 읽음/안읽음 처리 (batch write로 스냅샷 1회)
@@ -144,6 +148,7 @@ class DatabaseService {
     if (!skipSync && AuthService.isLoggedIn) {
       await SyncService.syncBulkArticleFields(articles, {'isRead': isRead});
     }
+    articlesChangedNotifier.value++;
   }
 
   // 일괄 북마크 설정 (batch write로 스냅샷 1회)
@@ -159,6 +164,7 @@ class DatabaseService {
       await SyncService.syncBulkArticleFields(
           articles, {'isBookmarked': bookmark});
     }
+    articlesChangedNotifier.value++;
   }
 
   // 북마크 토글
@@ -170,6 +176,7 @@ class DatabaseService {
       await SyncService.syncArticleFields(
           article, {'isBookmarked': article.isBookmarked});
     }
+    articlesChangedNotifier.value++;
   }
 
   // 메모 업데이트
@@ -180,6 +187,7 @@ class DatabaseService {
     if (!skipSync && AuthService.isLoggedIn) {
       await SyncService.syncArticleFields(article, {'memo': article.memo});
     }
+    articlesChangedNotifier.value++;
   }
 
   // 북마크된 아티클 목록
@@ -202,6 +210,19 @@ class DatabaseService {
       await SyncService.syncDeleteArticle(article);
     }
     await article.delete();
+    articlesChangedNotifier.value++;
+  }
+
+  // 일괄 삭제 — 단일 sync trigger + notifier 1회 발사.
+  static Future<void> bulkDelete(List<Article> articles) async {
+    if (articles.isEmpty) return;
+    if (!skipSync && AuthService.isLoggedIn) {
+      for (final a in articles) {
+        await SyncService.syncDeleteArticle(a);
+      }
+    }
+    await _box.deleteAll(articles.map((a) => a.key));
+    articlesChangedNotifier.value++;
   }
 
   // 모든 라벨 목록
@@ -248,6 +269,7 @@ class DatabaseService {
     if (!skipSync && AuthService.isLoggedIn) {
       await SyncService.syncLabel(label);
     }
+    labelsChangedNotifier.value++;
     return label;
   }
 
@@ -258,6 +280,7 @@ class DatabaseService {
     Color? newColor,
   }) async {
     final oldName = label.name;
+    bool articlesAffected = false;
 
     if (newName != null && newName != oldName) {
       // 중복 체크
@@ -273,6 +296,7 @@ class DatabaseService {
           article.topicLabels[idx] = newName;
           article.updatedAt = DateTime.now();
           await article.save();
+          articlesAffected = true;
           if (!skipSync && AuthService.isLoggedIn) {
             await SyncService.syncArticleFields(
                 article, {'topicLabels': article.topicLabels});
@@ -292,15 +316,19 @@ class DatabaseService {
     if (!skipSync && AuthService.isLoggedIn) {
       await SyncService.syncLabel(label);
     }
+    labelsChangedNotifier.value++;
+    if (articlesAffected) articlesChangedNotifier.value++;
   }
 
   // 라벨 삭제
   static Future<void> deleteLabel(Label label) async {
+    bool articlesAffected = false;
     // 모든 아티클에서 해당 라벨 제거
     for (final article in _box.values) {
       if (article.topicLabels.remove(label.name)) {
         article.updatedAt = DateTime.now();
         await article.save();
+        articlesAffected = true;
         if (!skipSync && AuthService.isLoggedIn) {
           await SyncService.syncArticleFields(
               article, {'topicLabels': article.topicLabels});
@@ -312,6 +340,8 @@ class DatabaseService {
     }
     await label.delete();
     await syncLabelsToAppGroup();
+    labelsChangedNotifier.value++;
+    if (articlesAffected) articlesChangedNotifier.value++;
   }
 
   // iOS Share Extension용 라벨 동기화
@@ -372,5 +402,6 @@ class DatabaseService {
       await SyncService.syncArticleFields(
           article, {'topicLabels': newLabels});
     }
+    articlesChangedNotifier.value++;
   }
 }

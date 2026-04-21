@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clib/main.dart' show labelsChangedNotifier, articlesChangedNotifier;
+import 'package:clib/state/app_notifiers.dart'
+    show labelsChangedNotifier, articlesChangedNotifier;
 import 'package:clib/models/label.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/services/notification_service.dart';

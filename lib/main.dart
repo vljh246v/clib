@@ -21,11 +21,9 @@ import 'package:clib/screens/onboarding_screen.dart';
 import 'package:clib/widgets/share_label_sheet.dart';
 import 'package:clib/widgets/home_overlay_guide.dart';
 
-/// 아티클 추가/삭제 시 HomeScreen에 알리는 notifier
-final articlesChangedNotifier = ValueNotifier<int>(0);
-
-/// 라벨 변경 시 LibraryScreen 등에 알리는 notifier
-final labelsChangedNotifier = ValueNotifier<int>(0);
+// 기존 `package:clib/main.dart` show ... 경로 호환을 위한 re-export.
+export 'package:clib/state/app_notifiers.dart'
+    show articlesChangedNotifier, labelsChangedNotifier;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
