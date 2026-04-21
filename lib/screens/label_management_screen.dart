@@ -415,101 +415,14 @@ class _LabelManagementBody extends StatelessWidget {
   }
 
   Future<void> _showLabelDialog(BuildContext context, {Label? label}) async {
-    final isEdit = label != null;
-    final nameController = TextEditingController(text: label?.name ?? '');
-    var selectedColor =
-        label != null ? Color(label.colorValue) : LabelColors.presets.first;
-    final theme = Theme.of(context);
-    final l = AppLocalizations.of(context)!;
     final cubit = context.read<LabelManagementCubit>();
-
     await showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(isEdit ? l.editLabelTitle : l.addLabelTitle),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(
-                  labelText: l.labelName,
-                  hintText: l.labelNameHint,
-                  border: const OutlineInputBorder(),
-                ),
-                autofocus: true,
-              ),
-              const SizedBox(height: Spacing.lg),
-              Text(l.color, style: theme.textTheme.labelLarge),
-              const SizedBox(height: Spacing.sm),
-              Wrap(
-                spacing: Spacing.sm,
-                runSpacing: Spacing.sm,
-                children: LabelColors.presets.map((color) {
-                  final isSelected =
-                      selectedColor.toARGB32() == color.toARGB32();
-                  return GestureDetector(
-                    onTap: () =>
-                        setDialogState(() => selectedColor = color),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        border: isSelected
-                            ? Border.all(color: Colors.white, width: 2)
-                            : null,
-                        boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                    color: color.withValues(alpha: 0.4),
-                                    blurRadius: 8)
-                              ]
-                            : null,
-                      ),
-                      child: isSelected
-                          ? const Icon(Icons.check,
-                              color: Colors.white, size: 18)
-                          : null,
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(l.cancel),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: theme.colorScheme.secondary,
-                foregroundColor: theme.colorScheme.onSecondary,
-              ),
-              onPressed: () async {
-                final name = nameController.text.trim();
-                if (name.isEmpty) return;
-                if (isEdit) {
-                  await cubit.updateLabel(label,
-                      newName: name, newColor: selectedColor);
-                } else {
-                  await cubit.createLabel(name, selectedColor);
-                }
-                if (cubit.state.errorMessage == null && ctx.mounted) {
-                  Navigator.pop(ctx);
-                }
-              },
-              child: Text(isEdit ? l.edit : l.add),
-            ),
-          ],
-        ),
+      builder: (_) => BlocProvider.value(
+        value: cubit,
+        child: _LabelDialog(label: label),
       ),
     );
-    nameController.dispose();
   }
 
   Future<void> _confirmDelete(
@@ -543,5 +456,124 @@ class _LabelManagementBody extends StatelessWidget {
     if (confirmed == true) {
       await cubit.deleteLabel(label);
     }
+  }
+}
+
+class _LabelDialog extends StatefulWidget {
+  final Label? label;
+
+  const _LabelDialog({this.label});
+
+  @override
+  State<_LabelDialog> createState() => _LabelDialogState();
+}
+
+class _LabelDialogState extends State<_LabelDialog> {
+  late final TextEditingController _nameController;
+  late Color _selectedColor;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.label?.name ?? '');
+    _selectedColor = widget.label != null
+        ? Color(widget.label!.colorValue)
+        : LabelColors.presets.first;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
+    final cubit = context.read<LabelManagementCubit>();
+    final isEdit = widget.label != null;
+
+    return AlertDialog(
+      title: Text(isEdit ? l.editLabelTitle : l.addLabelTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: _nameController,
+            decoration: InputDecoration(
+              labelText: l.labelName,
+              hintText: l.labelNameHint,
+              border: const OutlineInputBorder(),
+            ),
+            autofocus: true,
+          ),
+          const SizedBox(height: Spacing.lg),
+          Text(l.color, style: theme.textTheme.labelLarge),
+          const SizedBox(height: Spacing.sm),
+          Wrap(
+            spacing: Spacing.sm,
+            runSpacing: Spacing.sm,
+            children: LabelColors.presets.map((color) {
+              final isSelected =
+                  _selectedColor.toARGB32() == color.toARGB32();
+              return GestureDetector(
+                onTap: () => setState(() => _selectedColor = color),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: isSelected
+                        ? Border.all(color: Colors.white, width: 2)
+                        : null,
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                                color: color.withValues(alpha: 0.4),
+                                blurRadius: 8)
+                          ]
+                        : null,
+                  ),
+                  child: isSelected
+                      ? const Icon(Icons.check,
+                          color: Colors.white, size: 18)
+                      : null,
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l.cancel),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: theme.colorScheme.secondary,
+            foregroundColor: theme.colorScheme.onSecondary,
+          ),
+          onPressed: () async {
+            final name = _nameController.text.trim();
+            if (name.isEmpty) return;
+            final label = widget.label;
+            if (label != null) {
+              await cubit.updateLabel(label,
+                  newName: name, newColor: _selectedColor);
+            } else {
+              await cubit.createLabel(name, _selectedColor);
+            }
+            if (cubit.state.errorMessage == null && context.mounted) {
+              Navigator.pop(context);
+            }
+          },
+          child: Text(isEdit ? l.edit : l.add),
+        ),
+      ],
+    );
   }
 }
