@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:clib/blocs/add_article/add_article_cubit.dart';
+import 'package:clib/blocs/add_article/add_article_state.dart';
 import 'package:clib/l10n/app_localizations.dart';
-import 'package:clib/models/label.dart';
-import 'package:clib/services/database_service.dart';
-import 'package:clib/services/share_service.dart';
 import 'package:clib/theme/design_tokens.dart';
 
-/// 수동 URL 입력으로 아티클을 추가하는 바텀시트
-class AddArticleSheet extends StatefulWidget {
-  const AddArticleSheet({super.key});
+/// 수동 URL 입력으로 아티클을 추가하는 바텀시트.
+///
+/// 상태는 [AddArticleCubit]이 소유. 위젯은 TextEditingController와 시트 UX만
+/// 담당한다. 진입점은 [show] 정적 메서드 하나뿐이므로 일반 위젯으로 트리에
+/// 직접 삽입하지 않는다.
+class AddArticleSheet {
+  const AddArticleSheet._();
 
   static Future<void> show(BuildContext context) {
     return showModalBottomSheet(
@@ -18,19 +22,23 @@ class AddArticleSheet extends StatefulWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xl)),
       ),
-      builder: (_) => const AddArticleSheet(),
+      builder: (_) => BlocProvider(
+        create: (_) => AddArticleCubit(),
+        child: const _AddArticleBody(),
+      ),
     );
   }
-
-  @override
-  State<AddArticleSheet> createState() => _AddArticleSheetState();
 }
 
-class _AddArticleSheetState extends State<AddArticleSheet> {
+class _AddArticleBody extends StatefulWidget {
+  const _AddArticleBody();
+
+  @override
+  State<_AddArticleBody> createState() => _AddArticleBodyState();
+}
+
+class _AddArticleBodyState extends State<_AddArticleBody> {
   final _urlController = TextEditingController();
-  final Set<String> _selected = {};
-  bool _saving = false;
-  String? _urlError;
 
   @override
   void dispose() {
@@ -38,59 +46,27 @@ class _AddArticleSheetState extends State<AddArticleSheet> {
     super.dispose();
   }
 
-  bool _isValidUrl(String text) {
-    final uri = Uri.tryParse(text);
-    return uri != null && uri.hasScheme && uri.host.isNotEmpty;
-  }
-
   Future<void> _pasteFromClipboard() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
-    if (data?.text != null && data!.text!.isNotEmpty) {
-      _urlController.text = data.text!.trim();
-      _urlController.selection = TextSelection.fromPosition(
-        TextPosition(offset: _urlController.text.length),
-      );
-      setState(() => _urlError = null);
-    }
-  }
-
-  Future<void> _save() async {
-    final url = _urlController.text.trim();
-    final l = AppLocalizations.of(context)!;
-
-    if (!_isValidUrl(url)) {
-      setState(() => _urlError = l.invalidUrl);
-      return;
-    }
-
-    setState(() {
-      _saving = true;
-      _urlError = null;
-    });
-
-    try {
-      await ShareService.processAndSave(
-        url,
-        labels: _selected.toList(),
-      );
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
-      if (mounted) {
-        setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.saveFailed)),
-        );
-      }
-    }
+    final text = data?.text;
+    if (text == null || text.isEmpty) return;
+    final trimmed = text.trim();
+    _urlController.text = trimmed;
+    _urlController.selection = TextSelection.fromPosition(
+      TextPosition(offset: trimmed.length),
+    );
+    if (!mounted) return;
+    context.read<AddArticleCubit>().urlInputChanged();
   }
 
   Future<void> _showAddLabelDialog() async {
+    final cubit = context.read<AddArticleCubit>();
     final nameController = TextEditingController();
     var selectedColor = LabelColors.presets.first;
     final theme = Theme.of(context);
     final l = AppLocalizations.of(context)!;
 
-    final created = await showDialog<Label>(
+    final name = await showDialog<String>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
@@ -132,8 +108,9 @@ class _AddArticleSheetState extends State<AddArticleSheet> {
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
-                                    color: color.withValues(alpha: 0.4),
-                                    blurRadius: 8)
+                                  color: color.withValues(alpha: 0.4),
+                                  blurRadius: 8,
+                                )
                               ]
                             : null,
                       ),
@@ -157,21 +134,10 @@ class _AddArticleSheetState extends State<AddArticleSheet> {
                 backgroundColor: theme.colorScheme.secondary,
                 foregroundColor: theme.colorScheme.onSecondary,
               ),
-              onPressed: () async {
-                final name = nameController.text.trim();
-                if (name.isEmpty) return;
-                try {
-                  await DatabaseService.createLabel(name, selectedColor);
-                  final label = DatabaseService.getAllLabelObjects()
-                      .firstWhere((l) => l.name == name);
-                  if (ctx.mounted) Navigator.pop(ctx, label);
-                } catch (e) {
-                  if (ctx.mounted) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      SnackBar(content: Text(e.toString())),
-                    );
-                  }
-                }
+              onPressed: () {
+                final trimmed = nameController.text.trim();
+                if (trimmed.isEmpty) return;
+                Navigator.pop(ctx, trimmed);
               },
               child: Text(l.add),
             ),
@@ -180,168 +146,197 @@ class _AddArticleSheetState extends State<AddArticleSheet> {
       ),
     );
 
-    if (created != null) {
-      setState(() => _selected.add(created.name));
-    }
+    nameController.dispose();
+    if (name == null) return;
+    await cubit.createLabel(name, selectedColor);
+  }
+
+  String? _resolveUrlError(String? code, AppLocalizations l) {
+    if (code == null) return null;
+    if (code == 'invalid_url') return l.invalidUrl;
+    return code;
   }
 
   @override
   Widget build(BuildContext context) {
-    final labels = DatabaseService.getAllLabelObjects();
     final theme = Theme.of(context);
     final l = AppLocalizations.of(context)!;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: Spacing.xxl,
-        right: Spacing.xxl,
-        top: Spacing.xxl,
-        bottom: MediaQuery.of(context).viewInsets.bottom + Spacing.xxl,
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 핸들 바
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.onSurfaceVariant
-                    .withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(2.5),
-              ),
-            ),
+    return BlocConsumer<AddArticleCubit, AddArticleState>(
+      listenWhen: (prev, curr) =>
+          (prev.isDone != curr.isDone && curr.isDone) ||
+          (prev.saveFailure != curr.saveFailure && curr.saveFailure) ||
+          (prev.labelErrorMessage != curr.labelErrorMessage &&
+              curr.labelErrorMessage != null),
+      listener: (ctx, state) {
+        if (state.isDone) {
+          Navigator.pop(ctx);
+          return;
+        }
+        final cubit = ctx.read<AddArticleCubit>();
+        if (state.saveFailure) {
+          ScaffoldMessenger.of(ctx).showSnackBar(
+            SnackBar(content: Text(l.saveFailed)),
+          );
+          cubit.clearSaveFailure();
+          return;
+        }
+        if (state.labelErrorMessage != null) {
+          ScaffoldMessenger.of(ctx).showSnackBar(
+            SnackBar(content: Text(state.labelErrorMessage!)),
+          );
+          cubit.clearLabelError();
+        }
+      },
+      builder: (ctx, state) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: Spacing.xxl,
+            right: Spacing.xxl,
+            top: Spacing.xxl,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + Spacing.xxl,
           ),
-          const SizedBox(height: Spacing.lg),
-          Text(l.addArticle, style: theme.textTheme.titleMedium),
-          const SizedBox(height: Spacing.lg),
-          // URL 입력
-          TextField(
-            controller: _urlController,
-            decoration: InputDecoration(
-              hintText: l.urlHint,
-              errorText: _urlError,
-              border: const OutlineInputBorder(),
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.content_paste_rounded, size: 20),
-                tooltip: l.pasteFromClipboard,
-                onPressed: _pasteFromClipboard,
-              ),
-            ),
-            keyboardType: TextInputType.url,
-            textInputAction: TextInputAction.done,
-            onChanged: (_) {
-              if (_urlError != null) setState(() => _urlError = null);
-            },
-          ),
-          const SizedBox(height: Spacing.lg),
-          Divider(height: 1, color: theme.dividerColor),
-          const SizedBox(height: Spacing.lg),
-          // 라벨 선택
-          Text(l.label, style: theme.textTheme.labelLarge),
-          const SizedBox(height: Spacing.md),
-          if (labels.isNotEmpty)
-            Wrap(
-              spacing: Spacing.sm,
-              runSpacing: Spacing.sm,
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ...labels.map((label) {
-                  final isSelected = _selected.contains(label.name);
-                  final color = Color(label.colorValue);
-                  return FilterChip(
-                    label: Text(label.name),
-                    selected: isSelected,
-                    selectedColor: color.withValues(alpha: 0.15),
-                    checkmarkColor: color,
-                    side: BorderSide(
-                      color: isSelected
-                          ? color
-                          : theme.colorScheme.onSurfaceVariant
-                              .withValues(alpha: 0.25),
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.onSurfaceVariant
+                          .withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(2.5),
                     ),
-                    onSelected: (v) {
-                      setState(() {
-                        if (v) {
-                          _selected.add(label.name);
-                        } else {
-                          _selected.remove(label.name);
-                        }
-                      });
-                    },
-                  );
-                }),
-                ActionChip(
-                  avatar: const Icon(Icons.add, size: 16),
-                  label: Text(l.newLabel),
-                  side: BorderSide(
-                    color: theme.colorScheme.onSurfaceVariant
-                        .withValues(alpha: 0.25),
                   ),
-                  onPressed: _showAddLabelDialog,
+                ),
+                const SizedBox(height: Spacing.lg),
+                Text(l.addArticle, style: theme.textTheme.titleMedium),
+                const SizedBox(height: Spacing.lg),
+                TextField(
+                  controller: _urlController,
+                  decoration: InputDecoration(
+                    hintText: l.urlHint,
+                    errorText: _resolveUrlError(state.urlError, l),
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.content_paste_rounded, size: 20),
+                      tooltip: l.pasteFromClipboard,
+                      onPressed: _pasteFromClipboard,
+                    ),
+                  ),
+                  keyboardType: TextInputType.url,
+                  textInputAction: TextInputAction.done,
+                  onChanged: (_) =>
+                      ctx.read<AddArticleCubit>().urlInputChanged(),
+                ),
+                const SizedBox(height: Spacing.lg),
+                Divider(height: 1, color: theme.dividerColor),
+                const SizedBox(height: Spacing.lg),
+                Text(l.label, style: theme.textTheme.labelLarge),
+                const SizedBox(height: Spacing.md),
+                if (state.allLabels.isNotEmpty)
+                  Wrap(
+                    spacing: Spacing.sm,
+                    runSpacing: Spacing.sm,
+                    children: [
+                      ...state.allLabels.map((label) {
+                        final isSelected =
+                            state.selectedLabels.contains(label.name);
+                        final color = Color(label.colorValue);
+                        return FilterChip(
+                          label: Text(label.name),
+                          selected: isSelected,
+                          selectedColor: color.withValues(alpha: 0.15),
+                          checkmarkColor: color,
+                          side: BorderSide(
+                            color: isSelected
+                                ? color
+                                : theme.colorScheme.onSurfaceVariant
+                                    .withValues(alpha: 0.25),
+                          ),
+                          onSelected: (_) => ctx
+                              .read<AddArticleCubit>()
+                              .toggleLabel(label.name),
+                        );
+                      }),
+                      ActionChip(
+                        avatar: const Icon(Icons.add, size: 16),
+                        label: Text(l.newLabel),
+                        side: BorderSide(
+                          color: theme.colorScheme.onSurfaceVariant
+                              .withValues(alpha: 0.25),
+                        ),
+                        onPressed: _showAddLabelDialog,
+                      ),
+                    ],
+                  ),
+                if (state.allLabels.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: Spacing.sm),
+                    child: ActionChip(
+                      avatar: const Icon(Icons.add, size: 16),
+                      label: Text(l.newLabel),
+                      side: BorderSide(
+                        color: theme.colorScheme.onSurfaceVariant
+                            .withValues(alpha: 0.25),
+                      ),
+                      onPressed: _showAddLabelDialog,
+                    ),
+                  ),
+                const SizedBox(height: Spacing.xl),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                            color: theme.colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.3),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: Radii.borderMd,
+                          ),
+                        ),
+                        onPressed: () => Navigator.pop(ctx),
+                        child: Text(l.cancel),
+                      ),
+                    ),
+                    const SizedBox(width: Spacing.md),
+                    Expanded(
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: theme.colorScheme.secondary,
+                          foregroundColor: theme.colorScheme.onSecondary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: Radii.borderMd,
+                          ),
+                        ),
+                        onPressed: state.isSaving
+                            ? null
+                            : () => ctx
+                                .read<AddArticleCubit>()
+                                .save(_urlController.text),
+                        child: state.isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Text(l.save),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          if (labels.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: Spacing.sm),
-              child: ActionChip(
-                avatar: const Icon(Icons.add, size: 16),
-                label: Text(l.newLabel),
-                side: BorderSide(
-                  color: theme.colorScheme.onSurfaceVariant
-                      .withValues(alpha: 0.25),
-                ),
-                onPressed: _showAddLabelDialog,
-              ),
-            ),
-          const SizedBox(height: Spacing.xl),
-          // 버튼
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(
-                      color: theme.colorScheme.onSurfaceVariant
-                          .withValues(alpha: 0.3),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: Radii.borderMd,
-                    ),
-                  ),
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(l.cancel),
-                ),
-              ),
-              const SizedBox(width: Spacing.md),
-              Expanded(
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: theme.colorScheme.secondary,
-                    foregroundColor: theme.colorScheme.onSecondary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: Radii.borderMd,
-                    ),
-                  ),
-                  onPressed: _saving ? null : _save,
-                  child: _saving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(l.save),
-                ),
-              ),
-            ],
           ),
-        ],
-      ),
-      ),
+        );
+      },
     );
   }
 }

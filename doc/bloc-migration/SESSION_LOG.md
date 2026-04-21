@@ -42,6 +42,89 @@
 
 <!-- 이 아래에 세션 엔트리를 추가한다. 최신이 위. -->
 
+## 2026-04-21 PR 08 — AddArticleCubit
+
+**세션 결과**: 🟢 완료 (feature 커밋 완료, 머지/push는 사용자 승인 대기)
+
+**브랜치**: `feature/bloc-08-add-article` (feature 커밋: `69b77cf`)
+
+### 계획대로 된 점
+- `lib/blocs/add_article/{cubit,state}.dart` 신규. Equatable + copyWith 표준 패턴.
+- `AddArticleSheet` 347 LOC StatefulWidget → `show()` 정적 메서드 전용 클래스 + `_AddArticleBody(StatefulWidget)` 분리. TextEditingController만 위젯 로컬 SSOT.
+- `BlocProvider` 화면 로컬 주입, `BlocConsumer.listenWhen` 3채널 가드(isDone/saveFailure/labelErrorMessage).
+- URL 검증 `Uri.tryParse + hasScheme + host.isNotEmpty` 유지(기존 UX).
+- `labelsChangedNotifier` 구독/해제 대칭. `articlesChangedNotifier`는 `ShareService.processAndSave` 내부 발사 경로 존중(중복 금지).
+- 11 테스트 PASS (state copyWith 4 + cubit 7). 전체 블록 테스트 60 PASS.
+
+### 계획과 다르게 된 점
+- **`url` state 필드 드롭**: PR 8 문서 스니펫은 url: String을 state에 포함했으나 TextEditingController와 이중 SSOT 회피. Cubit은 `urlError` 센티넬만, `save(rawUrl)`로 URL 전달.
+- **`ShareService.extractURL` 검증 미채택**: 기존 엄격 Uri 검증 유지(정규식은 너무 관대).
+- **에러 채널 3분리 (리뷰 must-fix 반영)**: 초기 `failureMessage: String?` 단일 필드 → 저장 실패(`saveFailed` i18n) ↔ 라벨 생성 실패(원문 메시지) 의미가 달라 SnackBar 매핑 회귀 발견 → `saveFailure: bool` + `labelErrorMessage: String?` 분리.
+- **`AddArticleSheet` private ctor (리뷰 should-fix 반영)**: 초기 StatelessWidget + 중복 `BlocProvider`는 dead code. `show()`가 유일 진입점이라 `class AddArticleSheet { const AddArticleSheet._(); static Future<void> show(...) }` 로 정리.
+- **`_showAddLabelDialog` 책임 축소**: 다이얼로그는 (name, color) 선택만, 생성은 Cubit.`createLabel(name, color)`로 위임. 실패 시 원문 listener → SnackBar.
+- **`DatabaseService.createLabel`이 `Label` 반환**하므로 `getAllLabelObjects().firstWhere(...)` 재조회 제거.
+
+### 새로 발견한 이슈 / TODO
+- **`labelsChangedNotifier` 로컬 CRUD 미발사**: `DatabaseService.createLabel/updateLabel/deleteLabel`는 `labelsChangedNotifier.value++` 미발사. `SyncService` 원격 스냅샷(`sync_service.dart:392`)만 발사. AddArticleSheet이 열린 동안 다른 화면에서 라벨이 바뀌어도 `_refreshLabels` 트리거 안 됨. PR 11 또는 별도 PR로 로컬 CRUD 발사 통합 필요.
+- **하드코딩 매직 넘버 보존**: 핸들바/칩 사이즈/알파값. 디자인 토큰 미적용. PR 11 cleanup 대상.
+- **`nameController` lifecycle** (기존 코드 유지분): 시트 dismiss 시 Future null 완료로 dispose 도달. 회귀 아님.
+
+### 참고한 링크
+- `DatabaseService.createLabel` 시그니처: `database_service.dart:234`
+- `ShareService.processAndSave` 발사 경로: `share_service.dart:67-68` (`articlesChangedNotifier.value++`)
+- flutter_bloc BlocConsumer: https://bloclibrary.dev/flutter-bloc-concepts/#blocconsumer
+
+### 다음 세션 유의사항 (PR 9 — HomeBloc)
+- **PR 9는 시리즈 유일한 `Bloc`**. swipe 이벤트(`markAsRead`/`skip`/`undo`) + deck 상태 + `CardSwiperController` 재생성이 이벤트 기반이라 Bloc 적합.
+- **의존성**: PR 1 + PR 6(ArticleListCubit). 재사용 판단 필요 — Home deck은 미읽음 스트리밍이라 소스가 다름. 별도 HomeBloc 권장.
+- **복잡성**: `CardSwiperController` 이중 dispose 방지, 8카드마다 `SwipeAdCard`, 오버레이 가이드, `addPostFrameCallback` 컨트롤러 교체 패턴 그대로 유지.
+- **컨벤션 불변** (PR 1~8): bloc_test 미도입 / Hive 격리 path / 화면 로컬 BlocProvider / 서브에이전트 병렬 dispatch / 시뮬레이터 스모크 사용자 요청 시만.
+
+### 검증 결과
+- `flutter analyze`: ✅ No issues (2.0s)
+- `flutter test test/blocs/`: ✅ 60 PASS (기존 49 + 신규 11)
+- 실기기 스모크: ⚪ 사용자 방침(전 PR 정리 후 일괄)
+- opus `flutter-code-reviewer`: ✅ must-fix 1 + should-fix 1 모두 반영, nit 4건 범위 외 이관
+
+### 다음 세션 즉시 시작 프롬프트 (PR 9 — HomeBloc)
+
+```
+doc/bloc-migration/pr-09-home.md 정독하고 PR 9(HomeBloc) 작업 시작.
+이전 세션(PR 8) 결과는 SESSION_LOG.md 최상단. 아래 컨벤션 준수.
+
+## PR 1~8 확립 컨벤션
+
+1. bloc_test 미도입: `flutter_test` + `Cubit.stream.listen` + `expectLater` + `await Future<void>.delayed(Duration.zero)`
+2. Hive 격리 path: `setUpAll`에서 `.dart_tool/test_hive_<name>`, 어댑터 등록, setUp clear + skipSync=true, tearDownAll deleteFromDisk
+3. 전역 BlocProvider = ThemeCubit + AuthCubit만. HomeBloc은 화면 로컬
+4. TextEditingController/CardSwiperController 등 위젯 생명주기 결합 컨트롤러는 StatefulWidget 로컬 유지(SSOT)
+5. Bloc의 Event + State는 Equatable, state는 copyWith 필수
+6. 다이얼로그/시트 호출 **전** `final bloc = context.read<HomeBloc>()` 캡처
+7. articlesChangedNotifier 중복 발사 금지: DB 서비스 내부 발사 경로 확인 후 Bloc에서 추가 발사 X
+8. 브랜치 워크플로: develop ↔ origin/develop 동기화 → `feature/bloc-09-home` 분기 → feature 커밋 → docs 커밋 → `--no-ff` develop 머지 → 사용자 승인 후 push
+9. 서브에이전트 병렬 dispatch: haiku(단순 파일) / sonnet(로직) / opus(flutter-code-reviewer 최종)
+10. 시뮬레이터 스모크: 사용자 요청 시만
+
+## PR 9 시작 시 즉시 할 일
+
+1. `git status` + develop/origin/develop 동기화
+2. `doc/bloc-migration/pr-09-home.md` 정독
+3. `lib/screens/home_screen.dart` 전체 Read (LOC 확인)
+4. `git checkout -b feature/bloc-09-home`
+5. `flutter analyze` 기준선
+6. 영향 범위 한 줄 요약 + 사용자 승인 후 시작
+
+## PR 9 알려진 주의사항
+
+- **Bloc 사용 (Cubit 아님)**: swipe 이벤트(`markAsRead`/`skip`/`undo`) 이벤트 기반
+- **CardSwiperController**: 덱 재생성 시 `addPostFrameCallback`에서 이전 컨트롤러 일괄 dispose. 이중 dispose 방지 `try-catch` 유지
+- **SwipeAdCard 8-간격 삽입**: itemBuilder 책임(Bloc state에 들어가지 않음)
+- **HomeOverlayGuide 첫 실행 플래그**: DatabaseService 경유 그대로 유지
+- **articlesChangedNotifier 중복 발사 주의**: DB 서비스가 이미 발사하는 경우 Bloc에서 추가 발사 금지
+```
+
+---
+
 ## 2026-04-21 PR 07 — BookmarkedArticlesScreen + LabelDetailScreen (Cubit 재사용)
 
 **세션 결과**: 🟢 완료 (develop 머지 + push 완료)
