@@ -42,6 +42,57 @@
 
 <!-- 이 아래에 세션 엔트리를 추가한다. 최신이 위. -->
 
+## 2026-04-21 PR 07 — BookmarkedArticlesScreen + LabelDetailScreen (Cubit 재사용)
+
+**세션 결과**: 🟢 완료
+
+**브랜치**: `feature/bloc-07-bookmarked-label`
+
+### 계획대로 된 점
+- `BookmarkedArticlesScreen` / `LabelDetailScreen` 모두 `ArticleListCubit` + 공통 위젯 재사용으로 전환.
+- 공통 위젯 2종 신규 분리:
+  - `lib/widgets/memo_sheet.dart` — `MemoSheet.show()` 정적 헬퍼, TextEditingController 라이프사이클 안전.
+  - `lib/widgets/article_actions_sheet.dart` — `ArticleActionsSheet.show()` 정적 헬퍼, 롱프레스 액션 5종 + 삭제 confirm + MemoSheet 연계.
+- 3개 화면(All/Bookmarked/LabelDetail) 모두 공통 위젯 사용. `AllArticlesScreen`도 PR 7 리팩터 부수 효과로 shared widgets 채택.
+- LabelDetail 고유 요소 유지: AppBar CircleAvatar(라벨명 첫 글자) / TabBar indicator/label color / empty 아이콘 labelColor.
+- 통계 헤더는 state 파생 계산으로 전환 (`state.total/readCount/unreadCount`) — `DatabaseService.getLabelStats()` 직접 호출 제거.
+- Tab listener `setState(() {})` 포함 — PR 6 교훈 그대로.
+- `flutter analyze` No issues, `flutter test test/blocs/` 49 PASS.
+
+### 계획과 다르게 된 점
+- **PR 7 문서의 "테스트 추가" 항목 불필요**: Bookmarked/ByLabel 테스트는 PR 6에서 이미 추가됨(`test/blocs/article_list_cubit_test.dart` L125-153). 기존 49 PASS 유지.
+- **`_showArticleActions`의 labelColor 파라미터 드롭**: 기존 LabelDetail 코드는 labelColor를 전달받았지만 body에서 미사용(데드 코드). 공통 `ArticleActionsSheet`는 파라미터 불요.
+- **`ArticleListItem`에 labelColor 미추가**: 디자인 일관성 위해 item 내부 뱃지 색은 secondary 유지. 라벨색은 AppBar/TabBar/empty 아이콘만 적용.
+- **`ArticleActionsSheet.rootContext` 주입**: 삭제 confirm / MemoSheet 진입은 시트 pop 이후 BuildContext 필요 → 호출 측 context를 `rootContext`로 명시 전달. 내부 _SheetBody context는 pop 후 deactivated.
+
+### 새로 발견한 이슈 / TODO
+- `selectedKeys: List<dynamic>` → `List<int>`로 좁히기 검토 (Hive key는 int).
+- `_confirmBulkDelete` 3화면 중복 — `bulk_delete_dialog.dart` 추출 가능 (우선순위 낮음).
+- `adInterval = 8` 매직 넘버 — PR 11 cleanup에서 AdService 인접 상수로 이동.
+
+### 참고한 링크
+- PR 6 선례: `lib/screens/all_articles_screen.dart`, `lib/blocs/article_list/`
+- flutter_bloc BlocProvider scoping: https://bloclibrary.dev/flutter-bloc-concepts/#blocprovider
+
+### 다음 세션 유의사항 (PR 8 — AddArticleCubit)
+- **AddArticleCubit은 공유/수동 저장 플로우**. 인라인 form 상태(`TextEditingController`, 로딩 flag)를 Cubit state로 승격.
+- 상태: `isLoading` / `errorMessage`. `clearError()` 공개 메서드.
+- `ScrapingService` 호출을 Cubit 내부에서 직접. 실패 시 errorMessage state, SnackBar는 BlocListener + listenWhen 가드.
+- **공통 위젯 재사용 현황**: `ArticleListCubit` / `ArticleListView` / `BulkActionBar` / `ArticleActionsSheet` / `MemoSheet` 모두 PR 6~7에서 분리 완료. PR 8은 추가 위젯 분리 없음.
+- 컨벤션 불변 (PR 1~7): bloc_test 미도입 / Hive 격리 path / 화면 로컬 BlocProvider / 서브에이전트 병렬 dispatch / 시뮬레이터 스모크는 사용자 요청 시만.
+
+### 검증 결과
+- `flutter analyze`: ✅ No issues
+- `flutter test test/blocs/`: ✅ 49 PASS
+- 실기기 스모크: ⚪ 미수행
+
+### LOC 감소 결과
+- `bookmarked_articles_screen.dart`: **664 → 228 LOC** (-65.7%)
+- `label_detail_screen.dart`: **685 → 251 LOC** (-63.4%)
+- `all_articles_screen.dart`: 506 → 230 LOC (-54.5%, 부수 효과)
+- 신규: `memo_sheet.dart` 162 + `article_actions_sheet.dart` 160 = 322 LOC
+- **순 감소**: 1855 → 1031 LOC (**-824, -44.4%**)
+
 ## 2026-04-21 PR 06 — ArticleListCubit + AllArticlesScreen
 
 **세션 결과**: 🟢 완료
