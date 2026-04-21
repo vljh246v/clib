@@ -27,7 +27,7 @@
 | 6 | ArticleListCubit 도입 + AllArticles | PR 1 | 🟢 Done | `feature/bloc-06-article-list` | 2026-04-21 |
 | 7 | Bookmarked + LabelDetail (Cubit 재사용) | PR 6 | 🟢 Done | `feature/bloc-07-bookmarked-label` | 2026-04-21 |
 | 8 | AddArticleCubit | PR 1 | 🟢 Done | `feature/bloc-08-add-article` | 2026-04-21 |
-| 9 | HomeBloc (유일한 Bloc) | PR 1, 6 | ⬜ Not Started | `feature/bloc-09-home` | - |
+| 9 | HomeBloc (유일한 Bloc) | PR 1, 6 | 🟢 Done | `feature/bloc-09-home` | 2026-04-21 |
 | 10 | MainScreen (선택) | PR 9 | ⬜ Skip (기본) | - | - |
 | 11 | Cleanup + 문서화 | PR 2~9 | ⬜ Not Started | `feature/bloc-11-cleanup` | - |
 

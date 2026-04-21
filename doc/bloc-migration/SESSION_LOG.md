@@ -42,6 +42,98 @@
 
 <!-- 이 아래에 세션 엔트리를 추가한다. 최신이 위. -->
 
+## 2026-04-21 PR 09 — HomeBloc (유일한 Bloc)
+
+**세션 결과**: 🟢 완료
+
+**브랜치**: `feature/bloc-09-home` (feature 커밋: `5a94a98`, docs 커밋: TBD, 머지 커밋: TBD)
+
+### 계획대로 된 점
+- `lib/blocs/home/{home_bloc,home_event,home_state}.dart` 신규. 시리즈 유일 Bloc.
+- `HomeScreen`을 `StatelessWidget(BlocProvider)` + `_HomeBody(StatefulWidget)`으로 분리. `CardSwiperController` / `_pendingDispose` / `_thresholdNotifier` 위젯 로컬 SSOT.
+- `deckVersion` ValueKey로 CardSwiper 재생성 — 인덱스 out-of-range 방지.
+- `articlesChangedNotifier` / `labelsChangedNotifier` 생성자 addListener, close() removeListener.
+- home_bloc_test 14건 신규 — 전체 블록 테스트 74 PASS.
+
+### 계획과 다르게 된 점
+- **필터 AND 유지**: plan 스니펫은 OR(`any`) — 기존 `_selectedLabels.every` UX 회귀 방지 위해 AND로 구현.
+- **`HomeEditLabels` 이벤트 드롭**: `LabelEditSheet`가 이미 `updateArticleLabels`를 persist → 이중 호출 방지. 시트 await 후 `HomeLoadDeck(resetPosition: false)` 단순 재로드.
+- **`HomeSwipeLater.reachedEnd` 플래그 추가**: 기존 `currentIndex == null` 루프 경계 리셋 동작 보존. reachedEnd=true일 때만 `deckVersion++` emit(DB 무변경).
+- **`HomeSwipeRead`에서 deckVersion++ 추가**: plan은 articles 제거만, isLoop+numberOfCardsDisplayed=3 조건에서 out-of-range 리스크 → 덱 재생성으로 안전성 확보.
+- **`refreshToken` 필드 추가(리뷰 should-fix)**: `Article`은 Hive 모델 + `==` 미구현 → in-place 변경된 articles 리스트 재로드가 Equatable dedup으로 emit 스킵될 위험. 매 `_onLoad`마다 `refreshToken++`로 stream emit 강제. 현시점 UI 경로에선 시각적 회귀 없으나 북마크 뱃지/메모 미리보기 추가 시 조용한 갱신 실패 리스크 선제 차단.
+- **`bloc.isClosed` 가드(nit)**: `LabelEditSheet.show` await 후 dispatch 경로.
+
+### 새로 발견한 이슈 / TODO
+- **`_showMemoDialog` TextEditingController dispose 미호출**(기존 관례). PR 11 시트 공통화 시 정리.
+- **하드코딩 숫자/색상 잔존**: `BorderRadius.circular(20)`, 120/56/36/28/26/16/12 — 기존 선행. PR 11 cleanup 대상.
+- **`_SwipeHint` 왼쪽 색**: `onSurfaceVariant` 사용. `swipeSkip=Muted Rose` 공용 토큰과 불일치(기존부터). 디자인 의도 확인 후 결정.
+- **초기 `_swiperController` 한 인스턴스 낭비**: initState에서 생성 → 첫 emit(0→1)에서 즉시 pendingDispose 이관. 누수 아님.
+- **`labelsChangedNotifier` 로컬 CRUD 미발사**(PR 8에서도 이관): `DatabaseService.createLabel/updateLabel/deleteLabel` 미발사. PR 11 통합.
+
+### 참고한 링크
+- `DatabaseService.markAsRead` `lib/services/database_service.dart:116` (notifier 미발사 확인)
+- `DatabaseService.updateArticleLabels` `lib/services/database_service.dart:364`
+- `LabelEditSheet.show` + 내부 persist `lib/widgets/label_edit_sheet.dart:19,184`
+- 발사원: `ShareService.processAndSave`(`share_service.dart:68`) + `SyncService` 원격 스냅샷(`sync_service.dart:276`)
+- flutter_bloc BlocConsumer: https://bloclibrary.dev/flutter-bloc-concepts/#blocconsumer
+
+### 다음 세션 유의사항 (PR 10 선택 / PR 11 Cleanup)
+- **PR 10**: MainScreen ShareFlowCubit. 기본 SKIP. 현 `WidgetsBindingObserver` + `ShareService.checkPendingShares` 경로 단순.
+- **PR 11(권장 다음)**: Cleanup + 문서화. 누적 후속 정리:
+  1. `labelsChangedNotifier` 로컬 CRUD 통합 발사
+  2. `articlesChangedNotifier` 발사 경로 일원화(`DatabaseService` 내부로 승격)
+  3. 시트 `TextEditingController` 라이프사이클(MemoDialog 등)
+  4. 하드코딩 숫자/색상 디자인 토큰 치환
+  5. 기존 `test/widget_test.dart` 재작성(PR 1부터 broken)
+  6. `themeModeNotifier` / `authStateNotifier` CLAUDE.md 잔존 언급 제거
+- **컨벤션 불변**(PR 1~9): bloc_test 미도입 / Hive 격리 path / 화면 로컬 BlocProvider / 컨트롤러 위젯 로컬 SSOT / refreshToken 패턴(Hive in-place 변경 대응) / 서브에이전트 병렬 dispatch / 시뮬레이터 스모크 사용자 요청 시만.
+
+### 검증 결과
+- `flutter analyze`: ✅ No issues (2.0s)
+- `flutter test test/blocs/home_bloc_test.dart`: ✅ 14/14 PASS
+- `flutter test test/blocs/`: ✅ 74 PASS (기존 60 + 신규 14)
+- 실기기 스모크: ⚪ 사용자 방침(전 PR 정리 후 일괄)
+- opus `flutter-code-reviewer`: must-fix 0, should-fix 1(refreshToken 반영), nit 1(bloc.isClosed 반영), nit 3건 범위 외 이관
+
+### 머지 / 배포
+- feature 커밋: `5a94a98` (BLoC PR9: HomeBloc 도입)
+- docs 커밋: TBD
+- develop 머지: TBD (`--no-ff`)
+- origin push: TBD
+
+### 다음 세션 즉시 시작 프롬프트 (PR 11 — Cleanup 권장)
+
+```
+doc/bloc-migration/pr-11-cleanup.md 정독하고 PR 11(Cleanup + 문서화) 작업 시작.
+이전 세션(PR 9 HomeBloc) 결과는 SESSION_LOG.md 최상단. 아래 컨벤션 준수.
+
+## PR 1~9 확립 컨벤션
+
+1. bloc_test 미도입: flutter_test + Cubit.stream.listen + expectLater + await Future<void>.delayed(Duration.zero)
+2. Hive 격리 path: setUpAll에서 .dart_tool/test_hive_<name>, 어댑터 등록, setUp clear + skipSync=true, tearDownAll deleteFromDisk
+3. 전역 BlocProvider = ThemeCubit + AuthCubit만. 나머지 화면 로컬
+4. TextEditingController/CardSwiperController/PageController 등 위젯 생명주기 결합 컨트롤러는 StatefulWidget 로컬 SSOT
+5. Bloc/Cubit의 Event+State는 Equatable, state는 copyWith 필수
+6. 다이얼로그/시트 호출 **전** final cubit = context.read<X>() 캡처
+7. articlesChangedNotifier/labelsChangedNotifier 중복 발사 금지: DB 서비스 내부 발사 경로 확인 후 Bloc에서 추가 발사 X
+8. Hive in-place 변경 시 Equatable dedup 회피용 refreshToken 패턴(PR 9 도입)
+9. 브랜치 워크플로: develop ↔ origin/develop 동기화 → feature/bloc-11-cleanup 분기 → feature 커밋 → docs 커밋 → --no-ff develop 머지 → 사용자 승인 후 push
+10. 서브에이전트 병렬 dispatch: haiku(단순) / sonnet(로직) / opus(flutter-code-reviewer 최종)
+11. 시뮬레이터 스모크: 사용자 요청 시만 — PR 11에서 전체 플로우 일괄 검증 권장
+
+## PR 11 누적 후속 정리 리스트 (pr-11-cleanup.md + 본 로그 확인)
+
+1. labelsChangedNotifier 로컬 CRUD 통합 발사(DatabaseService.createLabel/updateLabel/deleteLabel)
+2. articlesChangedNotifier 발사 경로 일원화(DatabaseService 내부 승격 검토)
+3. 시트 TextEditingController 라이프사이클 정리(HomeScreen._showMemoDialog 외)
+4. 하드코딩 숫자/색상 디자인 토큰 치환
+5. 기존 test/widget_test.dart 재작성(PR 1부터 broken)
+6. themeModeNotifier/authStateNotifier CLAUDE.md 잔존 언급 제거
+7. PR 9 범위 외 nit: _SwipeHint 왼쪽 색 swipeSkip 토큰 검토
+```
+
+---
+
 ## 2026-04-21 PR 08 — AddArticleCubit
 
 **세션 결과**: 🟢 완료 (develop 머지 + push 완료)
