@@ -2,6 +2,16 @@
 
 > 각 세션의 **결과 요약**과 **다음 세션 유의사항**을 누적 기록한다. 세션 종료 시 반드시 엔트리를 추가한다.
 
+## 현 상태 요약 (2026-04-21 기준)
+
+- **완료**: PR 1~9. `develop`=`41d2cde`. `flutter analyze` 0건, `flutter test test/blocs/` 74 PASS.
+- **다음**: **PR 11 Cleanup**. 누적 후속 정리 리스트는 `README.md` §현재 상태 스냅샷 참조.
+- **PR 10**: ⚪ Skip 확정 (MainScreen 로컬 state 유지가 더 간결). 사유는 `pr-10-main-optional.md`.
+- **실기기 스모크**: 미수행 누적 — PR 11에서 일괄 진행 (`pr-11-cleanup.md` §3).
+- **기존 `test/widget_test.dart`**: PR 1 이전부터 broken. PR 11에서 재작성 + Hive/Firebase 헬퍼 도입 예정.
+
+---
+
 ## 엔트리 템플릿
 
 아래 템플릿을 복사해서 **최상단**에 붙여 넣는다(최신이 위).

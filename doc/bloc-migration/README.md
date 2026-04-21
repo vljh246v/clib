@@ -35,6 +35,32 @@
 
 ---
 
+## 현재 상태 스냅샷 (2026-04-21 PR 9 머지 직후)
+
+- **완료**: PR 1~9 (핵심 전환 종료). 남은 화면 전환 없음.
+- **다음 권장**: **PR 11 Cleanup** — 누적 후속 정리 + CLAUDE.md 갱신 + 회귀 스모크.
+- **PR 10**: 기본 SKIP. `MainScreen` 로컬 state가 더 간결(사유는 `pr-10-main-optional.md`).
+- **기준선**: `develop`=`41d2cde`, `flutter analyze` 0건, `flutter test test/blocs/` 74 PASS, 기존 `test/widget_test.dart`는 PR 1부터 broken(PR 11 위임).
+
+### PR 1~9에서 누적된 후속 정리 항목 (PR 11 입력)
+
+1. `labelsChangedNotifier` 로컬 CRUD 미발사 — `DatabaseService.createLabel/updateLabel/deleteLabel` 발사 경로 통합 (PR 8 발견, PR 9 재확인)
+2. `articlesChangedNotifier` 발사 경로 일원화 — 현재 `ShareService` / `SyncService`만 발사, `markAsRead/toggleBookmark/updateMemo/updateArticleLabels`는 미발사 → `DatabaseService` 내부로 승격 검토
+3. `HomeScreen._showMemoDialog`의 `TextEditingController` dispose 미호출(기존 관례, 다른 시트도 동일 패턴)
+4. 디자인 토큰 미적용 잔존: `BorderRadius.circular(20)` / 120/56/36/28/26/16/12 하드코딩 숫자, `_SwipeHint` 왼쪽 색이 `onSurfaceVariant`(공용 `swipeSkip=Muted Rose` 토큰 불일치)
+5. 리뷰어 지적 nit 이관(PR 6~7): `ArticleListItem`에 `Color? accentColor` 옵션 추가 / `_confirmBulkDelete` 3화면 중복 헬퍼 추출 / `adInterval=8` 매직 넘버 AdService 인접 상수 이동
+6. `bulkDelete` for-await 순차 → `DatabaseService.bulkDelete` batch + 단일 sync trigger (PR 6 TODO)
+7. 기존 `test/widget_test.dart` 재작성 (Firebase/Hive 초기화 헬퍼 포함)
+8. `CLAUDE.md` 갱신: flutter_bloc 기반 상태 관리 문서화(L103/L107의 `themeModeNotifier` 잔존 언급 제거, BlocProvider 전역/로컬 규칙, refreshToken/deckVersion 패턴)
+9. `pubspec.yaml`의 `environment.flutter` floor 명시 (`RadioGroup<T>` Flutter 3.32+ API)
+10. `selectedKeys: List<dynamic>` → `List<int>` 좁히기 (Hive key는 int)
+
+### 시뮬레이터/실기기 스모크 (미수행 누적)
+
+사용자 방침: 모든 PR 정리 후 일괄 진행. PR 11 최종 회귀 테스트 체크리스트(`pr-11-cleanup.md` §2.4)로 검증.
+
+---
+
 ## 각 PR 문서
 
 - [PR 1 — Foundation + ThemeCubit](./pr-01-foundation-theme.md)

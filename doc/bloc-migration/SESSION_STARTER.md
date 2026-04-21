@@ -2,6 +2,8 @@
 
 이 문서는 **BLoC 전환 작업을 새 세션에서 이어 할 때** 가장 먼저 해야 할 것들을 정리한다. Claude가 매번 전체 코드베이스를 다시 탐색하지 않고 문서만 읽어서 바로 작업에 착수할 수 있도록 설계되었다.
 
+**현 진행 상태(2026-04-21)**: PR 1~9 완료, PR 10 Skip 확정, **다음 = PR 11 Cleanup**. 요약은 `README.md` §현재 상태 스냅샷 참조.
+
 ---
 
 ## 권장 초기 프롬프트
@@ -18,14 +20,14 @@ doc/bloc-migration/ 문서를 읽고 BLoC 전환 작업을 이어가자.
 ### B) 특정 PR을 지정하고 싶을 때
 
 ```
-doc/bloc-migration/pr-04-library.md 를 읽고 PR 4 작업을 수행해줘.
-이전 세션 결과는 SESSION_LOG.md 에 있어.
+doc/bloc-migration/pr-11-cleanup.md 를 읽고 PR 11(Cleanup) 작업을 수행해줘.
+이전 세션 결과는 SESSION_LOG.md 최상단에 있어.
 ```
 
 ### C) 중단된 PR을 재개할 때
 
 ```
-doc/bloc-migration/SESSION_LOG.md 에 따르면 PR 6이 In Progress 상태야.
+doc/bloc-migration/SESSION_LOG.md 에 따르면 PR <NN>이 In Progress 상태야.
 해당 PR 문서와 현재 브랜치 상태 확인 후 이어서 진행해줘.
 ```
 

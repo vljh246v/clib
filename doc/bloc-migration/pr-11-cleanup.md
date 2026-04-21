@@ -1,126 +1,171 @@
 # PR 11 — Cleanup + 문서화
 
-> 모든 화면 전환 완료 후 정리. 미사용 코드 제거, CLAUDE.md 갱신, 최종 회귀 테스트.
+> PR 1~9 전환 완료 후 누적된 후속 정리 + CLAUDE.md 갱신 + 최종 회귀 테스트.
 
-**의존성**: PR 2~9 모두 완료
+**의존성**: PR 1~9 완료
 **브랜치**: `feature/bloc-11-cleanup`
-**예상 작업 시간**: 2~3시간
-**난이도**: ⭐⭐
+**예상 작업 시간**: 3~5시간 (스모크 포함)
+**난이도**: ⭐⭐⭐
 
 ---
 
 ## 1. 목표
 
-- 미사용 코드 / 주석 / import 제거
-- 전역 notifier 유지 여부 최종 결정 (기본: 유지)
-- `CLAUDE.md` 갱신 — 새 구조 문서화
-- `doc/bloc-migration/README.md` 최종 상태 기록
-- 최종 회귀 테스트
+1. PR 1~9에서 이관된 후속 정리 항목 일괄 처리
+2. `CLAUDE.md` 갱신 — 새 구조 반영
+3. `doc/bloc-migration/` 최종 상태 기록
+4. 실기기/시뮬레이터 일괄 스모크 (누적 미수행분)
+5. `test/widget_test.dart` 재작성 (Firebase/Hive 초기화 헬퍼)
 
 ---
 
-## 2. 체크리스트
+## 2. 누적 후속 정리 체크리스트
 
-### 2.1 코드 클린업
+### 2.1 Notifier 발사 경로 통합
 
-- [ ] `lib/main.dart`에 더 이상 쓰이지 않는 전역 변수/함수 제거
-- [ ] 각 화면의 미사용 import 제거 (`dart fix --apply` 후 수동 검토)
+- [ ] `DatabaseService.createLabel/updateLabel/deleteLabel` → 각 성공 분기에서 `labelsChangedNotifier.value++` 발사 (PR 8 발견)
+- [ ] `DatabaseService.markAsRead/markAsUnread/bulkMarkRead/toggleBookmark/bulkSetBookmark/updateMemo/updateArticleLabels/deleteArticle` → `articlesChangedNotifier.value++` 발사 승격 검토 (PR 9 확인)
+- [ ] 발사 후 Cubit/Bloc 측의 **수동 reload 제거** — `HomeBloc._onToggleBookmark/_onUpdateMemo`의 `add(HomeLoadDeck)` 중복 여부 재확인
+- [ ] 중복 발사(같은 tick 내 2회) 방지 — 기존 `ShareService.processAndSave` 경로 재검증
+
+**주의**: notifier 발사가 Cubit/Bloc 전 구독자에게 전파되므로 불필요한 재로드 폭발 방지 위해 단순 스냅샷 테스트로 재확인.
+
+### 2.2 컨트롤러 라이프사이클 정리
+
+- [ ] `HomeScreen._showMemoDialog`의 `TextEditingController` dispose 호출 추가
+- [ ] `LabelEditSheet`, `ShareLabelSheet` 등 다른 시트도 동일 패턴 점검
+- [ ] PR 6~7에서 분리된 `MemoSheet` 공통 헬퍼 사용으로 통합 가능
+
+### 2.3 디자인 토큰 적용
+
+- [ ] `lib/screens/home_screen.dart`의 하드코딩 숫자 치환:
+  - `BorderRadius.circular(20)` → `Radii.borderXl` 또는 신규 토큰
+  - 120/56/36/28/26/16/12 → `Spacing.*` 또는 전용 상수
+- [ ] `_SwipeHint` 왼쪽 색: `onSurfaceVariant` → `AppColors.swipeSkip`(공용 Muted Rose) 일치 검토 (디자인 의도 확인 필요)
+- [ ] `adInterval = 8` 매직 넘버 → `AdService` 또는 디자인 토큰 인접 상수로 이동 (PR 6 TODO)
+
+### 2.4 코드 품질 nit 이관 (PR 6~7)
+
+- [ ] `ArticleListItem`에 `Color? accentColor` 옵션 추가 — LabelDetail 아이템 뱃지 labelColor 복원
+- [ ] `_confirmBulkDelete` 3화면 중복 → `showBulkDeleteConfirm(context, cubit)` 헬퍼 추출 또는 `BulkActionBar.onDelete` 시그니처 승격
+- [ ] `selectedKeys: List<dynamic>` → `List<int>`로 좁히기 (Hive key는 int)
+- [ ] `bulkDelete` for-await 순차 → `DatabaseService.bulkDelete(articles)` batch + 단일 sync trigger (PR 6 TODO)
+
+### 2.5 미사용 코드 / import 정리
+
+- [ ] `lib/main.dart`: `themeModeNotifier`, `authStateNotifier` 잔존 여부 재점검 (PR 1/2에서 제거됨, 확정 확인)
+- [ ] 각 화면 미사용 import — `dart fix --apply` 후 수동 검토
 - [ ] 각 Cubit/Bloc의 디버그 print 제거
-- [ ] 미사용 ARB 키 `arb-sync-checker` 서브에이전트로 점검
-- [ ] `flutter analyze` — 경고 포함 0건
+- [ ] 미사용 ARB 키 — `arb-sync-checker` 서브에이전트 호출
 
-### 2.2 Notifier 유지 여부 결정
+### 2.6 테스트 복구
 
-현재 계획상 `articlesChangedNotifier`, `labelsChangedNotifier`는 **유지**(라이트 스코프).
+- [ ] 기존 `test/widget_test.dart` 재작성:
+  - `setUpAll`에서 Hive 격리 path + 어댑터 등록 + box open
+  - Firebase 초기화는 mock 또는 skip
+  - `DatabaseService.skipSync = true` 기본
+  - `MainScreen` / `HomeScreen` 스모크 수준
+- [ ] 공통 테스트 헬퍼 추출: `test/helpers/hive_bootstrap.dart`
 
-**재평가 기준**:
-- 모든 Cubit이 notifier에서 pull → `load()`로 재조회 → 비용은 있으나 correctness 보장
-- 만약 성능 이슈가 있다면 `DatabaseService`가 `Stream<ArticlesChanged>`를 직접 제공하도록 개선 (별도 PR)
+### 2.7 pubspec / 환경
 
-**결정**:
-- [ ] 유지 → SESSION_LOG.md에 결정 사유 기록
-- [ ] 제거 → 이 PR에서 별도 리팩터 수행 (범위 큼)
+- [ ] `pubspec.yaml`의 `environment.flutter` floor 명시 — `RadioGroup<T>` (Flutter 3.32+ API) 명세화
 
-### 2.3 문서 업데이트
+### 2.8 CLAUDE.md 갱신
 
-`CLAUDE.md` 수정:
-- **전역 상태** 섹션: `ValueNotifier` 4개 → `ThemeCubit`, `AuthCubit` + 남은 notifier 2개
-- **화면별 주요 로직** 섹션: BLoC 사용 명시 (Cubit 기본, HomeBloc 예외)
-- **프로젝트 구조** 섹션: `lib/blocs/` 추가
-- **기술 스택** 표에 `flutter_bloc`, `equatable` 추가
-- **개발 컨벤션** 섹션에 새 규칙 추가:
-  - 상태 관리는 flutter_bloc 기반
-  - 기본은 Cubit, 복잡한 화면만 Bloc
-  - 전역은 ThemeCubit + AuthCubit, 나머지는 화면 로컬 BlocProvider
-  - 상태 클래스는 equatable + copyWith 필수
+- [ ] **전역 상태** 섹션: `ValueNotifier` 4개 설명 → `ThemeCubit`, `AuthCubit` + 남은 notifier 2개(`articlesChangedNotifier`, `labelsChangedNotifier`)
+- [ ] **화면별 주요 로직** 섹션: Cubit/Bloc 사용 명시 (기본 Cubit, `HomeScreen`만 Bloc)
+- [ ] **프로젝트 구조** 섹션: `lib/blocs/` 디렉터리 추가
+- [ ] **기술 스택** 표: `flutter_bloc ^8.1.6`, `equatable ^2.0.5` 추가
+- [ ] **개발 컨벤션** 섹션에 새 규칙 추가:
+  - 상태 관리 = `flutter_bloc`
+  - 기본 Cubit, 복잡 화면만 Bloc
+  - 전역 = `ThemeCubit` + `AuthCubit`, 나머지 화면 로컬 `BlocProvider`
+  - 상태 클래스 = `equatable` + `copyWith` 필수
+  - Hive in-place 변경 대응 `refreshToken` 패턴
+  - CardSwiper 재생성 `deckVersion` 패턴
 
-`doc/bloc-migration/README.md`의 진행 현황 트래커 모두 🟢으로 업데이트.
+### 2.9 doc/bloc-migration 마무리
 
-### 2.4 최종 회귀 테스트
+- [ ] `README.md` 트래커 전부 🟢
+- [ ] `SESSION_LOG.md` PR 11 완료 엔트리 추가
+- [ ] `SESSION_STARTER.md`는 **본 PR 이후 archive** 안내 한 줄 추가 가능(선택)
 
-- [ ] 앱 첫 실행(Hive 초기화) → 온보딩 → 메인
-- [ ] 아티클 저장(공유 시트)
-- [ ] 홈 스와이프 흐름
-- [ ] 라이브러리 탭 이동 + 라벨/북마크 카드 진입
-- [ ] 다중선택 일괄 액션
-- [ ] 롱프레스 액션
-- [ ] 라벨 CRUD + 알림 설정
-- [ ] 테마 전환 + 재시작 유지
-- [ ] Google/Apple 로그인 + 동기화
-- [ ] 로그아웃 → 다시 로그인 → 동기화 정상
+---
+
+## 3. 최종 회귀 스모크 (실기기 `flutter run --release`)
+
+누적 미수행분 일괄 진행. 각 체크박스는 실기기 기준.
+
+- [ ] 첫 실행(Hive 초기화) → 온보딩 3페이지 → 메인
+- [ ] 아티클 저장(시스템 공유 시트 → 앱)
+- [ ] 수동 URL 추가(+ 버튼 → AddArticleSheet)
+- [ ] 홈 스와이프: 오른쪽(읽음), 왼쪽(나중에), loop 경계
+- [ ] 홈 라벨 필터: 단일/다중(AND), 해제, 확장/접기
+- [ ] 홈 롱프레스 액션: 북마크, 메모 추가/수정/삭제, 라벨 편집, 외부 열기
+- [ ] 8번째 슬롯 광고 카드 스와이프 (상태 영향 없음)
+- [ ] 라이브러리 탭: 전체/북마크/라벨별 진입
+- [ ] 전체 / 북마크 / LabelDetail 화면: 행 탭, 롱프레스 액션, 다중선택 + 일괄 액션(읽음/북마크/삭제)
+- [ ] 라벨 CRUD + 라벨별 알림(요일 칩 + TimePicker)
+- [ ] 테마 전환(Light/Dark/System) + 앱 재시작 유지
+- [ ] Google/Apple 로그인 → Firestore 동기화(articles + labels)
+- [ ] 로그아웃 → 재로그인 → 동기화 정상
 - [ ] 계정 삭제
-- [ ] `flutter run --release` 크래시 없이 동작
+- [ ] 백그라운드 → 포그라운드 → 상태 꼬임/크래시 없음
+- [ ] `flutter run --release` 크래시 없이 전 플로우 통과
 
-### 2.5 성과 측정
+---
 
-| 항목 | PR 0 (시작 전) | PR 11 (종료 후) |
-|------|---------------|----------------|
-| 총 LOC (`lib/`) | ~8,705 | ? |
-| 화면 LOC 합 | ~3,749 | ? |
-| widget_test 개수 | 1 | ? |
-| Bloc 유닛 테스트 | 0 | ? |
-| setState 호출 지점 | ? | ? (grep으로 측정) |
-| ValueNotifier 전역 | 4 | 2 (유지 시) |
+## 4. 성과 측정
+
+| 항목 | 기준(PR 0) | 현재(PR 9 머지 직후) | PR 11 완료 후 |
+|------|-----------|---------------------|---------------|
+| 총 LOC (`lib/`) | ~8,705 | ? | ? |
+| 화면 LOC 합 | ~3,749 | ? | ? |
+| widget_test 개수 | 1 (broken) | 1 (broken) | ? |
+| Bloc/Cubit 유닛 테스트 | 0 | 74 | ? |
+| 전역 ValueNotifier | 4 | 2 | 2 (유지) |
 
 측정 명령:
 ```bash
-# setState 카운트
 grep -rn "setState" lib/ | wc -l
-
-# ValueNotifier 카운트
 grep -rn "ValueNotifier" lib/ | wc -l
+cloc lib/
 ```
 
 ---
 
-## 3. PR 메시지
+## 5. 커밋 메시지
 
 ```
 BLoC PR11: 전환 마무리 — 클린업 + 문서 갱신
 
-- 미사용 코드/import 제거
+- notifier 발사 경로 일원화 (DatabaseService 내부 승격)
+- 컨트롤러 라이프사이클 정리 (MemoDialog 등)
+- 디자인 토큰 치환 (home_screen 잔존 하드코딩)
 - CLAUDE.md 갱신: flutter_bloc 기반 상태 관리 문서화
-- doc/bloc-migration 진행 현황 최종 기록
-- 최종 회귀 테스트 통과
-
-성과:
-- 화면 LOC N% 감소
-- setState 호출 N개 → N개
-- 유닛 테스트 N개 추가
+- widget_test.dart 재작성 + Hive/Firebase 헬퍼
+- 회귀 스모크 통과
 ```
+
+성격이 다르면 커밋 분리 권장:
+- `refactor(db): notifier 발사 경로 DatabaseService 승격`
+- `refactor(theme): home_screen 하드코딩 → 디자인 토큰`
+- `test: widget_test 재작성 + hive_bootstrap 헬퍼`
+- `docs: CLAUDE.md flutter_bloc 기반 구조 반영`
 
 ---
 
-## 4. 핸드오프 노트
+## 6. 핸드오프 노트 (PR 11 완료 시 작성)
 
 ### 전환 완료 상태
 - (작성)
 
-### 남은 부채 / 후속 작업
-- (작성: 예 — Repository 계층 도입, Hive Stream 전환, 테스트 커버리지 보강)
+### 남은 부채 / 후속 PR 후보
+- (예: Repository 계층 도입 / Hive Stream 전환 / 테스트 커버리지 보강)
 
 ### 배운 점
 - (작성)
 
 ### 검증 결과
-- (작성)
+- `flutter analyze`, `flutter test`, release 빌드 스모크

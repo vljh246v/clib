@@ -1,42 +1,48 @@
-# PR 10 — MainScreen ShareFlowCubit (선택, 기본 스킵 권장)
+# PR 10 — MainScreen ShareFlowCubit (⚪ Skip 확정)
 
-> `MainScreen`의 `AppLifecycleState.resumed` 시 공유 URL 체크 로직을 ShareFlowCubit으로 분리하는 **선택적 PR**. 라이트 스코프 원칙상 기본적으로 **스킵**한다.
+> PR 9 완료 시점(2026-04-21) 기준 **공식적으로 SKIP**. 본 문서는 스킵 사유와 재개 조건만 남긴다.
 
-**상태**: ⚪ Skip (기본값)
-**의존성**: PR 9 완료 후 재평가
-**브랜치**: `feature/bloc-10-main` (수행 시만)
-**난이도**: ⭐⭐
+**상태**: ⚪ Skip
+**결정일**: 2026-04-21 (PR 9 머지 후)
 
 ---
 
-## 1. 스킵 권장 이유
+## 스킵 사유
 
-1. `MainScreen`은 전환 가치가 낮다 — `_currentIndex`(탭 인덱스)와 `_showOverlayGuide`만 로컬 state.
-2. `WidgetsBindingObserver`는 위젯 생명주기와 결합되어 있어 Cubit으로 옮기면 오히려 꼬인다.
-3. `_checkPendingShares()`는 외부 플러그인(MethodChannel) 기반이라 Cubit 이점 적음.
-
-**결론**: PR 9 완료 후 남은 `setState`가 많지 않으면 이 PR은 **SKIP**. `SESSION_LOG.md`에 "PR 10 skipped — MainScreen 로컬 상태 유지가 더 간결"로 기록.
+1. **전환 가치 낮음**: `MainScreen`의 로컬 state는 `_currentIndex`(탭 인덱스), `_showOverlayGuide` 두 개뿐. 다른 Bloc과 교차 참조 없음.
+2. **생명주기 결합**: `WidgetsBindingObserver`는 StatefulWidget 생명주기에 강하게 결합. Cubit 이전 시 오히려 코드 복잡도 상승.
+3. **MethodChannel 의존**: `_checkPendingShares()`는 플랫폼 채널 결과를 시트 표시로 바로 전달 — 상태 관리 이점이 없음.
+4. **PR 1~9 누적 원칙 부합**: "라이트 스코프" — Cubit/Bloc 이익이 명확한 화면만 전환.
 
 ---
 
-## 2. 그래도 수행하고 싶다면
+## 재개 조건 (향후)
 
-### 2.1 목표
+아래 중 하나라도 해당되면 재평가:
 
-- `lib/blocs/share_flow/share_flow_cubit.dart`
-- 상태: `pendingURL: String?`, `isProcessing: bool`
-- 메서드: `checkPendingShares()`, `processAndClear()`
-- `MainScreen`에서 pending share 체크 결과를 Cubit으로 위임
+- `MainScreen`에 신규 로직이 추가되어 로컬 state가 3개 이상 → Cubit 분리 이점 발생
+- 공유 플로우가 복잡해져 여러 화면에서 pending share 상태를 구독해야 할 때
+- iOS ↔ Android 공유 플로우 분기가 플랫폼별 Cubit으로 명확히 나뉘는 것이 유리할 때
 
-### 2.2 사전 요건
+재개 시 본 문서 §과거 플랜 — 아래 "참고: 원래 플랜(아카이브)" 섹션을 기반으로 작업.
 
-| 파일 | 범위 |
-|------|------|
-| `lib/main.dart` | MainScreen 클래스 |
-| `lib/services/share_service.dart` | `getPendingShareURL`, `checkPendingShares` |
-| `lib/widgets/share_label_sheet.dart` | 시트 표시 로직 |
+---
 
-### 2.3 Cubit
+## 핸드오프 노트
+
+### 스킵 사유
+위 §스킵 사유 4개 항목 그대로. PR 9 리뷰 시점에도 추가 조건 미충족.
+
+### 관련 정리 항목
+본 PR에서 다루지 않더라도 `MainScreen` 공유 플로우에서 파생된 정리 항목은 **PR 11에 이관**:
+- 공유 수신 후 `articlesChangedNotifier` 발사원 일원화 검토
+- iOS App Group / Android Intent filter 처리 순서 확인
+
+---
+
+## 참고: 원래 플랜 (아카이브)
+
+재개 시 아래 설계 스케치 참고.
 
 ```dart
 class ShareFlowCubit extends Cubit<ShareFlowState> {
@@ -53,41 +59,13 @@ class ShareFlowCubit extends Cubit<ShareFlowState> {
         await ShareService.checkPendingShares();
         emit(state.copyWith(isProcessing: false));
       }
-    } catch (e) {
+    } catch (_) {
       emit(state.copyWith(isProcessing: false));
     }
   }
 
-  void clear() {
-    emit(state.copyWith(pendingURL: null));
-  }
-}
-```
-
-### 2.4 MainScreen 교체
-
-```dart
-void didChangeAppLifecycleState(AppLifecycleState state) {
-  if (state == AppLifecycleState.resumed) {
-    context.read<ShareFlowCubit>().check();
-  }
+  void clear() => emit(state.copyWith(pendingURL: null));
 }
 ```
 
 `BlocListener<ShareFlowCubit>`에서 `pendingURL != null` 감지 시 `ShareLabelSheet.show()`.
-
----
-
-## 3. 스킵 결정 기록
-
-이 PR을 스킵할 경우 README.md 진행 현황 트래커의 PR 10 상태를 `⚪ Skip`로 표시하고 `SESSION_LOG.md`에 사유 기록.
-
----
-
-## 4. 핸드오프 노트
-
-### 수행 결정 사유
-- (작성 또는 "Skipped")
-
-### 스킵 사유 (스킵 시)
-- (작성)
