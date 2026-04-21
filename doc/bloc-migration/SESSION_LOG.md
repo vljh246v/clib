@@ -44,9 +44,9 @@
 
 ## 2026-04-21 PR 07 — BookmarkedArticlesScreen + LabelDetailScreen (Cubit 재사용)
 
-**세션 결과**: 🟢 완료 (develop 머지 + push는 사용자 승인 대기)
+**세션 결과**: 🟢 완료 (develop 머지 + push 완료)
 
-**브랜치**: `feature/bloc-07-bookmarked-label` (feature 커밋: `ea6de85`, docs 커밋: `e61d857`)
+**브랜치**: `feature/bloc-07-bookmarked-label` (feature 커밋: `ea6de85`, docs 커밋: `e61d857`, `6f897ed`, 머지 커밋: `0595316`)
 **선행 커밋**: `a46d96e` (docs(bloc): PR 6 실제 구현 반영 + PR 7 사전 정리 — develop 직접 반영)
 
 ### 계획대로 된 점
@@ -94,18 +94,20 @@
 - 신규: `memo_sheet.dart` 162 + `article_actions_sheet.dart` 160 = 322 LOC
 - **순 감소**: 1855 → 1031 LOC (**-824, -44.4%**)
 
-### 완료 못한 항목 (후속 세션 또는 PR 8 시작 전 결정)
-- **`flutter-code-reviewer`(opus) 최종 리뷰 미실행**: PR 1~5 관행 대비 생략됨. 머지 전 호출 권장.
-- **실기기/시뮬레이터 스모크 미실행**: 사용자 요청 없어 생략. Bookmarked/LabelDetail 핵심 플로우(다중 선택 / 일괄 액션 / 메모 / 라벨 pop) 실기기 확인 필요.
-- **`develop --no-ff` 머지 + `origin/develop` push 미실행**: 사용자 승인 대기.
-- **PR 6 문서(pr-06) diff 선행 커밋**: develop 직접 반영(a46d96e) — 이후 develop pushd 시 함께 푸시됨.
+### 완료 못한 항목 (스모크 테스트는 모든 PR 정리 후 진행 예정)
+- **실기기/시뮬레이터 스모크 미실행**: 사용자 방침 — 모든 PR plan 정리 후 일괄 진행. Bookmarked/LabelDetail 핵심 플로우(다중 선택 / 일괄 액션 / 메모 / 라벨 pop / 탭 카운트 갱신) 실기기 검증 필요.
+- **리뷰어 지적 nit 1 (후속 이관)**: LabelDetail 아이템 뱃지(check_circle/bookmark) 색이 labelColor → secondary로 회귀. `ArticleListItem`에 `Color? accentColor` 옵션 추가로 1-2줄 개선 가능. 디자인 의도라면 수용.
+- **리뷰어 지적 nit 2 (후속 이관)**: `_confirmBulkDelete` 3화면 중복 30줄. `showBulkDeleteConfirm(context, cubit)` 헬퍼 추출 또는 `BulkActionBar.onDelete` 시그니처 승격. PR 8 이후 추가 화면 나올 때 재검토.
+- **`bulkDelete` for-await 순차 (PR 6 TODO)**: 100개 삭제 시 DB 100회 + Firestore 동기화 순차. `DatabaseService.bulkDelete` 도입으로 batch + 단일 sync trigger 개선 필요. 후속 PR 대상.
 
 ### 머지 / 배포
 - feature 커밋: `ea6de85` (BLoC PR7: Bookmarked/LabelDetail 화면 ArticleListCubit 재사용)
 - docs 커밋: `e61d857` (docs(bloc): PR 7 완료 핸드오프 노트 + SESSION_LOG + README 트래커 업데이트)
-- develop 머지: ⏳ pending (사용자 승인 후 `--no-ff`)
-- origin push: ⏳ pending (develop 머지 후)
-- 브랜치 보존: `feature/bloc-07-bookmarked-label` 유지
+- docs 보강 커밋: `6f897ed` (docs(bloc): PR 7 세션 로그 보강 + SESSION_STARTER 파일 경로 캐시 갱신)
+- **develop 머지**: `0595316` (`--no-ff` Merge feature/bloc-07-bookmarked-label)
+- **origin push 완료**: `feature/bloc-07-bookmarked-label` 최초 push, `develop` b92010f..0595316
+- opus `flutter-code-reviewer` 최종 리뷰: ✅ LGTM, must-fix 0, nit 2건 (후속 이관)
+- 브랜치 보존: `feature/bloc-07-bookmarked-label`
 
 ### 다음 세션 즉시 시작 프롬프트 (PR 8 — AddArticleCubit)
 
