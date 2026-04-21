@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import 'package:clib/blocs/home/home_bloc.dart';
+import 'package:clib/blocs/home/home_event.dart';
+import 'package:clib/blocs/home/home_state.dart';
 import 'package:clib/l10n/app_localizations.dart';
-import 'package:clib/main.dart';
 import 'package:clib/models/article.dart';
-import 'package:clib/services/database_service.dart';
 import 'package:clib/theme/app_theme.dart';
 import 'package:clib/theme/design_tokens.dart';
+import 'package:clib/widgets/add_article_sheet.dart';
 import 'package:clib/widgets/article_card.dart';
 import 'package:clib/widgets/label_edit_sheet.dart';
-import 'package:clib/widgets/add_article_sheet.dart';
 import 'package:clib/widgets/swipe_ad_card.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   /// MainScreen에서 오버레이 가이드에 사용할 GlobalKey
   final GlobalKey? cardAreaKey;
   final GlobalKey? addButtonKey;
@@ -21,144 +24,99 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.cardAreaKey, this.addButtonKey});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => HomeBloc(),
+      child: _HomeBody(
+        cardAreaKey: cardAreaKey,
+        addButtonKey: addButtonKey,
+      ),
+    );
+  }
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeBody extends StatefulWidget {
+  final GlobalKey? cardAreaKey;
+  final GlobalKey? addButtonKey;
+
+  const _HomeBody({this.cardAreaKey, this.addButtonKey});
+
+  @override
+  State<_HomeBody> createState() => _HomeBodyState();
+}
+
+class _HomeBodyState extends State<_HomeBody> {
   CardSwiperController _swiperController = CardSwiperController();
   final List<CardSwiperController> _pendingDispose = [];
-  List<Article> _articles = [];
-  List<String> _allLabels = [];
-  final Set<String> _selectedLabels = {};
-  int _cardSwiperKey = 0;
-  bool _isExpanded = false;
-  final _thresholdNotifier = ValueNotifier<double>(0.0);
+  final ValueNotifier<double> _thresholdNotifier = ValueNotifier<double>(0.0);
+  int _currentDeckVersion = 0;
 
   static const _adInterval = 8;
 
-  /// 광고 슬롯을 포함한 전체 카드 수
-  int get _totalCards {
-    if (_articles.isEmpty) return 0;
-    final adCount = _articles.length >= _adInterval
-        ? (_articles.length / _adInterval).floor()
-        : 0;
-    return _articles.length + adCount;
-  }
-
-  /// 해당 인덱스가 광고 슬롯인지 판단
-  bool _isAdSlot(int index) {
-    if (_articles.length < _adInterval) return false;
-    return index > 0 && (index + 1) % (_adInterval + 1) == 0;
-  }
-
-  /// 광고 슬롯을 제외한 실제 아티클 인덱스
-  int _articleIndex(int index) {
-    if (_articles.length < _adInterval) return index;
-    return index - ((index + 1) ~/ (_adInterval + 1));
-  }
-
   @override
-  void initState() {
-    super.initState();
-    _loadArticles(resetPosition: true);
-    articlesChangedNotifier.addListener(_onArticlesChanged);
-  }
-
-  /// 외부 notifier (공유 저장 등) — 카드 위치 유지
-  void _onArticlesChanged() {
-    _loadArticles(resetPosition: false);
-  }
-
-  void _loadArticles({required bool resetPosition}) {
-    if (!mounted) return;
-    final allUnread = DatabaseService.getUnreadArticles();
-    final filtered = _selectedLabels.isEmpty
-        ? allUnread
-        : allUnread
-            .where((a) => _selectedLabels.every((l) => a.topicLabels.contains(l)))
-            .toList();
-    _allLabels = DatabaseService.getAllLabelObjects().map((l) => l.name).toList();
-
-    if (resetPosition) {
-      final oldController = _swiperController;
-      _pendingDispose.add(oldController);
-      _swiperController = CardSwiperController();
-      _thresholdNotifier.value = 0.0;
-      setState(() {
-        _articles = filtered;
-        _cardSwiperKey++;
-      });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _disposePendingControllers();
-      });
-    } else {
-      setState(() {
-        _articles = filtered;
-      });
-    }
+  void dispose() {
+    _disposePendingControllers();
+    try {
+      _swiperController.dispose();
+    } catch (_) {}
+    _thresholdNotifier.dispose();
+    super.dispose();
   }
 
   void _disposePendingControllers() {
-    for (final controller in _pendingDispose) {
+    for (final c in _pendingDispose) {
       try {
-        controller.dispose();
+        c.dispose();
       } catch (_) {}
     }
     _pendingDispose.clear();
   }
 
+  /// Bloc의 [HomeState.deckVersion] 변경에 맞춰 CardSwiperController를 교체.
+  /// 이전 컨트롤러는 프레임 이후 일괄 dispose(이중 dispose 방지 try-catch).
+  void _syncControllerWithDeckVersion(int newVersion) {
+    if (_currentDeckVersion == newVersion) return;
+    _currentDeckVersion = newVersion;
+    _pendingDispose.add(_swiperController);
+    _swiperController = CardSwiperController();
+    _thresholdNotifier.value = 0.0;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _disposePendingControllers();
+    });
+  }
+
+  int _totalCards(int articleCount) {
+    if (articleCount == 0) return 0;
+    final adCount =
+        articleCount >= _adInterval ? (articleCount / _adInterval).floor() : 0;
+    return articleCount + adCount;
+  }
+
+  bool _isAdSlot(int index, int articleCount) {
+    if (articleCount < _adInterval) return false;
+    return index > 0 && (index + 1) % (_adInterval + 1) == 0;
+  }
+
+  int _articleIndex(int index, int articleCount) {
+    if (articleCount < _adInterval) return index;
+    return index - ((index + 1) ~/ (_adInterval + 1));
+  }
+
   void _toggleLabel(String label) {
-    if (_selectedLabels.contains(label)) {
-      _selectedLabels.remove(label);
-    } else {
-      _selectedLabels.add(label);
-    }
-    _loadArticles(resetPosition: true);
+    final current = context.read<HomeBloc>().state.selectedLabelNames;
+    final next = Set<String>.from(current);
+    if (!next.add(label)) next.remove(label);
+    context.read<HomeBloc>().add(HomeFilterLabelsChanged(next));
   }
 
   void _clearLabels() {
-    _selectedLabels.clear();
-    _loadArticles(resetPosition: true);
-  }
-
-  @override
-  void dispose() {
-    articlesChangedNotifier.removeListener(_onArticlesChanged);
-    _disposePendingControllers();
-    _swiperController.dispose();
-    _thresholdNotifier.dispose();
-    super.dispose();
-  }
-
-  bool _onSwipe(
-    int previousIndex,
-    int? currentIndex,
-    CardSwiperDirection direction,
-  ) {
-    // 광고 카드는 스와이프만 허용, 아티클 처리 안함
-    if (_isAdSlot(previousIndex)) return true;
-
-    final artIdx = _articleIndex(previousIndex);
-    if (artIdx >= _articles.length) return false;
-    final article = _articles[artIdx];
-
-    if (direction == CardSwiperDirection.right) {
-      HapticFeedback.mediumImpact();
-      DatabaseService.markAsRead(article);
-      WidgetsBinding.instance.addPostFrameCallback((_) => _loadArticles(resetPosition: true));
-    } else if (direction == CardSwiperDirection.left) {
-      HapticFeedback.lightImpact();
-      if (currentIndex == null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _loadArticles(resetPosition: true));
-      }
-    }
-
-    return true;
+    context.read<HomeBloc>().add(const HomeFilterLabelsChanged({}));
   }
 
   void _showCardActions(Article article) {
     final theme = Theme.of(context);
     final l = AppLocalizations.of(context)!;
+    final bloc = context.read<HomeBloc>();
     showModalBottomSheet(
       context: context,
       backgroundColor: theme.colorScheme.surface,
@@ -174,7 +132,8 @@ class _HomeScreenState extends State<HomeScreen> {
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
+                color: theme.colorScheme.onSurfaceVariant
+                    .withValues(alpha: 0.25),
                 borderRadius: BorderRadius.circular(2.5),
               ),
             ),
@@ -183,18 +142,19 @@ class _HomeScreenState extends State<HomeScreen> {
               leading: Icon(
                 article.isBookmarked ? Icons.bookmark : Icons.bookmark_border,
               ),
-              title: Text(article.isBookmarked ? l.removeBookmark : l.bookmark),
-              onTap: () async {
+              title:
+                  Text(article.isBookmarked ? l.removeBookmark : l.bookmark),
+              onTap: () {
                 Navigator.pop(ctx);
-                await DatabaseService.toggleBookmark(article);
-                _loadArticles(resetPosition: false);
+                bloc.add(HomeToggleBookmark(article));
               },
             ),
             ListTile(
               leading: const Icon(Icons.edit_note),
               title: Text(article.memo != null ? l.editMemo : l.addMemo),
               subtitle: article.memo != null
-                  ? Text(article.memo!, maxLines: 1, overflow: TextOverflow.ellipsis)
+                  ? Text(article.memo!,
+                      maxLines: 1, overflow: TextOverflow.ellipsis)
                   : null,
               onTap: () {
                 Navigator.pop(ctx);
@@ -207,7 +167,10 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () async {
                 Navigator.pop(ctx);
                 await LabelEditSheet.show(context, article: article);
-                _loadArticles(resetPosition: false);
+                // 시트가 내부적으로 persist → 덱 재로드만 요청.
+                if (!bloc.isClosed) {
+                  bloc.add(const HomeLoadDeck(resetPosition: false));
+                }
               },
             ),
             ListTile(
@@ -231,6 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final controller = TextEditingController(text: article.memo);
     final theme = Theme.of(context);
     final l = AppLocalizations.of(context)!;
+    final bloc = context.read<HomeBloc>();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -251,7 +215,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
+                  color: theme.colorScheme.onSurfaceVariant
+                      .withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(2.5),
                 ),
               ),
@@ -259,7 +224,8 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(l.memo, style: theme.textTheme.titleSmall),
               const SizedBox(height: Spacing.lg),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Spacing.xxl),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: Spacing.xxl),
                 child: TextField(
                   controller: controller,
                   maxLength: 100,
@@ -283,7 +249,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: Spacing.lg),
               Padding(
-                padding: const EdgeInsets.fromLTRB(Spacing.xxl, 0, Spacing.xxl, Spacing.lg),
+                padding: const EdgeInsets.fromLTRB(
+                    Spacing.xxl, 0, Spacing.xxl, Spacing.lg),
                 child: Row(
                   children: [
                     if (article.memo != null) ...[
@@ -291,13 +258,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: OutlinedButton(
                           style: OutlinedButton.styleFrom(
                             foregroundColor: theme.colorScheme.error,
-                            side: BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.3)),
-                            shape: RoundedRectangleBorder(borderRadius: Radii.borderMd),
+                            side: BorderSide(
+                                color: theme.colorScheme.error
+                                    .withValues(alpha: 0.3)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: Radii.borderMd),
                           ),
-                          onPressed: () async {
-                            await DatabaseService.updateMemo(article, null);
-                            if (ctx.mounted) Navigator.pop(ctx);
-                            _loadArticles(resetPosition: false);
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            bloc.add(HomeUpdateMemo(article, null));
                           },
                           child: Text(l.delete),
                         ),
@@ -309,12 +278,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: FilledButton.styleFrom(
                           backgroundColor: theme.colorScheme.secondary,
                           foregroundColor: theme.colorScheme.onSecondary,
-                          shape: RoundedRectangleBorder(borderRadius: Radii.borderMd),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: Radii.borderMd),
                         ),
-                        onPressed: () async {
-                          await DatabaseService.updateMemo(article, controller.text);
-                          if (ctx.mounted) Navigator.pop(ctx);
-                          _loadArticles(resetPosition: false);
+                        onPressed: () {
+                          final text = controller.text;
+                          Navigator.pop(ctx);
+                          bloc.add(HomeUpdateMemo(article, text));
                         },
                         child: Text(l.save),
                       ),
@@ -329,7 +299,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildEmptyContent() {
+  Widget _buildEmptyContent(Set<String> selectedLabels) {
     final theme = Theme.of(context);
     final l = AppLocalizations.of(context)!;
     return Center(
@@ -348,7 +318,8 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Icon(
                 Icons.inbox_outlined,
                 size: 56,
-                color: theme.colorScheme.secondary.withValues(alpha: 0.4),
+                color:
+                    theme.colorScheme.secondary.withValues(alpha: 0.4),
               ),
             ),
             const SizedBox(height: Spacing.xl),
@@ -358,9 +329,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: Spacing.sm),
             Text(
-              _selectedLabels.isEmpty
-                  ? l.addLinksHint
-                  : l.noUnreadInLabel,
+              selectedLabels.isEmpty ? l.addLinksHint : l.noUnreadInLabel,
               style: theme.textTheme.bodySmall,
             ),
           ],
@@ -373,272 +342,353 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
 
-    final labelCountText = _selectedLabels.isEmpty
-        ? l.articleCountText(_articles.length)
-        : l.labelArticleCountText(_selectedLabels.join(', '), _articles.length);
+    return BlocConsumer<HomeBloc, HomeState>(
+      listenWhen: (p, c) => p.deckVersion != c.deckVersion,
+      listener: (context, state) {
+        _syncControllerWithDeckVersion(state.deckVersion);
+      },
+      builder: (context, state) {
+        if (state.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    return Column(
-      children: [
-        const SizedBox(height: 12),
-        // 라벨 필터 바
-        if (_allLabels.isNotEmpty)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                height: 36,
-                child: Row(
-                  children: [
-                    // 고정: 전체 칩 + 구분선
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _FilterChip(
-                            label: l.all,
-                            selected: _selectedLabels.isEmpty,
-                            onTap: _clearLabels,
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            width: 1,
-                            height: 20,
-                            color: Theme.of(context).dividerColor,
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                      ),
-                    ),
-                    // 스크롤 가능한 라벨 목록
-                    Expanded(
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _allLabels.length,
-                        itemBuilder: (context, index) => Padding(
-                          padding: EdgeInsets.only(
-                            right: index < _allLabels.length - 1 ? 8 : 0,
-                          ),
-                          child: _FilterChip(
-                            label: _allLabels[index],
-                            selected: _selectedLabels.contains(_allLabels[index]),
-                            onTap: () => _toggleLabel(_allLabels[index]),
+        final allLabelNames =
+            state.allLabels.map((label) => label.name).toList();
+        final selectedLabels = state.selectedLabelNames;
+        final labelCountText = selectedLabels.isEmpty
+            ? l.articleCountText(state.articles.length)
+            : l.labelArticleCountText(
+                selectedLabels.join(', '),
+                state.articles.length,
+              );
+        final totalCards = _totalCards(state.articles.length);
+
+        return Column(
+          children: [
+            const SizedBox(height: 12),
+            if (allLabelNames.isNotEmpty)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    height: 36,
+                    child: Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(left: 16),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _FilterChip(
+                                label: l.all,
+                                selected: selectedLabels.isEmpty,
+                                onTap: _clearLabels,
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                width: 1,
+                                height: 20,
+                                color: Theme.of(context).dividerColor,
+                              ),
+                              const SizedBox(width: 8),
+                            ],
                           ),
                         ),
-                      ),
-                    ),
-                    // 확장 버튼
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => setState(() => _isExpanded = !_isExpanded),
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 12, right: 16),
-                        child: AnimatedRotation(
-                          turns: _isExpanded ? 0.5 : 0,
-                          duration: const Duration(milliseconds: 200),
-                          child: Container(
-                            width: 26,
-                            height: 26,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                            ),
-                            child: Icon(
-                              Icons.keyboard_arrow_down,
-                              size: 16,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        Expanded(
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: allLabelNames.length,
+                            itemBuilder: (context, index) => Padding(
+                              padding: EdgeInsets.only(
+                                right: index < allLabelNames.length - 1
+                                    ? 8
+                                    : 0,
+                              ),
+                              child: _FilterChip(
+                                label: allLabelNames[index],
+                                selected: selectedLabels
+                                    .contains(allLabelNames[index]),
+                                onTap: () =>
+                                    _toggleLabel(allLabelNames[index]),
+                              ),
                             ),
                           ),
+                        ),
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => context
+                              .read<HomeBloc>()
+                              .add(const HomeToggleExpand()),
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.only(left: 12, right: 16),
+                            child: AnimatedRotation(
+                              turns: state.isExpanded ? 0.5 : 0,
+                              duration: const Duration(milliseconds: 200),
+                              child: Container(
+                                width: 26,
+                                height: 26,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainerHighest,
+                                ),
+                                child: Icon(
+                                  Icons.keyboard_arrow_down,
+                                  size: 16,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
+                    child: state.isExpanded
+                        ? ConstrainedBox(
+                            constraints:
+                                const BoxConstraints(maxHeight: 160),
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(
+                                  16, 8, 16, 4),
+                              child: Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  for (final name in allLabelNames)
+                                    _FilterChip(
+                                      label: name,
+                                      selected:
+                                          selectedLabels.contains(name),
+                                      onTap: () => _toggleLabel(name),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Text(
+                    labelCountText,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    key: widget.addButtonKey,
+                    onTap: () => AddArticleSheet.show(context),
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
+                      ),
+                      child: Icon(
+                        Icons.add_rounded,
+                        size: 18,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (state.articles.isEmpty)
+              Expanded(
+                child: Container(
+                  key: widget.cardAreaKey,
+                  child: _buildEmptyContent(selectedLabels),
+                ),
+              ),
+            if (state.articles.isNotEmpty)
+              Expanded(
+                child: Stack(
+                  key: widget.cardAreaKey,
+                  children: [
+                    Padding(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 20),
+                      child: CardSwiper(
+                        key: ValueKey(state.deckVersion),
+                        controller: _swiperController,
+                        cardsCount: totalCards,
+                        numberOfCardsDisplayed:
+                            totalCards < 3 ? totalCards : 3,
+                        backCardOffset: const Offset(0, 36),
+                        scale: 0.95,
+                        padding: const EdgeInsets.only(bottom: 56),
+                        isLoop: totalCards > 1,
+                        allowedSwipeDirection:
+                            const AllowedSwipeDirection.symmetric(
+                          horizontal: true,
+                        ),
+                        onSwipe: (previousIndex, currentIndex, direction) {
+                          return _onSwipe(
+                            previousIndex: previousIndex,
+                            currentIndex: currentIndex,
+                            direction: direction,
+                            articles: state.articles,
+                          );
+                        },
+                        cardBuilder: (context, index, pctX, pctY) {
+                          if (index >= totalCards) {
+                            return const SizedBox.shrink();
+                          }
+                          if (_isAdSlot(index, state.articles.length)) {
+                            return const SwipeAdCard();
+                          }
+                          final artIdx =
+                              _articleIndex(index, state.articles.length);
+                          if (artIdx >= state.articles.length) {
+                            return const SizedBox.shrink();
+                          }
+
+                          final onVariant = Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant;
+                          Color? borderColor;
+                          if (pctX > 20) {
+                            borderColor = AppColors.swipeRead.withValues(
+                                alpha: (pctX / 100).clamp(0, 1));
+                          } else if (pctX < -20) {
+                            borderColor = onVariant.withValues(
+                                alpha: (pctX.abs() / 100).clamp(0, 1));
+                          }
+
+                          WidgetsBinding.instance
+                              .addPostFrameCallback((_) {
+                            if (mounted) {
+                              _thresholdNotifier.value = pctX.toDouble();
+                            }
+                          });
+
+                          final article = state.articles[artIdx];
+                          return GestureDetector(
+                            onTap: () async {
+                              final uri = Uri.tryParse(article.url);
+                              if (uri != null) {
+                                await launchUrl(uri,
+                                    mode: LaunchMode.externalApplication);
+                              }
+                            },
+                            onLongPress: () {
+                              HapticFeedback.heavyImpact();
+                              _showCardActions(article);
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                border: borderColor != null
+                                    ? Border.all(
+                                        color: borderColor, width: 2.5)
+                                    : null,
+                              ),
+                              child: ArticleCard(article: article),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    Positioned(
+                      left: 28,
+                      right: 28,
+                      bottom: 12,
+                      child: IgnorePointer(
+                        child: ValueListenableBuilder<double>(
+                          valueListenable: _thresholdNotifier,
+                          builder: (context, threshold, _) {
+                            const base = 0.3;
+                            final laterOpacity = threshold < -20
+                                ? (base +
+                                        (1 - base) *
+                                            ((threshold.abs() - 20) / 40))
+                                    .clamp(base, 1.0)
+                                : base;
+                            final readOpacity = threshold > 20
+                                ? (base +
+                                        (1 - base) *
+                                            ((threshold - 20) / 40))
+                                    .clamp(base, 1.0)
+                                : base;
+                            final theme = Theme.of(context);
+
+                            return Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                              children: [
+                                Opacity(
+                                  opacity: laterOpacity,
+                                  child: _SwipeHint(
+                                    text: l.swipeLater,
+                                    icon: Icons.schedule_rounded,
+                                    color:
+                                        theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                Opacity(
+                                  opacity: readOpacity,
+                                  child: _SwipeHint(
+                                    text: l.swipeRead,
+                                    icon: Icons.check_rounded,
+                                    color: AppColors.swipeRead,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              // 확장된 라벨 그리드
-              AnimatedSize(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeInOut,
-                child: _isExpanded
-                    ? ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 160),
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                          child: Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              for (final label in _allLabels)
-                                _FilterChip(
-                                  label: label,
-                                  selected: _selectedLabels.contains(label),
-                                  onTap: () => _toggleLabel(label),
-                                ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : const SizedBox.shrink(),
-              ),
-            ],
-          ),
-        const SizedBox(height: 10),
-        // 아티클 카운트 + 추가 버튼
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Row(
-            children: [
-              Text(
-                labelCountText,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const Spacer(),
-              GestureDetector(
-                key: widget.addButtonKey,
-                onTap: () => AddArticleSheet.show(context),
-                child: Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  ),
-                  child: Icon(
-                    Icons.add_rounded,
-                    size: 18,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        if (_articles.isEmpty) Expanded(
-          child: Container(
-            key: widget.cardAreaKey,
-            child: _buildEmptyContent(),
-          ),
-        ),
-        // 카드 스택
-        if (_articles.isNotEmpty) Expanded(
-          child: Stack(
-            key: widget.cardAreaKey,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: CardSwiper(
-                  key: ValueKey(_cardSwiperKey),
-                  controller: _swiperController,
-                  cardsCount: _totalCards,
-                  numberOfCardsDisplayed: _totalCards < 3 ? _totalCards : 3,
-                  backCardOffset: const Offset(0, 36),
-                  scale: 0.95,
-                  padding: const EdgeInsets.only(bottom: 56),
-                  isLoop: _totalCards > 1,
-                  allowedSwipeDirection: const AllowedSwipeDirection.symmetric(
-                    horizontal: true,
-                  ),
-                  onSwipe: _onSwipe,
-                  cardBuilder: (context, index, percentThresholdX, percentThresholdY) {
-                    if (index >= _totalCards) return const SizedBox.shrink();
-
-                    // 광고 슬롯
-                    if (_isAdSlot(index)) {
-                      return const SwipeAdCard();
-                    }
-
-                    final artIdx = _articleIndex(index);
-                    if (artIdx >= _articles.length) return const SizedBox.shrink();
-
-                    // 스와이프 방향에 따른 테두리 색상
-                    final onVariant = Theme.of(context).colorScheme.onSurfaceVariant;
-                    Color? borderColor;
-                    if (percentThresholdX > 20) {
-                      borderColor = AppColors.swipeRead
-                          .withValues(alpha: (percentThresholdX / 100).clamp(0, 1));
-                    } else if (percentThresholdX < -20) {
-                      borderColor = onVariant
-                          .withValues(alpha: (percentThresholdX.abs() / 100).clamp(0, 1));
-                    }
-
-                    // 하단 힌트 라벨용 threshold 업데이트
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted) _thresholdNotifier.value = percentThresholdX.toDouble();
-                    });
-
-                    return GestureDetector(
-                      onTap: () async {
-                        final uri = Uri.tryParse(_articles[artIdx].url);
-                        if (uri != null) {
-                          await launchUrl(uri, mode: LaunchMode.externalApplication);
-                        }
-                      },
-                      onLongPress: () {
-                        HapticFeedback.heavyImpact();
-                        _showCardActions(_articles[artIdx]);
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          border: borderColor != null
-                              ? Border.all(color: borderColor, width: 2.5)
-                              : null,
-                        ),
-                        child: ArticleCard(article: _articles[artIdx]),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              // 카드 하단 스와이프 방향 힌트
-              Positioned(
-                left: 28,
-                right: 28,
-                bottom: 12,
-                child: IgnorePointer(
-                  child: ValueListenableBuilder<double>(
-                    valueListenable: _thresholdNotifier,
-                    builder: (context, threshold, _) {
-                      const base = 0.3;
-                      final laterOpacity = threshold < -20
-                          ? (base + (1 - base) * ((threshold.abs() - 20) / 40)).clamp(base, 1.0)
-                          : base;
-                      final readOpacity = threshold > 20
-                          ? (base + (1 - base) * ((threshold - 20) / 40)).clamp(base, 1.0)
-                          : base;
-                      final theme = Theme.of(context);
-
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Opacity(
-                            opacity: laterOpacity,
-                            child: _SwipeHint(
-                              text: l.swipeLater,
-                              icon: Icons.schedule_rounded,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          Opacity(
-                            opacity: readOpacity,
-                            child: _SwipeHint(
-                              text: l.swipeRead,
-                              icon: Icons.check_rounded,
-                              color: AppColors.swipeRead,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
+  }
+
+  bool _onSwipe({
+    required int previousIndex,
+    required int? currentIndex,
+    required CardSwiperDirection direction,
+    required List<Article> articles,
+  }) {
+    if (_isAdSlot(previousIndex, articles.length)) return true;
+
+    final artIdx = _articleIndex(previousIndex, articles.length);
+    if (artIdx >= articles.length) return false;
+    final article = articles[artIdx];
+
+    if (direction == CardSwiperDirection.right) {
+      HapticFeedback.mediumImpact();
+      context.read<HomeBloc>().add(HomeSwipeRead(article));
+    } else if (direction == CardSwiperDirection.left) {
+      HapticFeedback.lightImpact();
+      context.read<HomeBloc>().add(
+            HomeSwipeLater(article, reachedEnd: currentIndex == null),
+          );
+    }
+    return true;
   }
 }
 
@@ -664,9 +714,7 @@ class _FilterChip extends StatelessWidget {
         curve: Curves.easeOut,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
         decoration: BoxDecoration(
-          color: selected
-              ? accent.withValues(alpha: 0.12)
-              : Colors.transparent,
+          color: selected ? accent.withValues(alpha: 0.12) : Colors.transparent,
           borderRadius: Radii.borderFull,
           border: Border.all(
             color: selected
@@ -679,9 +727,7 @@ class _FilterChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-            color: selected
-                ? accent
-                : theme.colorScheme.onSurfaceVariant,
+            color: selected ? accent : theme.colorScheme.onSurfaceVariant,
           ),
         ),
       ),

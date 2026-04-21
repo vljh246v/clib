@@ -527,19 +527,45 @@ BLoC PR9: HomeBloc 도입 — 스와이프/필터/덱 관리 이벤트 소싱
 ## 13. 핸드오프 노트
 
 ### 계획대로 된 점
-- (작성)
+- `lib/blocs/home/{home_bloc,home_event,home_state}.dart` 신규. Bloc 시리즈 유일 Bloc.
+- `HomeScreen`을 `StatelessWidget(BlocProvider)` + `_HomeBody(StatefulWidget)`으로 분리. `CardSwiperController` / `_pendingDispose` / `_thresholdNotifier` 위젯 로컬 SSOT.
+- `deckVersion` ValueKey 기반 CardSwiper 재생성 — 인덱스 out-of-range 방지.
+- `articlesChangedNotifier` / `labelsChangedNotifier` 생성자 addListener, `close()` removeListener. 중복 발사 방지.
+- home_bloc_test 14건 신규 + 기존 60 + 신규 14 = 74 전체 PASS.
 
 ### 계획과 다르게 된 점
-- (작성)
+- **필터 로직 AND 채택**: PR 9 문서 스니펫은 `any`(OR)였으나 기존 `HomeScreen._loadArticles`가 `_selectedLabels.every((l) => a.topicLabels.contains(l))` = AND. UX 회귀 방지 위해 **AND 유지**(`_computeFiltered`의 `selected.every` 분기).
+- **`HomeEditLabels` 이벤트 드롭**: 기존 `LabelEditSheet`가 이미 `DatabaseService.updateArticleLabels`를 내부 호출. Bloc이 또 호출하면 이중 persist. 시트 await 후 `HomeLoadDeck(resetPosition: false)` 단순 재로드로 대체.
+- **`HomeSwipeLater.reachedEnd` 플래그 추가**: 기존 `HomeScreen`은 `currentIndex == null`(loop 경계)일 때 덱 리셋. 플랜 스니펫은 no-op이었으나 기존 동작 보존 위해 `reachedEnd=true`이면 `deckVersion++` emit. DB 상태는 여전히 변경 없음.
+- **`HomeSwipeRead`에서 덱 재생성(deckVersion++) 추가**: 플랜은 articles에서만 제거했으나 `isLoop:true` + `numberOfCardsDisplayed=3` 조건에서 인덱스 out-of-range 리스크. 즉시 제거 + deckVersion 증가로 안전성 확보.
+- **`refreshToken` 필드 추가(리뷰 should-fix 반영)**: `Article`은 Hive 모델 + `==` 미구현 → in-place `toggleBookmark/updateMemo`가 같은 인스턴스를 공유하는 `articles` 리스트로 재로드되면 Equatable dedup으로 `emit`이 스킵될 위험. 현시점 UI 렌더링 경로에서는 시각적 회귀 없으나 차후 스와이프 카드에 북마크 뱃지/메모 미리보기 추가 시 조용한 갱신 실패 리스크. 매 `_onLoad`마다 `refreshToken++`로 stream emit 강제.
+- **`bloc.isClosed` 가드(nit 반영)**: `_showCardActions` → `LabelEditSheet.show` await 후 `bloc.add(...)` 경로에 가드 추가.
 
 ### 새로 발견한 이슈 / TODO
-- (작성)
+- **`_showMemoDialog` 내 `TextEditingController` dispose 미호출**(기존 관례). 시트 pop 시 GC 대상이나 엄밀히는 leak. `dart run build_runner` 수준 아님. PR 11 cleanup에서 시트 공통화 시 정리 권장.
+- **하드코딩 숫자/색상**(기존 home_screen.dart 선행). `BorderRadius.circular(20)`, 120/56/36/28/26/16/12 등. PR 9 범위에서 회귀 없음 — PR 11 cleanup 대상.
+- **`_SwipeHint` 왼쪽 색상 토큰 불일치**(기존): `onSurfaceVariant` 사용 중. CLAUDE.md의 공용 `swipeSkip=Muted Rose` 토큰과 불일치. PR 9 회귀 아님 — 디자인 의도라면 수용, 아니면 별도 티켓.
+- **초기 `_swiperController` 한 인스턴스 낭비**: `_HomeBodyState.initState`에서 `CardSwiperController()` 생성 → 첫 Bloc emit(0→1)에서 곧장 `_pendingDispose`로 이관. 누수 아님, 최적화 여지 낮음.
 
 ### 참고한 링크
-- (작성)
-
-### 다음 세션 유의사항
-- (작성)
+- `DatabaseService.markAsRead` 시그니처: `lib/services/database_service.dart:116` (notifier 미발사 확인)
+- `DatabaseService.updateArticleLabels` 시그니처: `lib/services/database_service.dart:364`
+- `LabelEditSheet.show` + 내부 persist: `lib/widgets/label_edit_sheet.dart:19,184`
+- `articlesChangedNotifier` 발사원: `ShareService.processAndSave`(`share_service.dart:68`) + `SyncService` 원격 스냅샷(`sync_service.dart:276`)
+- CardSwiper key 재생성 패턴: 기존 home_screen.dart:531 `key: ValueKey(_cardSwiperKey)`
+- flutter_bloc BlocConsumer: https://bloclibrary.dev/flutter-bloc-concepts/#blocconsumer
 
 ### 검증 결과
-- (작성)
+- `flutter analyze`: ✅ No issues (2.0s)
+- `flutter test test/blocs/home_bloc_test.dart`: ✅ 14/14 PASS
+- `flutter test test/blocs/`: ✅ 74 PASS (기존 60 + 신규 14)
+- opus `flutter-code-reviewer`: must-fix 0, should-fix 1건 반영(refreshToken), nit 1건 반영(bloc.isClosed 가드), nit 3건 범위 외 이관(하드코딩 숫자/토큰 불일치/memo controller dispose)
+- 실기기/시뮬레이터 스모크: ⚪ 사용자 방침(전 PR 정리 후 일괄 진행)
+
+### 다음 세션 유의사항
+- **PR 10(선택)**: MainScreen ShareFlowCubit. 기본 SKIP. 현 `WidgetsBindingObserver` + `ShareService.checkPendingShares` 경로가 충분히 단순.
+- **PR 11**: Cleanup + 문서화. 본 PR의 후속 정리 항목:
+  - `labelsChangedNotifier` 로컬 CRUD 미발사 통합(PR 8에서도 이관됨)
+  - 시트 공통화 시 `TextEditingController` 라이프사이클 정리
+  - 하드코딩 숫자/색상 디자인 토큰 치환
+- 현 브랜치: `feature/bloc-09-home`. 머지/푸시는 분리 커밋 + docs 커밋 후 `--no-ff` develop.

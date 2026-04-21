@@ -124,7 +124,7 @@ doc/bloc-migration/SESSION_LOG.md 에 따르면 PR 6이 In Progress 상태야.
 | 디자인 토큰 | `lib/theme/design_tokens.dart` |
 | ARB 템플릿 | `lib/l10n/app_ko.arb` |
 
-### Cubit / 공통 위젯 (PR 1~8 누적)
+### Cubit/Bloc / 공통 위젯 (PR 1~9 누적)
 
 | 용도 | 경로 |
 |------|------|
@@ -135,6 +135,7 @@ doc/bloc-migration/SESSION_LOG.md 에 따르면 PR 6이 In Progress 상태야.
 | LabelManagementCubit + State | `lib/blocs/label_management/label_management_{cubit,state}.dart` |
 | ArticleListCubit/Source/State | `lib/blocs/article_list/article_list_{cubit,source,state}.dart` |
 | AddArticleCubit + State | `lib/blocs/add_article/add_article_{cubit,state}.dart` |
+| HomeBloc + Event + State (유일 Bloc) | `lib/blocs/home/home_{bloc,event,state}.dart` |
 | ArticleListView (리스트 + 광고 8개마다 삽입) | `lib/widgets/article_list_view.dart` |
 | ArticleListItem (개별 행) | `lib/widgets/article_list_item.dart` |
 | BulkActionBar (다중 선택 하단 액션바) | `lib/widgets/bulk_action_bar.dart` |
@@ -143,12 +144,14 @@ doc/bloc-migration/SESSION_LOG.md 에 따르면 PR 6이 In Progress 상태야.
 | AddArticleSheet (수동 URL 추가) | `lib/widgets/add_article_sheet.dart` |
 | 공통 테스트 패턴 | `test/blocs/*_test.dart` |
 
-### 누적 주의사항 (PR 1~8에서 도출)
+### 누적 주의사항 (PR 1~9에서 도출)
 
 - **글로벌 Provider 규칙**: 전역 = `ThemeCubit` + `AuthCubit`만. 나머지는 화면 로컬 `BlocProvider`.
 - **bloc_test 미도입**: `hive_generator 2.0.1` ↔ `bloc_test`(test 1.16+) 충돌. 일반 `flutter_test` + `Cubit.stream.listen` + `expectLater` + `await Future<void>.delayed(Duration.zero)`로 작성.
 - **Hive 테스트 격리 path**: `setUpAll`에서 `.dart_tool/test_hive_<name>` + 어댑터 등록 + box open, `setUp`에서 `clear` + `DatabaseService.skipSync = true`, `tearDownAll`에서 `deleteFromDisk`.
-- **컨트롤러는 위젯 로컬 SSOT**: `TextEditingController`, `CardSwiperController`, `PageController` 등은 StatefulWidget 로컬. Cubit/Bloc state에 넣지 않음.
+- **컨트롤러는 위젯 로컬 SSOT**: `TextEditingController`, `CardSwiperController`, `PageController` 등은 StatefulWidget 로컬. Cubit/Bloc state에 넣지 않음. PR 9 HomeBloc에서 `_HomeBody(StatefulWidget)` + `BlocProvider` 래퍼 패턴으로 재확인.
+- **Hive in-place 변경 대응 `refreshToken` 패턴**(PR 9 도입): Hive 모델(`Article`/`Label`)은 `==` 미구현이라 `DatabaseService.toggleBookmark`/`updateMemo` 등 in-place 변경 후 동일 인스턴스가 재로드된 articles 리스트는 `Equatable.props` dedup에 걸려 `emit`이 스킵될 수 있음. 상태 클래스에 `final int refreshToken;`(default 0) 필드 추가 + 로드 핸들러에서 `refreshToken: state.refreshToken + 1`로 매번 증가시켜 stream emit 강제.
+- **CardSwiper 재생성 `deckVersion` 패턴**(PR 9): `CardSwiper(key: ValueKey(state.deckVersion))`. 필터 변경 / swipe-read / swipe-later reachedEnd 시 증가로 `isLoop:true` + `numberOfCardsDisplayed=3` 내부 인덱스 out-of-range 방지. 컨트롤러 교체는 `BlocListener.listenWhen: p.deckVersion != c.deckVersion` + `_pendingDispose` 큐 + `addPostFrameCallback` 일괄 dispose(try-catch).
 - **에러 채널 분리**: inline 필드 오류(urlError 센티넬), SnackBar 트리거(bool flag 또는 transient nonce + clearXxx()), 원문 메시지(String?) 혼용하지 말 것. listenWhen 가드 필수.
 - **다이얼로그/시트 호출 전 `final cubit = context.read<X>()` 캡처**: `showDialog`/`showModalBottomSheet`는 provider scope 이탈.
 - **notifier 브릿지**: `articlesChangedNotifier` / `labelsChangedNotifier`는 Cubit 생성자에서 addListener, close()에서 removeListener. **중복 발사 금지** — `ShareService.processAndSave` 같은 DB 서비스가 이미 발사하는 경로 확인 후 Cubit에서 추가 발사 X.
