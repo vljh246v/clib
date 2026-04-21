@@ -44,216 +44,169 @@
 
 ## 3. Source enum
 
-`lib/blocs/article_list/article_list_source.dart`:
+> ⚠️ **실제 구현과 다름** — 계획의 private 서브클래스 + factory constructor 패턴은 컴파일 실패.
+> **실제 구현**은 아래 "13. 핸드오프 노트 > 계획과 다르게 된 점 #1" 참조.
+
+`lib/blocs/article_list/article_list_source.dart` (실제 구현):
 
 ```dart
 import 'package:equatable/equatable.dart';
 
 sealed class ArticleListSource extends Equatable {
   const ArticleListSource();
-
-  const factory ArticleListSource.all() = _All;
-  const factory ArticleListSource.bookmarked() = _Bookmarked;
-  const factory ArticleListSource.byLabel(String name) = _ByLabel;
 }
 
-class _All extends ArticleListSource {
-  const _All();
-  @override
-  List<Object?> get props => const ['all'];
+final class ArticleListSourceAll extends ArticleListSource {
+  const ArticleListSourceAll();
+  @override List<Object?> get props => [];
 }
 
-class _Bookmarked extends ArticleListSource {
-  const _Bookmarked();
-  @override
-  List<Object?> get props => const ['bookmarked'];
+final class ArticleListSourceBookmarked extends ArticleListSource {
+  const ArticleListSourceBookmarked();
+  @override List<Object?> get props => [];
 }
 
-class _ByLabel extends ArticleListSource {
-  final String name;
-  const _ByLabel(this.name);
-  @override
-  List<Object?> get props => ['byLabel', name];
+final class ArticleListSourceByLabel extends ArticleListSource {
+  const ArticleListSourceByLabel(this.labelName);
+  final String labelName;
+  @override List<Object?> get props => [labelName];
 }
 ```
 
-**주의**: Dart 3의 sealed class 사용. 코드에서는 pattern matching 또는 `is` 체크.
+**이유**: sealed class의 private 서브클래스는 다른 파일에서 패턴 매칭 불가.
+사용 시: `ArticleListSourceAll()`, `ArticleListSourceBookmarked()`, `ArticleListSourceByLabel('라벨명')`.
 
 ---
 
 ## 4. State
 
-`lib/blocs/article_list/article_list_state.dart`:
+> ⚠️ **실제 구현과 다름** — `tabIndex`, `isLoading`, `visibleArticles` getter, `Set<dynamic>` 모두 미채택.
+> **실제 구현**은 아래 "13. 핸드오프 노트 > 계획과 다르게 된 점 #2~3" 참조.
+
+`lib/blocs/article_list/article_list_state.dart` (실제 구현):
 
 ```dart
-import 'package:equatable/equatable.dart';
-import '../../models/article.dart';
-
 class ArticleListState extends Equatable {
-  final List<Article> articles;     // source 기준 전체 목록
-  final int tabIndex;               // 0=전체, 1=안읽음, 2=읽음
-  final bool isSelecting;
-  final Set<dynamic> selectedKeys;  // Hive keys
-  final bool isLoading;
-
   const ArticleListState({
+    required this.source,
     this.articles = const [],
-    this.tabIndex = 0,
     this.isSelecting = false,
-    this.selectedKeys = const {},
-    this.isLoading = true,
+    this.selectedKeys = const [],
+    this.generation = 0,
   });
 
-  /// 현재 탭 기준 필터링된 목록.
-  List<Article> get visibleArticles {
-    switch (tabIndex) {
-      case 1:
-        return articles.where((a) => !a.isRead).toList();
-      case 2:
-        return articles.where((a) => a.isRead).toList();
-      default:
-        return articles;
-    }
-  }
+  final ArticleListSource source;
+  final List<Article> articles;
+  final bool isSelecting;
+  final List<dynamic> selectedKeys;  // Set 아님 — Equatable 안전성
+  final int generation;              // load()마다 +1, Hive in-place 변경 Equatable 우회
 
-  ArticleListState copyWith({
-    List<Article>? articles,
-    int? tabIndex,
-    bool? isSelecting,
-    Set<dynamic>? selectedKeys,
-    bool? isLoading,
-  }) {
-    return ArticleListState(
-      articles: articles ?? this.articles,
-      tabIndex: tabIndex ?? this.tabIndex,
-      isSelecting: isSelecting ?? this.isSelecting,
-      selectedKeys: selectedKeys ?? this.selectedKeys,
-      isLoading: isLoading ?? this.isLoading,
-    );
-  }
+  // 파생 getters
+  int get total => articles.length;
+  int get readCount => articles.where((a) => a.isRead).length;
+  int get unreadCount => articles.where((a) => !a.isRead).length;
+  List<Article> get readArticles => articles.where((a) => a.isRead).toList();
+  List<Article> get unreadArticles => articles.where((a) => !a.isRead).toList();
+  bool allSelectedFor(List<Article> visible) =>
+      visible.isNotEmpty && visible.every((a) => selectedKeys.contains(a.key));
 
   @override
-  List<Object?> get props => [articles, tabIndex, isSelecting, selectedKeys, isLoading];
+  List<Object?> get props => [source, articles, isSelecting, selectedKeys, generation];
 }
 ```
+
+**핵심 설계 결정**:
+- `tabIndex`는 State에 없음. TabController는 StatefulWidget에서만 vsync 가능 → 탭 필터링은 위젯이 담당.
+- `generation`은 Hive in-place 변경 시 Equatable이 emit을 스킵하는 문제를 해결.
+- `selectedKeys`는 List (Set 아님) — Equatable의 컬렉션 동등성 처리 일관성 보장.
 
 ---
 
 ## 5. Cubit
 
-```dart
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../main.dart' show articlesChangedNotifier;
-import '../../models/article.dart';
-import '../../services/database_service.dart';
-import 'article_list_source.dart';
-import 'article_list_state.dart';
+> ⚠️ **계획과 다른 점** — `changeTab()` 없음, `toggleItem()` → `toggleSelection()`, `selectAll()` 파라미터 추가, 이중 emit 패턴 → `_reloadAndClearSelection()` 단일 emit.
 
+`lib/blocs/article_list/article_list_cubit.dart` (실제 구현):
+
+```dart
 class ArticleListCubit extends Cubit<ArticleListState> {
-  ArticleListCubit(this.source) : super(const ArticleListState()) {
+  ArticleListCubit(ArticleListSource source)
+      : super(ArticleListState(source: source)) {
     articlesChangedNotifier.addListener(_onChanged);
     load();
   }
 
-  final ArticleListSource source;
-
-  void _onChanged() => load();
+  void _onChanged() => unawaited(load());
 
   Future<void> load() async {
-    final list = _fetch();
-    emit(state.copyWith(articles: list, isLoading: false));
+    emit(state.copyWith(articles: _fetch(), generation: state.generation + 1));
   }
 
-  List<Article> _fetch() {
-    return switch (source) {
-      _All() => DatabaseService.getAllArticles(),
-      _Bookmarked() => DatabaseService.getBookmarkedArticles(),
-      _ByLabel(name: final n) => DatabaseService.getArticlesByLabel(n),
-    };
-  }
+  List<Article> _fetch() => switch (state.source) {
+    ArticleListSourceAll() => DatabaseService.getAllArticles(),
+    ArticleListSourceBookmarked() => DatabaseService.getBookmarkedArticles(),
+    ArticleListSourceByLabel(:final labelName) =>
+        DatabaseService.getArticlesByLabel(labelName),
+  };
 
-  void changeTab(int index) {
-    if (state.tabIndex == index) return;
-    emit(state.copyWith(
-      tabIndex: index,
-      selectedKeys: const {},
-    ));
-  }
-
-  void toggleSelectMode() {
-    emit(state.copyWith(
-      isSelecting: !state.isSelecting,
-      selectedKeys: const {},
-    ));
-  }
-
-  void toggleItem(dynamic key) {
-    final next = Set<dynamic>.from(state.selectedKeys);
-    if (!next.add(key)) next.remove(key);
+  // 선택 모드
+  void toggleSelectMode() =>
+      emit(state.copyWith(isSelecting: !state.isSelecting, selectedKeys: []));
+  void clearSelection() =>
+      emit(state.copyWith(isSelecting: false, selectedKeys: []));
+  void toggleSelection(dynamic key) {
+    final next = List<dynamic>.from(state.selectedKeys);
+    next.contains(key) ? next.remove(key) : next.add(key);
     emit(state.copyWith(selectedKeys: next));
   }
-
-  void selectAll() {
-    final keys = state.visibleArticles.map((a) => a.key).toSet();
+  void selectAll(List<Article> visibleArticles) {
+    // 현재 탭의 가시 목록을 파라미터로 받음 (tabIndex 없으므로)
+    final keys = visibleArticles.map((a) => a.key).toList();
     emit(state.copyWith(selectedKeys: keys));
   }
 
-  void clearSelection() {
-    emit(state.copyWith(selectedKeys: const {}, isSelecting: false));
-  }
-
+  // 일괄 작업 — _reloadAndClearSelection() 단일 emit (이중 emit 방지)
   Future<void> bulkMarkRead(bool read) async {
     final targets = state.articles
-        .where((a) => state.selectedKeys.contains(a.key))
-        .toList();
+        .where((a) => state.selectedKeys.contains(a.key)).toList();
     await DatabaseService.bulkMarkRead(targets, read);
-    clearSelection();
-    await load();
+    await _reloadAndClearSelection();
   }
-
   Future<void> bulkToggleBookmark(bool bookmark) async {
     final targets = state.articles
-        .where((a) => state.selectedKeys.contains(a.key))
-        .toList();
+        .where((a) => state.selectedKeys.contains(a.key)).toList();
     await DatabaseService.bulkSetBookmark(targets, bookmark);
-    clearSelection();
-    await load();
+    await _reloadAndClearSelection();
   }
-
   Future<void> bulkDelete() async {
     final targets = state.articles
-        .where((a) => state.selectedKeys.contains(a.key))
-        .toList();
-    for (final a in targets) {
-      await DatabaseService.deleteArticle(a);
-    }
-    clearSelection();
-    await load();
+        .where((a) => state.selectedKeys.contains(a.key)).toList();
+    for (final a in targets) await DatabaseService.deleteArticle(a);
+    await _reloadAndClearSelection();
   }
 
+  Future<void> _reloadAndClearSelection() async {
+    emit(state.copyWith(
+      articles: _fetch(), isSelecting: false, selectedKeys: [],
+      generation: state.generation + 1,
+    ));
+  }
+
+  // 개별 작업
   Future<void> toggleBookmark(Article a) async {
-    await DatabaseService.toggleBookmark(a);
-    await load();
+    await DatabaseService.toggleBookmark(a); await load();
   }
-
   Future<void> updateMemo(Article a, String? memo) async {
-    await DatabaseService.updateMemo(a, memo);
-    await load();
+    await DatabaseService.updateMemo(a, memo); await load();
   }
-
   Future<void> markRead(Article a) async {
-    await DatabaseService.markAsRead(a);
-    await load();
+    await DatabaseService.markAsRead(a); await load();
   }
-
   Future<void> markUnread(Article a) async {
-    await DatabaseService.markAsUnread(a);
-    await load();
+    await DatabaseService.markAsUnread(a); await load();
   }
-
   Future<void> deleteArticle(Article a) async {
-    await DatabaseService.deleteArticle(a);
-    await load();
+    await DatabaseService.deleteArticle(a); await load();
   }
 
   @override
@@ -264,115 +217,46 @@ class ArticleListCubit extends Cubit<ArticleListState> {
 }
 ```
 
-**주의**:
-- `DatabaseService.bulkMarkRead` / `bulkSetBookmark` 호출이 이미 Firestore batch write를 포함하므로 중복 동기화 없음.
-- `bulkDelete`는 루프 처리. 최적화가 필요하면 `DatabaseService`에 `bulkDelete` 추가를 별도 PR로 검토.
-- `a.key`는 Hive key로 int (또는 String). `dynamic`으로 호환.
+**핵심 결정**:
+- `changeTab()` 없음 — tabIndex를 State에서 제거했으므로.
+- `selectAll(visibleArticles)` — 현재 탭 목록을 호출 측에서 전달.
+- 이중 emit(`clearSelection()` + `load()`)은 broadcast stream async 특성상 테스트 타이밍 이슈 유발. `_reloadAndClearSelection()` 단일 emit으로 통합.
+- `articlesChangedNotifier`는 `ShareService.processAndSave()`만 트리거. Cubit 내부 write 후에는 반드시 직접 `load()` 필요.
 
 ---
 
-## 6. 공통 위젯 추출: `ArticleListView`
+## 6. 공통 위젯 추출: `ArticleListView` + `ArticleListItem`
 
-`lib/widgets/article_list_view.dart` 신규:
+> ⚠️ **실제 구현과 다름** — `ArticleCard`는 HomeScreen 스와이프 카드 전용. 리스트 행은 새 위젯 필요.
+> `selectedKeys`는 `Set`이 아닌 `List<dynamic>`. `onToggleSelect` 서명도 다름.
+
+`lib/widgets/article_list_view.dart` (실제 서명):
 
 ```dart
-import 'package:flutter/material.dart';
-import '../models/article.dart';
-import '../widgets/article_card.dart';
-import '../widgets/inline_banner_ad.dart';
-
 class ArticleListView extends StatelessWidget {
   const ArticleListView({
     super.key,
     required this.articles,
-    required this.onTap,
-    required this.onLongPress,
-    this.isSelecting = false,
-    this.selectedKeys = const {},
-    this.onToggleSelect,
-    this.adInterval = 8,
-    this.emptyBuilder,
-  });
-
-  final List<Article> articles;
-  final void Function(Article) onTap;
-  final void Function(Article) onLongPress;
-  final bool isSelecting;
-  final Set<dynamic> selectedKeys;
-  final void Function(Article)? onToggleSelect;
-  final int adInterval;
-  final WidgetBuilder? emptyBuilder;
-
-  @override
-  Widget build(BuildContext context) {
-    if (articles.isEmpty) {
-      return emptyBuilder?.call(context) ?? const SizedBox.shrink();
-    }
-
-    // 광고 삽입 고려하여 전체 아이템 수 계산
-    final items = <Widget>[];
-    for (var i = 0; i < articles.length; i++) {
-      final a = articles[i];
-      items.add(_ArticleRow(
-        article: a,
-        isSelecting: isSelecting,
-        isSelected: selectedKeys.contains(a.key),
-        onTap: () {
-          if (isSelecting) {
-            onToggleSelect?.call(a);
-          } else {
-            onTap(a);
-          }
-        },
-        onLongPress: () => onLongPress(a),
-      ));
-      // 8개마다 배너(마지막은 제외)
-      if ((i + 1) % adInterval == 0 && i != articles.length - 1) {
-        items.add(const InlineBannerAd());
-      }
-    }
-
-    return ListView(children: items);
-  }
-}
-
-class _ArticleRow extends StatelessWidget {
-  const _ArticleRow({
-    required this.article,
     required this.isSelecting,
-    required this.isSelected,
-    required this.onTap,
-    required this.onLongPress,
+    required this.selectedKeys,       // List<dynamic>, Set 아님
+    required this.onTap,              // void Function(Article)
+    required this.onSelectionToggle,  // void Function(dynamic key)
+    required this.emptyWidget,        // Widget, builder 아님
+    this.onLongPress,                 // void Function(Article)?
   });
-
-  final Article article;
-  final bool isSelecting;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final VoidCallback onLongPress;
-
-  @override
-  Widget build(BuildContext context) {
-    // ArticleCard 기존 props에 맞춰 작성
-    return InkWell(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: Row(
-        children: [
-          if (isSelecting)
-            Checkbox(
-              value: isSelected,
-              onChanged: (_) => onTap(),
-            ),
-          Expanded(child: ArticleCard(article: article)),
-        ],
-      ),
-    );
-  }
 }
 ```
 
-**주의**: 기존 `ArticleCard`의 실제 생성자와 props를 확인하고 맞춘다. 롱프레스/탭 로직은 각 화면의 기존 구현을 그대로 이식.
+광고 삽입 공식: `adCount > 0 && index > 0 && (index + 1) % (adInterval + 1) == 0` (adInterval=8)
+
+`lib/widgets/article_list_item.dart` (신규, 실제 리스트 행):
+- `ArticleCard`를 재사용하지 않음. 새 `ArticleListItem` StatelessWidget.
+- 파라미터: `article, isSelecting, isSelected, onTap, onSelectionToggle, onLongPress?`
+
+`lib/widgets/bulk_action_bar.dart` (신규, 공용 위젯):
+- 계획의 `_BulkActionBar` private → public `BulkActionBar` 위젯으로 추출 (PR 7에서 재사용)
+- 2행 5버튼: [북마크 추가 | 북마크 해제] / [안읽음 | 읽음 | 삭제(error색)]
+- 파라미터: `onBookmark, onRemoveBookmark, onMarkUnread, onMarkRead, onDelete` (모두 VoidCallback)
 
 ---
 
@@ -610,20 +494,102 @@ BLoC PR6: ArticleListCubit 도입 + AllArticlesScreen 전환
 
 ## 13. 핸드오프 노트
 
+> **세션 완료일**: 2026-04-21
+
 ### 계획대로 된 점
-- (작성)
+
+- `ArticleListCubit` + `ArticleListState` + `ArticleListSource` 3파일 분리 구조
+- `articlesChangedNotifier` 브릿지: 생성자 `addListener`, `close()` `removeListener`
+- `AllArticlesScreen` → StatelessWidget + `BlocProvider` 전환
+- `ArticleListView` 공통 위젯 추출 (광고 삽입 포함)
+- 롱프레스 액션시트 / 메모 바텀시트 Cubit 경유로 교체
+- 다중선택 + 일괄 읽음/북마크/삭제 (BulkActionBar)
+- 유닛 테스트 22개 작성 및 통과
 
 ### 계획과 다르게 된 점
-- (작성)
+
+1. **Source 클래스: private 서브클래스 → public `final class`**
+   - 계획: `ArticleListSource.all()` 등 factory constructor + private `_All`, `_Bookmarked`, `_ByLabel`
+   - 실제: `ArticleListSourceAll`, `ArticleListSourceBookmarked`, `ArticleListSourceByLabel` (public, 접두사 방식)
+   - 이유: sealed class의 private 서브클래스는 다른 파일에서 exhaustive pattern matching 불가 → 컴파일 실패
+
+2. **State: `tabIndex` / `isLoading` 제거, `generation` 추가, `Set` → `List`**
+   - `tabIndex` 제거: TabController는 vsync 필요 → StatefulWidget에 유지. 탭 필터링은 `_tabController.index` switch로 위젯에서 처리.
+   - `isLoading` 제거: 초기 로드가 동기에 가까워 불필요.
+   - `generation: int` 추가: Hive 객체 in-place 변경 후 `_DeepCollectionEquality`가 동일 참조를 equal 판단 → `emit()` 스킵 문제 해결. `load()` 호출마다 `generation + 1`.
+   - `selectedKeys: List<dynamic>` (Set 아님): Equatable 컬렉션 동등성 일관성 보장.
+
+3. **`visibleArticles` getter: State → 위젯**
+   - 탭 필터링(`state.unreadArticles`, `state.readArticles` getter)은 State에 있으나, 어느 getter를 쓸지는 위젯의 `_tabController.index`가 결정.
+
+4. **Cubit 메서드명 변경**
+   - `changeTab(int)` → 없음
+   - `toggleItem(dynamic key)` → `toggleSelection(dynamic key)`
+   - `selectAll()` → `selectAll(List<Article> visibleArticles)` (현재 탭 가시 목록을 파라미터로)
+
+5. **이중 emit 패턴 → `_reloadAndClearSelection()` 단일 emit**
+   - 계획: bulk 작업 후 `clearSelection()` + `load()` 순차 호출 (2번 emit)
+   - 실제: `_reloadAndClearSelection()` 단일 헬퍼로 통합 (1번 emit)
+   - 이유: `flutter_bloc` broadcast stream은 async. 2번 emit 시 테스트에서 중간 상태(`isSelecting: false, articles: old`)를 관찰해 `Expected: 1, Actual: 2` 류 실패 발생.
+
+6. **`ArticleCard` 재사용 불가 → `ArticleListItem` 신규**
+   - `ArticleCard`는 HomeScreen의 스와이프 덱 전용 (카드형 레이아웃). 리스트 행에는 맞지 않음.
+   - `ArticleListItem` (lib/widgets/) 새로 작성.
+
+7. **`BulkActionBar`: 화면 private → 공용 public 위젯**
+   - 계획: `_BulkActionBar` 화면 내 private 위젯
+   - 실제: `lib/widgets/bulk_action_bar.dart` 공용 위젯 (PR 7에서 3화면 재사용 위해)
+   - 버튼 구성 차이: 계획(3버튼) vs 실제(5버튼: 북마크 추가/해제, 안읽음, 읽음, 삭제)
+
+8. **`_MemoSheet`: 인라인 builder → StatefulWidget 분리**
+   - `TextEditingController` 라이프사이클 보장을 위해 `_MemoSheet` private StatefulWidget으로 분리.
+   - `dispose()`에서 controller 해제.
+
+9. **Tab listener: `changeTab()` → `clearSelection()` + `setState()`**
+   - `changeTab()` 제거됨에 따라, 탭 전환 시 `cubit.clearSelection()` + `setState(() {})`.
+   - `setState()`가 없으면 Equatable이 selectedKeys 변화 없을 때 BlocBuilder를 rebuild 스킵 → 탭 헤더가 stale.
 
 ### 새로 발견한 이슈 / TODO
-- (작성)
+
+1. **Hive in-place 변경 + Equatable 문제** → `generation` 카운터로 해결
+2. **`articlesChangedNotifier`는 `ShareService`만 트리거** — Cubit 내부 write 후 반드시 `load()` 직접 호출 필요
+3. **`labelsChangedNotifier` 구독 불필요** — 아티클 목록은 라벨 메타 변경에 영향받지 않음
+4. **`ArticleListSourceByLabel(labelName)` stale 문제** — 라벨 이름 변경 시 현재 화면의 source가 구버전 이름을 유지 → 다음 `load()`가 빈 리스트 반환. PR 7에서 LabelDetailScreen 구현 시 주의 (편집 후 화면 pop 유도).
+5. **`firebase_core` 미초기화 테스트 이슈** → `DatabaseService.skipSync = true` 설정으로 해결
+6. **broadcast stream async → 테스트 타이밍** → `await Future<void>.delayed(Duration.zero)` 필요
 
 ### 참고한 링크
-- (작성)
 
-### 다음 세션 유의사항 (특히 PR 7)
-- (작성)
+- flutter_bloc broadcast stream 동작: https://bloclibrary.dev/bloc-concepts/#streams
+- Equatable DeepCollectionEquality: https://pub.dev/packages/equatable
+
+### 다음 세션 유의사항 (PR 7)
+
+**반드시 확인할 실제 API** (계획 문서의 예제 코드 믿지 말 것):
+
+- Source 클래스: `ArticleListSourceAll()`, `ArticleListSourceBookmarked()`, `ArticleListSourceByLabel(labelName)` — factory constructor 없음
+- `ArticleListView` 실제 서명:
+  ```dart
+  ArticleListView(
+    articles: ...,
+    isSelecting: state.isSelecting,
+    selectedKeys: state.selectedKeys,       // List<dynamic>
+    onTap: (article) { ... },
+    onSelectionToggle: (key) => cubit.toggleSelection(key),
+    emptyWidget: ...,                        // Widget, not builder
+    onLongPress: (article) { ... },
+  )
+  ```
+- `BulkActionBar` 재사용 가능 (lib/widgets/bulk_action_bar.dart)
+- `_MemoSheet` 패턴 재사용 (LabelDetailScreen도 메모 다이얼로그 있음)
+- Tab listener: `clearSelection()` + `setState(() {})` (changeTab 없음)
+- `selectAll(visibleArticles)` — 현재 탭의 가시 아티클 목록 전달
+- **LabelDetailScreen 고유 요소**: `labelColor = Color(label.colorValue)`, 통계 헤더, 라벨 첫 글자 아이콘. `state.articles`로 파생 계산.
+- **ArticleListScreenBody 공통 위젯 불필요** — 각 화면 AppBar 로직이 충분히 다름. 오버엔지니어링.
+- 테스트: `DatabaseService.skipSync = true` + bulk 작업 후 `await Future<void>.delayed(Duration.zero)`
 
 ### 검증 결과
-- (작성)
+
+- `flutter analyze`: No issues ✓
+- `flutter test`: 22개 테스트 전부 통과 ✓
+- 실기기 스모크: 미수행 (실기기 접근 불가) — PR 7 시작 전 또는 PR 리뷰 시 수행 권장

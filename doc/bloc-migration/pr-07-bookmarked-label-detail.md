@@ -1,6 +1,7 @@
 # PR 7 — BookmarkedArticlesScreen + LabelDetailScreen (Cubit 재사용)
 
-> PR 6에서 만든 `ArticleListCubit` + `ArticleListView`를 두 화면에 적용하여 중복 코드를 제거한다. 예상 감소: 화면당 ~500 LOC → ~150 LOC.
+> PR 6에서 만든 `ArticleListCubit` + `ArticleListView` + `BulkActionBar`를 두 화면에 적용하여 중복 코드를 제거한다.
+> 예상 감소: 화면당 ~650 LOC → ~200 LOC.
 
 **의존성**: PR 6 (필수)
 **브랜치**: `feature/bloc-07-bookmarked-label`
@@ -9,31 +10,96 @@
 
 ---
 
+## 0. 사전 필독: PR 6 실제 구현 정리
+
+PR 6 계획 문서의 예제 코드 일부가 실제 구현과 다르다. **이 섹션을 먼저 숙지하고 시작할 것.**
+
+### 실제 Source 클래스 이름
+
+```dart
+// lib/blocs/article_list/article_list_source.dart
+ArticleListSourceAll()                // (NOT ArticleListSource.all())
+ArticleListSourceBookmarked()         // (NOT ArticleListSource.bookmarked())
+ArticleListSourceByLabel(labelName)   // (NOT ArticleListSource.byLabel(name))
+```
+
+### 실제 State 구조
+
+```dart
+class ArticleListState extends Equatable {
+  final ArticleListSource source;
+  final List<Article> articles;      // source 기준 전체 목록
+  final bool isSelecting;
+  final List<dynamic> selectedKeys;  // Set 아님
+  final int generation;              // load()마다 +1, emit 스킵 방지용
+
+  // getters: total, readCount, unreadCount, readArticles, unreadArticles
+  // bool allSelectedFor(List<Article> visible)
+}
+```
+
+`tabIndex` 없음. 탭 필터링은 위젯의 `TabController.index`로 처리.
+
+### 실제 Cubit 메서드
+
+| 계획 | 실제 |
+|------|------|
+| `changeTab(int)` | **없음** |
+| `toggleItem(dynamic key)` | `toggleSelection(dynamic key)` |
+| `selectAll()` | `selectAll(List<Article> visibleArticles)` |
+| bulk 후 `clearSelection()` + `load()` | `_reloadAndClearSelection()` 단일 emit |
+
+### 실제 `ArticleListView` 서명
+
+```dart
+ArticleListView(
+  articles: visibleArticles,          // 이미 필터링된 목록
+  isSelecting: state.isSelecting,
+  selectedKeys: state.selectedKeys,   // List<dynamic>
+  onTap: (article) { ... },
+  onSelectionToggle: (key) => cubit.toggleSelection(key),
+  emptyWidget: ...,                   // Widget (builder 아님)
+  onLongPress: (article) { ... },     // nullable
+)
+```
+
+### 실제 `BulkActionBar` 서명 (lib/widgets/bulk_action_bar.dart)
+
+```dart
+BulkActionBar(
+  onBookmark: () => cubit.bulkToggleBookmark(true),
+  onRemoveBookmark: () => cubit.bulkToggleBookmark(false),
+  onMarkUnread: () => cubit.bulkMarkRead(false),
+  onMarkRead: () => cubit.bulkMarkRead(true),
+  onDelete: () => _confirmBulkDelete(context),
+)
+```
+
+---
+
 ## 1. 목표
 
-- `BookmarkedArticlesScreen` → `ArticleListCubit(ArticleListSource.bookmarked())` 기반
-- `LabelDetailScreen` → `ArticleListCubit(ArticleListSource.byLabel(name))` 기반
-- 각 화면의 고유 요소(앱바 제목, 라벨 헤더, 필터 로직 등)만 유지
-- 유닛 테스트(상태 클래스 재사용이므로 생략 가능)
+- `BookmarkedArticlesScreen` → `ArticleListCubit(ArticleListSourceBookmarked())` 기반으로 전환
+- `LabelDetailScreen` → `ArticleListCubit(ArticleListSourceByLabel(label.name))` 기반으로 전환
+- 각 화면의 고유 요소만 유지 (AppBar 제목, LabelDetailScreen의 통계 헤더/라벨색)
+- 두 화면의 `ArticleListScreenBody` 공통 추출은 **불필요** — 각 AppBar 로직이 달라 오버엔지니어링
 
 ---
 
 ## 2. 사전 요건
 
-| 파일 | 범위 |
-|------|------|
-| `lib/screens/bookmarked_articles_screen.dart` | 전체 (664 LOC) |
-| `lib/screens/label_detail_screen.dart` | 전체 (685 LOC) |
-| PR 6에서 만든 `lib/blocs/article_list/*` | 구조 재확인 |
-| PR 6에서 만든 `lib/widgets/article_list_view.dart` | 재사용 |
+먼저 두 파일 전체를 읽어 고유 요소를 파악한다.
 
-**핵심 사실**:
-- `BookmarkedArticlesScreen`은 AllArticlesScreen과 탭 구조 동일(전체/안읽음/읽음) — Source만 다름
-- `LabelDetailScreen`은 라벨 정보 헤더 + 알림 토글 같은 고유 UI를 가질 수 있음 → 기존 코드 확인 필수
+| 파일 | 현재 LOC | 핵심 고유 요소 |
+|------|---------|--------------|
+| `lib/screens/bookmarked_articles_screen.dart` | 664 | AppBar 제목(`bookmarkedArticles`), 탭 구조는 AllArticles와 동일 |
+| `lib/screens/label_detail_screen.dart` | 685 | `labelColor`, 통계 헤더, 라벨 아이콘(첫 글자), `_showArticleActions(article, labelColor)` |
 
 ---
 
 ## 3. BookmarkedArticlesScreen 교체
+
+구조는 `AllArticlesScreen`과 거의 동일. **차이점만** 반영:
 
 ```dart
 class BookmarkedArticlesScreen extends StatelessWidget {
@@ -42,62 +108,57 @@ class BookmarkedArticlesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => ArticleListCubit(const ArticleListSource.bookmarked()),
+      create: (_) => ArticleListCubit(const ArticleListSourceBookmarked()),
       child: const _BookmarkedBody(),
     );
   }
 }
 ```
 
-`_BookmarkedBody`는 AllArticlesScreen의 `_AllArticlesBody`와 거의 동일한 구조를 따른다. **차이점만** 반영:
+### 3.1 `_BookmarkedBody`
 
-- `AppBar.title`: `l10n.bookmarkedArticles`
-- 필요시 empty 상태 메시지 변경 (`l10n.bookmarkEmpty`)
+`AllArticlesScreen`의 `_AllArticlesBody`를 템플릿으로 사용하되 다음만 변경:
 
-### 3.1 중복 줄이기
+1. **AppBar.title**: `l.bookmarkedArticles` (선택 모드 아닐 때)
+2. **Tab listener** (AllArticles와 동일 패턴):
+   ```dart
+   _tabController.addListener(() {
+     if (_tabController.indexIsChanging) {
+       context.read<ArticleListCubit>().clearSelection();
+       setState(() {}); // 탭 헤더 stale 방지
+     }
+   });
+   ```
+3. **빈 상태 메시지**: `l.noBookmarks` (탭별로 북마크 전용 메시지 사용)
+4. **탭별 필터링** (위젯에서 처리):
+   ```dart
+   final visibleArticles = switch (_tabController.index) {
+     0 => state.articles,
+     1 => state.unreadArticles,
+     2 => state.readArticles,
+     _ => state.articles,
+   };
+   ```
 
-AllArticlesScreen과 BookmarkedArticlesScreen의 본체가 거의 같다면 **더 공통화 가능**:
+### 3.2 핵심 주의사항
 
-```dart
-// lib/widgets/article_list_screen_body.dart 도입 고려
-class ArticleListScreenBody extends StatefulWidget {
-  const ArticleListScreenBody({
-    super.key,
-    required this.title,
-    this.headerBuilder,
-    this.emptyBuilder,
-  });
-
-  final Widget title;
-  final WidgetBuilder? headerBuilder;
-  final WidgetBuilder? emptyBuilder;
-  // ...
-}
-```
-
-위 위젯을 만들면 AllArticles/Bookmarked는 거의 한 줄:
-
-```dart
-ArticleListScreenBody(title: Text(l10n.bookmarkedArticles))
-```
-
-**결정**: 이번 PR에서 **ArticleListScreenBody 추출을 병행 권장**. 안 하면 여전히 3화면이 각자 TabController/AppBar 코드를 들고 있게 됨.
-
-단, PR 6에서 `_AllArticlesBody`가 이미 특수한 로직을 많이 갖고 있으면, 추출 범위를 조절. 핸드오프 노트에 근거 기록.
+- Tab listener에 반드시 `setState(() {})` 포함. 없으면 BlocBuilder가 rebild 스킵 → 탭 헤더 카운트 stale.
+- `selectAll(visibleArticles)` 호출 시 현재 탭의 `visibleArticles` 전달.
 
 ---
 
 ## 4. LabelDetailScreen 교체
 
-### 4.1 라벨별 고유 요소 확인
+기존 `LabelDetailScreen`에는 AllArticlesScreen에 없는 고유 요소가 있다.
 
-먼저 기존 코드에서 다음을 확인:
-- 앱바 타이틀: 라벨 이름
-- 라벨 알림 설정 버튼 (대부분 있음)
-- 라벨 이름/색상 편집 진입
-- 라벨별 통계 카드
+### 4.1 고유 요소 확인
 
-이 요소들은 **화면 고유**이므로 Cubit에 넣지 않고 위젯 로컬에 유지. 또는 LibraryCubit/LabelManagementCubit을 별도로 주입해 통계를 읽는다.
+기존 코드에서 확인된 주요 고유 요소:
+
+- `labelColor = Color(widget.label.colorValue)` — 아티클 아이템 좌측 라벨 색 표시
+- 통계 헤더 (total / read 카운트) — `DatabaseService.getLabelStats()` 직접 호출 중
+- 앱바 좌측에 라벨 아이콘 (첫 글자 + 라벨색 원형 배경)
+- `_showArticleActions(article, labelColor)` — labelColor를 파라미터로 받음
 
 ### 4.2 구조
 
@@ -109,146 +170,217 @@ class LabelDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => ArticleListCubit(ArticleListSource.byLabel(label.name)),
+      create: (_) => ArticleListCubit(ArticleListSourceByLabel(label.name)),
       child: _LabelDetailBody(label: label),
     );
   }
 }
 ```
 
-### 4.3 본체
+### 4.3 통계 헤더
+
+`DatabaseService.getLabelStats()` 직접 호출 대신 **Cubit state에서 파생 계산**:
 
 ```dart
-class _LabelDetailBody extends StatefulWidget {
-  const _LabelDetailBody({required this.label});
-  final Label label;
+BlocBuilder<ArticleListCubit, ArticleListState>(
+  builder: (context, state) {
+    final total = state.total;
+    final unread = state.unreadCount;
+    final read = state.readCount;
+    // 통계 헤더 위젯 렌더링
+  },
+)
+```
 
-  @override
-  State<_LabelDetailBody> createState() => _LabelDetailBodyState();
-}
+이 방식이 아티클 변경 시 통계도 자동 갱신 (별도 `getLabelStats()` 재호출 불필요).
 
+### 4.4 `labelColor` 처리
+
+라벨 색은 `_LabelDetailBody.widget.label`에서 한 번만 파생:
+
+```dart
 class _LabelDetailBodyState extends State<_LabelDetailBody>
     with SingleTickerProviderStateMixin {
-  late final TabController _tab;
+  late final Color _labelColor;
 
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 3, vsync: this);
-    _tab.addListener(() {
-      if (_tab.indexIsChanging) return;
-      context.read<ArticleListCubit>().changeTab(_tab.index);
+    _labelColor = Color(widget.label.colorValue);
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        context.read<ArticleListCubit>().clearSelection();
+        setState(() {});
+      }
     });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // ... AllArticlesScreen과 유사. 차이는 앱바 타이틀과 통계 헤더.
   }
 }
 ```
 
-### 4.4 통계 헤더
+`_labelColor`를 `_buildTab()`, `_showArticleActions()` 등에 전달.
 
-라벨 통계가 Cubit 상태로 올라오지 않는다면 `DatabaseService.getLabelStats(label.name)` 직접 호출. 다만 아티클 변경 시 통계도 갱신되어야 하므로 **`ArticleListState.articles` 변화에 따라 파생 통계를 계산**하는 게 깔끔:
+### 4.5 `_showArticleActions`에서 `labelColor` 전달
+
+기존 코드가 `_showArticleActions(article, labelColor)`로 색상 파라미터를 받는다면 그대로 유지.
+없다면 아티클 아이템 좌측 컬러 표시는 `ArticleListItem`에 `labelColor` 파라미터 추가 고려 (별도 결정).
+
+### 4.6 라벨명 stale 문제
+
+`ArticleListSourceByLabel(label.name)`은 화면 진입 시 이름을 캡처한다.
+라벨 이름 편집 후에는 `Navigator.pop()`으로 화면을 빠져나가게 해야 한다 (기존 동작 유지).
+편집 없이 그냥 화면이 열려 있는 상태에서 라벨명이 변경되면 다음 `load()`가 빈 리스트를 반환하지만 별도 안내 UI는 없어도 됨 (기존과 동일 동작).
+
+### 4.7 라벨 편집 / 알림 버튼
+
+기존 로직을 그대로 유지한다. `LabelManagementCubit` 재사용은 별도 개선.
+
+---
+
+## 5. `_MemoSheet` 패턴
+
+두 화면 모두 메모 다이얼로그가 있다. `AllArticlesScreen`에서 사용한 `_MemoSheet` 패턴을 동일하게 적용:
 
 ```dart
-// _LabelDetailBody.build 내부
-BlocBuilder<ArticleListCubit, ArticleListState>(
-  builder: (context, state) {
-    final total = state.articles.length;
-    final unread = state.articles.where((a) => !a.isRead).length;
-    return _StatsHeader(total: total, unread: unread);
-  },
-),
+class _MemoSheet extends StatefulWidget {
+  const _MemoSheet({required this.article, required this.cubit});
+  final Article article;
+  final ArticleListCubit cubit;
+
+  @override
+  State<_MemoSheet> createState() => _MemoSheetState();
+}
+
+class _MemoSheetState extends State<_MemoSheet> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.article.memo);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose(); // 반드시 dispose
+    super.dispose();
+  }
+  // ...
+}
 ```
 
-**주의**: 이 방식은 Cubit의 articles가 **모든 해당 라벨 아티클**(삭제/tombstone 제외)을 담고 있음을 전제로 한다. DatabaseService가 필터링 후 반환하므로 맞을 것.
-
-### 4.5 라벨 편집 / 알림 / 삭제 버튼
-
-기존 LabelManagementScreen의 편집 다이얼로그를 재사용 가능하면 그대로. 없으면 LabelManagementCubit을 BlocProvider로 별도 주입하거나 DatabaseService를 직접 호출.
-
-**권장**: 간단한 경우 이번 PR에서는 기존 로직 유지. LabelManagementCubit 재사용은 별도 개선.
+**절대 인라인 builder에서 TextEditingController 생성하지 말 것** — dispose 누락으로 메모리 누수.
 
 ---
 
-## 5. 주의사항
+## 6. `use_build_context_synchronously` 방지
 
-- **BlocProvider scope**가 화면 전체를 감싸야 BottomAppBar의 버튼 액션이 `context.read`로 Cubit을 찾을 수 있다.
-- `LabelDetailScreen`은 라벨 이름을 삭제/변경하면 `ArticleListSource.byLabel(name)`이 stale해질 수 있다. 편집 후에는 `Navigator.pop`으로 화면 빠져나가게 하거나, 새 이름으로 화면 재진입 유도.
-- Firestore 동기화에서 라벨명 변경이 일어나면 현재 화면의 소스와 안 맞게 됨. 이 경우 `articlesChangedNotifier` 펄스 → `load()` → 빈 리스트가 정상. 사용자 안내 UI 없음(기존과 동일).
-
----
-
-## 6. 테스트
-
-- Cubit 자체는 PR 6에서 테스트됨. 이번 PR에서는 Source 분기 경로만 추가:
+async 콜백 내 `Navigator.pop(context)` 전에 context를 캡처:
 
 ```dart
-test('_fetch dispatches to correct DatabaseService method by source', () {
-  // DatabaseService 호출을 mock하기 어렵다면 실 Hive로 seed 후 소스별 호출 결과 비교
+onPressed: () async {
+  final nav = Navigator.of(context); // await 전에 캡처
+  await widget.cubit.updateMemo(widget.article, memo);
+  if (mounted) nav.pop();
+},
+```
+
+---
+
+## 7. 테스트
+
+Cubit 자체는 PR 6에서 22개 테스트 통과. PR 7에서 추가할 것:
+
+```dart
+// test/blocs/article_list_cubit_test.dart에 추가
+
+group('ArticleListSourceBookmarked', () {
+  test('load returns only bookmarked articles', () async {
+    DatabaseService.skipSync = true;
+    // Hive setUp ...
+    final a = Article(url: 'u', title: 't', isBookmarked: true, ...);
+    await DatabaseService.saveArticle(a);
+    final cubit = ArticleListCubit(const ArticleListSourceBookmarked());
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state.articles.every((a) => a.isBookmarked), true);
+    await cubit.close();
+  });
+});
+
+group('ArticleListSourceByLabel', () {
+  test('load returns articles with matching label', () async {
+    // ...
+    final cubit = ArticleListCubit(const ArticleListSourceByLabel('flutter'));
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state.articles.every((a) => a.topicLabels.contains('flutter')), true);
+    await cubit.close();
+  });
 });
 ```
 
-- 또는 스킵하고 실기기 QA로 대체.
+테스트 패턴 핵심:
+- `DatabaseService.skipSync = true` (Firebase 미초기화 환경)
+- Cubit 생성 후 `await Future<void>.delayed(Duration.zero)` (broadcast stream async 특성)
 
 ---
 
-## 7. 검증
+## 8. 검증
 
 ```bash
-flutter analyze
-flutter test
+flutter analyze    # No issues 필수
+flutter test       # 신규 테스트 포함 전체 통과
 ```
 
 ### 실기기 스모크
 
-- [ ] 라이브러리 > 북마크 카드 → BookmarkedArticlesScreen
-  - 모든 동작이 AllArticlesScreen과 동일하게 작동
-- [ ] 라이브러리 > 임의 라벨 카드 → LabelDetailScreen
-  - 라벨명/통계 헤더 정상
-  - 탭 전환/다중선택/롱프레스 모두 동작
-- [ ] LabelDetail에서 라벨 이름 편집 → 화면 제목 갱신 또는 자연스러운 복귀
-- [ ] LabelDetail에서 라벨 삭제 → 화면 자동 닫힘 (기존 동작과 동일해야 함)
+**BookmarkedArticlesScreen:**
+- [ ] 라이브러리 > 북마크 카드 → 화면 진입
+- [ ] 전체/안읽음/읽음 탭 전환 + 카운트 정상
+- [ ] 다중선택 → 전체선택 → 일괄 북마크해제 → 목록 갱신
+- [ ] 롱프레스 → 액션시트 (북마크 토글, 메모, 읽음, 삭제)
+- [ ] 메모 입력 → 저장/삭제 정상
+
+**LabelDetailScreen:**
+- [ ] 라이브러리 > 라벨 카드 → 화면 진입
+- [ ] 라벨명 / 통계 헤더 정상 표시
+- [ ] 라벨색 반영 (아티클 아이템 좌측 컬러)
+- [ ] 탭 전환 + 다중선택 + 일괄 작업
+- [ ] 라벨 이름 편집 → 화면 pop (stale 방지)
+- [ ] 라벨 삭제 → 화면 자동 닫힘
 
 ---
 
-## 8. 리팩터링 성과 측정
+## 9. 리팩터링 성과 측정
 
-PR 6 전:
-- AllArticles: 728 LOC
-- Bookmarked: 664 LOC
-- LabelDetail: 685 LOC
-- 합계: **2,077 LOC**
+PR 6 기준:
+- `bookmarked_articles_screen.dart`: 664 LOC (미변경)
+- `label_detail_screen.dart`: 685 LOC (미변경)
+- 합계: **1,349 LOC**
 
-PR 7 후 목표:
-- AllArticles: ~150 LOC
-- Bookmarked: ~100 LOC
-- LabelDetail: ~200 LOC
-- ArticleListCubit: ~200 LOC
-- ArticleListView: ~120 LOC
-- ArticleListScreenBody (선택): ~150 LOC
-- 합계: **~920 LOC (55% 감소)**
+PR 7 목표:
+- `bookmarked_articles_screen.dart`: ~200 LOC
+- `label_detail_screen.dart`: ~250 LOC (통계 헤더 + 라벨색 고유 로직 포함)
+- 합계: **~450 LOC (67% 감소)**
 
 실제 수치를 핸드오프 노트에 기록.
 
 ---
 
-## 9. 커밋 메시지
+## 10. 커밋 메시지
 
 ```
 BLoC PR7: Bookmarked/LabelDetail 화면 ArticleListCubit 재사용
 
-- BookmarkedArticlesScreen → source.bookmarked()
-- LabelDetailScreen → source.byLabel(name)
-- (선택) ArticleListScreenBody 공통 위젯 추출
-- 중복 코드 약 N% 감소
+- BookmarkedArticlesScreen → ArticleListSourceBookmarked()
+- LabelDetailScreen → ArticleListSourceByLabel(label.name)
+- 통계 헤더 state.articles 파생 계산으로 전환
+- _MemoSheet 패턴 재사용
+- 기존 LOC 약 N% 감소
 ```
 
 ---
 
-## 10. 핸드오프 노트
+## 11. 핸드오프 노트
 
 ### 계획대로 된 점
 - (작성)
@@ -259,14 +391,12 @@ BLoC PR7: Bookmarked/LabelDetail 화면 ArticleListCubit 재사용
 ### 새로 발견한 이슈 / TODO
 - (작성)
 
-### 참고한 링크
-- (작성)
-
-### 다음 세션 유의사항
+### 다음 세션 유의사항 (PR 8)
 - (작성)
 
 ### 검증 결과
 - (작성)
 
 ### LOC 감소 결과
-- (작성)
+- `bookmarked_articles_screen.dart`: 664 → (작성) LOC
+- `label_detail_screen.dart`: 685 → (작성) LOC
