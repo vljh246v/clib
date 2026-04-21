@@ -42,6 +42,53 @@
 
 <!-- 이 아래에 세션 엔트리를 추가한다. 최신이 위. -->
 
+## 2026-04-21 PR 06 — ArticleListCubit + AllArticlesScreen
+
+**세션 결과**: 🟢 완료
+
+**브랜치**: `feature/bloc-06-article-list` (머지 커밋: develop HEAD)
+
+### 계획대로 된 점
+- `lib/blocs/article_list/` 3파일(source/state/cubit) 신규. sealed `ArticleListSource`에 Equatable 상속 → 파일 경계 across 패턴매칭.
+- `ArticleListState.generation` 카운터 도입 — Hive in-place 변경 시 Equatable deep-eq 우회(핵심 발견).
+- `lib/widgets/article_list_item.dart`, `article_list_view.dart`, `bulk_action_bar.dart` 공통 위젯 분리 (PR 7 재사용 기반).
+- `AllArticlesScreen` → StatelessWidget + BlocProvider, `_AllArticlesBody` StatefulWidget(TabController vsync 유지).
+- cubit 캡처 후 showModalBottomSheet 패턴 일관 적용.
+- 22개 테스트 all pass (flutter_test + stream.listen + `await Future.delayed(Duration.zero)` 패턴).
+- Opus 최종 리뷰 → C1/I1 두 이슈 수정 완료.
+
+### 계획과 다르게 된 점
+- **`ArticleListSource` private 서브클래스 불가**: 플랜 PR-06 문서의 `_All` 등 private 서브클래스는 별도 파일에서 패턴매칭 불가 → public `ArticleListSourceAll/Bookmarked/ByLabel`로 변경.
+- **`generation` 카운터 필요**: Equatable + Hive in-place 변경의 조합으로 article 필드 변경(isRead, isBookmarked 등) 후 emit이 스킵되는 현상 → `generation` 카운터로 해결.
+- **`_reloadAndClearSelection()` helper**: 일괄 액션마다 reload+clear를 두 번 emit하면 중간 stale 상태가 발생 → 단일 emit helper로 통합.
+- **`bloc_test` 미사용**: async broadcast stream 특성으로 `await Future.delayed(Duration.zero)` 필요 → library_cubit_test 동일 패턴 채택.
+- **`_MemoSheet` StatefulWidget 추출**: Opus 리뷰 지적(TextEditingController 누수) → StatefulWidget + dispose()로 해결.
+- **TabController 리스너에 `setState` 추가**: `clearSelection()` Equatable 스킵 시 탭 헤더 stale 방지.
+- **`_fetch()` helper 추출**: load()와 _reloadAndClearSelection()의 switch 중복 제거.
+
+### 새로 발견한 이슈 / TODO
+- **Opus nit 보류(PR 7 전 처리 권장)**: 액션 시트 3종 모달을 `lib/widgets/article_actions_sheet.dart`로 추출하면 PR 7에서 복붙 없이 재사용 가능.
+- **`adInterval = 8` 상수**: `ArticleListView`에서 magic number 사용 중. `AdService` 인접 상수로 승격 검토.
+- **`bulkDelete` 순차 await**: 아이템 수에 비례 지연. `Future.wait` 병렬화 검토(Firestore rate-limit 고려).
+- **`selectedKeys: List<dynamic>`**: Hive key는 int이므로 `List<int>`로 좁히기 검토(PR 7 시작 전).
+- **`articlesChangedNotifier` 연속 발사 레이스**: 짧은 간격 다중 트리거 시 emit 순서 미보장 — 실무 영향 낮으나 테스트 주석 명시 검토.
+
+### 참고한 링크
+- PR 5 선례: `lib/blocs/label_management/`, `test/blocs/label_management_cubit_test.dart`
+- PR 4 선례: `lib/blocs/library/`, `test/blocs/library_cubit_test.dart`
+- flutter_bloc BlocBuilder: https://bloclibrary.dev/flutter-bloc-concepts/#blocbuilder
+
+### 다음 세션 유의사항
+- **PR 7 재사용 기반 준비 완료**: `ArticleListCubit(const ArticleListSourceBookmarked())` / `ArticleListCubit(ArticleListSourceByLabel(label.name))`로 소스만 바꿔 BookmarkedArticlesScreen / LabelDetailScreen에 그대로 적용.
+- **공통 위젯 위치**: `lib/widgets/article_list_item.dart`, `article_list_view.dart`, `bulk_action_bar.dart` — import 경로 확인.
+- **LabelDetail labelColor**: `ArticleListItem`에 labelColor 파라미터 없음. PR 7에서 LabelDetail에 맞게 확장 또는 별도 아이템 위젯 사용.
+- **Opus nit 상태**: `article_actions_sheet.dart` 추출은 PR 7 시작 시 결정할 것.
+
+### 검증 결과
+- `flutter analyze`: ✅ No issues
+- `flutter test test/blocs/`: ✅ 49 passed (22개 신규)
+- 실기기 스모크: ⚠️ (미수행, 다음 세션에서 기회 시 확인)
+
 ## 2026-04-20 PR 05 — LabelManagementCubit
 
 **세션 결과**: 🟢 완료

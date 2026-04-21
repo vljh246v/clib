@@ -24,7 +24,7 @@
 | 3 | OnboardingCubit | PR 1 | 🟢 Done | `feature/bloc-03-onboarding` | 2026-04-20 |
 | 4 | LibraryCubit | PR 1 | 🟢 Done | `feature/bloc-04-library` | 2026-04-20 |
 | 5 | LabelManagementCubit | PR 1 | 🟢 Done | `feature/bloc-05-label-mgmt` | 2026-04-20 |
-| 6 | ArticleListCubit 도입 + AllArticles | PR 1 | ⬜ Not Started | `feature/bloc-06-article-list` | - |
+| 6 | ArticleListCubit 도입 + AllArticles | PR 1 | 🟢 Done | `feature/bloc-06-article-list` | 2026-04-21 |
 | 7 | Bookmarked + LabelDetail (Cubit 재사용) | PR 6 | ⬜ Not Started | `feature/bloc-07-bookmarked-label` | - |
 | 8 | AddArticleCubit | PR 1 | ⬜ Not Started | `feature/bloc-08-add-article` | - |
 | 9 | HomeBloc (유일한 Bloc) | PR 1, 6 | ⬜ Not Started | `feature/bloc-09-home` | - |
