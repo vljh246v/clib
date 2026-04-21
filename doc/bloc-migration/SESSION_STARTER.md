@@ -2,7 +2,7 @@
 
 이 문서는 **BLoC 전환 작업을 새 세션에서 이어 할 때** 가장 먼저 해야 할 것들을 정리한다. Claude가 매번 전체 코드베이스를 다시 탐색하지 않고 문서만 읽어서 바로 작업에 착수할 수 있도록 설계되었다.
 
-**현 진행 상태(2026-04-21)**: PR 1~9 완료, PR 10 Skip 확정, **다음 = PR 11 Cleanup**. 요약은 `README.md` §현재 상태 스냅샷 참조.
+**현 진행 상태(2026-04-21)**: PR 1~9 + PR 11 §2.1~2.5/§2.7~2.9 완료. **다음 = PR 11 §2.6 widget_test 재작성 + §3 실기기 스모크**. 요약은 `README.md` §현재 상태 스냅샷 참조.
 
 ---
 
@@ -125,6 +125,8 @@ doc/bloc-migration/SESSION_LOG.md 에 따르면 PR <NN>이 In Progress 상태야
 | 동기화 서비스 | `lib/services/sync_service.dart` |
 | 디자인 토큰 | `lib/theme/design_tokens.dart` |
 | ARB 템플릿 | `lib/l10n/app_ko.arb` |
+| 전역 notifier (PR 11에서 분리) | `lib/state/app_notifiers.dart` |
+| 일괄 삭제 헬퍼 (PR 11) | `lib/widgets/bulk_delete_confirm.dart` |
 
 ### Cubit/Bloc / 공통 위젯 (PR 1~9 누적)
 

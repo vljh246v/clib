@@ -2,13 +2,12 @@
 
 > 각 세션의 **결과 요약**과 **다음 세션 유의사항**을 누적 기록한다. 세션 종료 시 반드시 엔트리를 추가한다.
 
-## 현 상태 요약 (2026-04-21 기준)
+## 현 상태 요약 (2026-04-21 PR 11 코드/문서 정리 직후)
 
-- **완료**: PR 1~9. `develop`=`41d2cde`. `flutter analyze` 0건, `flutter test test/blocs/` 74 PASS.
-- **다음**: **PR 11 Cleanup**. 누적 후속 정리 리스트는 `README.md` §현재 상태 스냅샷 참조.
-- **PR 10**: ⚪ Skip 확정 (MainScreen 로컬 state 유지가 더 간결). 사유는 `pr-10-main-optional.md`.
-- **실기기 스모크**: 미수행 누적 — PR 11에서 일괄 진행 (`pr-11-cleanup.md` §3).
-- **기존 `test/widget_test.dart`**: PR 1 이전부터 broken. PR 11에서 재작성 + Hive/Firebase 헬퍼 도입 예정.
+- **완료**: PR 1~9 + PR 11 §2.1~2.5/§2.7~2.9. `feature/bloc-11-cleanup` 브랜치. `flutter analyze` 0건, `flutter test test/blocs/` 74 PASS.
+- **남은 PR 11 작업**: §2.6 widget_test 재작성 + §3 실기기 스모크 17개 항목 — **다음 세션** 위임.
+- **PR 10**: ⚪ Skip 확정.
+- **기존 `test/widget_test.dart`**: 여전히 broken. §2.6에서 처리.
 
 ---
 
@@ -51,6 +50,62 @@
 ## 로그 (최신 위)
 
 <!-- 이 아래에 세션 엔트리를 추가한다. 최신이 위. -->
+
+## 2026-04-21 PR 11 — Cleanup (코드/문서 정리, §2.6/§3은 별도 세션)
+
+**세션 결과**: 🟡 부분 완료 (코드/문서 정리 종료, widget_test 재작성 + 실기기 스모크는 별도 세션 위임)
+
+**브랜치**: `feature/bloc-11-cleanup` (코드/문서 미커밋, 다음 액션은 분할 커밋)
+
+### 계획대로 된 점
+- **Notifier 발사 경로 일원화**: `DatabaseService` 모든 mutation에 `articlesChangedNotifier`/`labelsChangedNotifier.value++` 발사 추가. `ShareService.processAndSave` 중복 발사 제거. `HomeBloc._onToggleBookmark/_onUpdateMemo` / `ArticleListCubit` 개별 액션의 수동 reload 호출 제거 — listener 경로 단일화.
+- **Notifier 정의 분리**: `lib/state/app_notifiers.dart` 신규. `main.dart`는 `export 'package:clib/state/app_notifiers.dart' show ...`로 호환 유지(기존 `package:clib/main.dart` show ... import 그대로 동작).
+- **컨트롤러 dispose 보강**: `HomeScreen._showMemoDialog`(whenComplete), `share_label_sheet._showAddLabelDialog`, `label_management_screen._showLabelDialog` 3곳 추가.
+- **디자인 토큰 치환**: `home_screen` 일반 spacing 12/16/8/4/20을 `Spacing.*`로, `BorderRadius.circular(20)` → `Radii.borderXl`. 26/28/36/120 등 의도 사이즈는 인라인 유지.
+- **`adInterval = 8` 단일 출처화**: `AdService.adInterval` 신규 상수. `home_screen._adInterval` + `article_list_view`의 inline 모두 참조로 통합.
+- **`_confirmBulkDelete` 헬퍼 추출**: `lib/widgets/bulk_delete_confirm.dart`의 `showBulkDeleteConfirm(context)`. 3화면(`AllArticles`/`Bookmarked`/`LabelDetail`) 중복 제거.
+- **`ArticleListItem.accentColor` 옵션**: 읽음/북마크 뱃지 색을 컨텍스트 색으로 강조. `ArticleListView.accentColor` 패스스루 추가. `LabelDetailScreen`이 `_labelColor` 전달.
+- **`selectedKeys` 타입 좁힘**: `List<dynamic>` → `List<int>`. `ArticleListView.onSelectionToggle(int)` 시그니처도 좁힘. Hive autoincrement key는 항상 int.
+- **`bulkDelete` batch**: `DatabaseService.bulkDelete(articles)` 신규 — `_box.deleteAll(keys)` + 단일 notifier. `ArticleListCubit.bulkDelete` for-await 제거.
+- **미사용 ARB 정리**: `syncing` / `syncComplete` 2개 키를 10 로케일 전부에서 제거 → `flutter gen-l10n` 재생성. NotificationService 4개 키(`notificationChannelName/Desc`, `allReadNotification`, `unreadNotification`)는 BuildContext 없이 `Platform.localeName` 분기 구조라 보존.
+- **`pubspec.yaml`**: `environment.flutter: ">=3.32.0"` floor 명시.
+- **`CLAUDE.md` 갱신**: 기술 스택에 `flutter_bloc`/`equatable` 추가. 프로젝트 구조에 `lib/blocs/`/`lib/state/` 반영. `DatabaseService`/`ShareService` 라인에 notifier 발사 일원화 표기. **전역 상태 섹션 전면 재작성** — MultiBlocProvider 표 + `app_notifiers.dart` 정의 + 부팅 흐름. **화면별 주요 로직** Cubit/Bloc 표기 + `selectedKeys: List<int>` 명시. **개발 컨벤션 §상태 관리 규칙** 신설(refreshToken/deckVersion/controller SSOT/에러 채널 분리/bloc_test 미도입 사유).
+
+### 계획과 다르게 된 점
+- **`LabelManagementCubit` 개별 액션의 직접 `await load()` 유지**: `try/finally`로 `isSaving` 토글하는 패턴이라 `emit isSaving:false` 시점에 articles 갱신이 미반영될 위험. listener emit과 가독성 trade-off, **안전 우선**으로 유지.
+- **`AddArticleCubit.createLabel`도 직접 fetch + emit 유지**: 첫 emit에서 `selectedLabels` 업데이트가 동시 필요(listener `_refreshLabels`는 allLabels만 갱신). 따라서 두 번 emit이 발생하나 결과 동일.
+- **`HomeBloc._onSwipeRead`는 즉시 articles 제거 + deckVersion++ 유지**: notifier listener의 후속 LoadDeck(resetPosition:false)는 deckVersion 변화 없음 → CardSwiper 재생성 1회로 안전. 즉시 응답성 + 정합성 모두 확보.
+- **`_SwipeHint` 왼쪽 색은 변경 보류**: 체크리스트는 "검토". 디자인 의도(중성 vs Muted Rose) 사용자 결정 필요. 별도 PR/이슈로 분리.
+- **`syncing` / `syncComplete` 외 미사용 ARB 키 4개 보존**: NotificationService 구조적 제약. 정리하려면 `lookupAppLocalizations(Locale)` + 정적 헬퍼 도입 필요 → 별도 PR.
+- **§2.6 widget_test 재작성 / §3 실기기 스모크**: 이번 세션 분량 한도 감안 + 사용자가 코드 정리 우선 선택(A안). 다음 세션 위임.
+
+### 새로 발견한 이슈 / TODO
+- **NotificationService ARB 통합 후속 PR 후보**: `notificationChannelName/Desc`, `allReadNotification`, `unreadNotification` 4개 키를 `lookupAppLocalizations(Locale.fromSubtags(Platform.localeName))`로 끌어쓰면 다국어 자산 단일 출처. 현재는 ko/en switch 하드코딩 + ARB 잉여 공존.
+- **`_SwipeHint` 색 일관성**: `theme.colorScheme.onSurfaceVariant`(왼쪽) vs `AppColors.swipeRead`(오른쪽)/`AppColors.swipeSkip`. 디자인 의도 확인 후 결정.
+- **`bulk_action_bar.dart` `onDelete` 콜백 시그니처를 `Future<void> Function(BuildContext)`로 승격**하면 헬퍼 호출도 더 깔끔(현재는 `() => showBulkDeleteConfirm(context)` 클로저 3곳 반복).
+
+### 참고한 링크
+- 이번 세션 코드 변경: `lib/state/app_notifiers.dart`(신규), `lib/services/database_service.dart`(notifier 발사 추가, `bulkDelete` 신규), `lib/services/share_service.dart`(중복 발사 제거), `lib/services/sync_service.dart`(import 경로), `lib/services/ad_service.dart`(adInterval 상수), `lib/blocs/home/home_bloc.dart`(수동 reload 제거), `lib/blocs/article_list/article_list_cubit.dart`(개별 액션 수동 reload 제거 + bulkDelete batch + selectedKeys 타입), `lib/blocs/article_list/article_list_state.dart`(selectedKeys 타입), `lib/blocs/library/library_cubit.dart`/`label_management/label_management_cubit.dart`/`add_article/add_article_cubit.dart`(import 경로), `lib/widgets/article_list_item.dart`(accentColor), `lib/widgets/article_list_view.dart`(accentColor + 타입 + AdService.adInterval), `lib/widgets/bulk_delete_confirm.dart`(신규), `lib/screens/{all_articles,bookmarked_articles,label_detail}_screen.dart`(헬퍼 사용), `lib/screens/home_screen.dart`(토큰 치환 + dispose), `lib/screens/label_management_screen.dart`(dispose), `lib/widgets/share_label_sheet.dart`(dispose), `lib/main.dart`(notifier export), `lib/l10n/*.arb`(2 키 제거), `pubspec.yaml`(flutter floor), `CLAUDE.md`(전면 갱신).
+
+### 다음 세션 유의사항
+- (중요!) **§2.6 widget_test 재작성**: `test/helpers/hive_bootstrap.dart` 추출 + Firebase mock 전략 결정. `MainScreen`/`HomeScreen` 스모크 수준이면 충분. 기존 `test/widget_test.dart`는 PR 1 이전부터 broken이라 자유롭게 재작성 가능.
+- **§3 실기기 스모크**: `pr-11-cleanup.md` §3 17개 항목 일괄. notifier 발사 일원화 + bulkDelete batch가 핵심 회귀 포인트 — 특히 다중 선택 일괄 삭제/북마크/읽음 + 라벨 변경 후 모든 화면 동기 갱신 + 공유 시트 → 라벨 선택 → 저장 후 홈 즉시 반영 검증.
+- **커밋 분할 권장 순서**:
+  1. `refactor(db): notifier 발사 경로 DatabaseService 승격 + bulkDelete batch`
+  2. `refactor(theme): home_screen 디자인 토큰 적용 + AdService.adInterval 상수화`
+  3. `refactor(widgets): _confirmBulkDelete 헬퍼 추출 + ArticleListItem.accentColor + selectedKeys 타입 좁힘`
+  4. `chore(l10n): 미사용 키 syncing/syncComplete 제거`
+  5. `chore: pubspec flutter floor 명시 + 컨트롤러 dispose 보강`
+  6. `docs(claude): flutter_bloc 기반 구조 반영`
+  7. `docs(bloc): PR 11 코드/문서 정리 핸드오프`
+- **§2.6 / §3 완료 후** 트래커를 🟢로 전환 + PR 11 머지.
+
+### 검증 결과
+- `flutter analyze`: ✅ No issues found
+- `flutter test test/blocs/`: ✅ 74 passed
+- 실기기 스모크: ⏳ 다음 세션 위임 (§3)
+
+---
 
 ## 2026-04-21 PR 09 — HomeBloc (유일한 Bloc)
 

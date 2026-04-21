@@ -156,16 +156,35 @@ BLoC PR11: 전환 마무리 — 클린업 + 문서 갱신
 
 ---
 
-## 6. 핸드오프 노트 (PR 11 완료 시 작성)
+## 6. 핸드오프 노트
+
+### 코드/문서 정리 완료 (2026-04-21, 코드 미커밋)
+
+§2.1~2.5/§2.7~2.9 모두 처리 완료. **§2.6(widget_test 재작성) + §3(실기기 스모크)는 별도 세션 위임**.
 
 ### 전환 완료 상태
-- (작성)
+- 모든 화면 Cubit/Bloc 캡슐화 (Library/LabelManagement/ArticleList/AddArticle/Onboarding 모두 Cubit, Home만 Bloc).
+- 공유 위젯 추출 완료: `ArticleListView` / `ArticleListItem(+accentColor)` / `BulkActionBar` / `showBulkDeleteConfirm` / `MemoSheet` / `AddArticleSheet`.
+- 전역 상태: `ThemeCubit` + `AuthCubit` (MultiBlocProvider) + 2개 ValueNotifier(`articlesChangedNotifier`/`labelsChangedNotifier`) `lib/state/app_notifiers.dart`.
+- DatabaseService mutation 메서드가 모든 notifier 발사를 단독 책임. 외부 발사 경로 제거.
+- `flutter analyze` 0건, `flutter test test/blocs/` 74 PASS.
 
 ### 남은 부채 / 후속 PR 후보
-- (예: Repository 계층 도입 / Hive Stream 전환 / 테스트 커버리지 보강)
+- **§2.6 widget_test 재작성**: 본 PR 다음 세션.
+- **§3 실기기 스모크 17개**: 본 PR 다음 세션.
+- **NotificationService 다국어 ARB 통합**: 4개 키(`notificationChannelName/Desc`, `allReadNotification`, `unreadNotification`)를 `lookupAppLocalizations(Locale.fromSubtags(...))`로 통합 → 별도 PR.
+- **`_SwipeHint` 색 일관성 결정**: 왼쪽 `onSurfaceVariant` vs `swipeSkip(Muted Rose)`. 디자인 의도 확인 필요.
+- **Repository 계층 도입 검토**: 현재 Cubit/Bloc이 `DatabaseService.x` 직접 호출. 테스트 격리 위해 Repository 추상화 도입 시 mock 용이.
+- **Hive Stream 전환 검토**: 현재 `ValueNotifier` 브릿지. `Box.watch()` 또는 `ValueListenableBuilder<Box<Article>>`로 전환하면 발사 경로 자체 불필요.
+- **`bulk_action_bar.onDelete` 시그니처 승격**: `Future<void> Function(BuildContext)`로 바꾸면 헬퍼 호출 클로저 3곳 제거 가능.
 
 ### 배운 점
-- (작성)
+- **notifier 발사 책임 일원화**가 가장 큰 가치. 발사 경로 분산(ShareService/Cubit/Bloc/SyncService 4곳)이 중복 reload + 미발사 누락의 원인이었다. DB 서비스 단독으로 묶으니 모든 Cubit이 listener만 갖는 단순한 그래프가 된다.
+- **순환 import 회피용 별도 파일 분리**가 main.dart re-export 패턴과 결합하면 점진 마이그레이션이 깔끔하다(기존 `package:clib/main.dart` show ... import 그대로 유지).
+- **Hive 모델 in-place 변경 + Equatable dedup 함정**은 `refreshToken`/`generation` 필드로 명시적 emit 강제하는 게 가장 단순.
+- **헬퍼 추출 trade-off**: 3곳 중복 → 헬퍼 1개로 줄였지만 `() => helper(context)` 클로저가 남는다. 정말 깨끗하려면 콜백 시그니처 자체를 `Function(BuildContext)`로 승격해야 함.
 
 ### 검증 결과
-- `flutter analyze`, `flutter test`, release 빌드 스모크
+- `flutter analyze`: ✅ No issues
+- `flutter test test/blocs/`: ✅ 74 passed
+- 실기기 스모크: ⏳ §3 다음 세션

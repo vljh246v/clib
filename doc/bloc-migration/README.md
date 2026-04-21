@@ -29,35 +29,39 @@
 | 8 | AddArticleCubit | PR 1 | 🟢 Done | `feature/bloc-08-add-article` | 2026-04-21 |
 | 9 | HomeBloc (유일한 Bloc) | PR 1, 6 | 🟢 Done | `feature/bloc-09-home` | 2026-04-21 |
 | 10 | MainScreen (선택) | PR 9 | ⬜ Skip (기본) | - | - |
-| 11 | Cleanup + 문서화 | PR 2~9 | ⬜ Not Started | `feature/bloc-11-cleanup` | - |
+| 11 | Cleanup + 문서화 (실기기 스모크 별도 세션) | PR 2~9 | 🟡 In Progress | `feature/bloc-11-cleanup` | 2026-04-21 (코드/문서) |
 
 **상태 기호**: ⬜ Not Started / 🟡 In Progress / 🟢 Done / 🔴 Blocked / ⚪ Skip
 
 ---
 
-## 현재 상태 스냅샷 (2026-04-21 PR 9 머지 직후)
+## 현재 상태 스냅샷 (2026-04-21 PR 11 코드/문서 정리 완료)
 
-- **완료**: PR 1~9 (핵심 전환 종료). 남은 화면 전환 없음.
-- **다음 권장**: **PR 11 Cleanup** — 누적 후속 정리 + CLAUDE.md 갱신 + 회귀 스모크.
+- **완료**: PR 1~9 + **PR 11 코드/문서 정리(§2.1~2.5/§2.7~2.9)**. 남은 화면 전환 없음.
+- **남은 PR 11 작업**: §2.6 `widget_test.dart` 재작성 + §3 실기기 스모크 — **별도 세션** 위임.
 - **PR 10**: 기본 SKIP. `MainScreen` 로컬 state가 더 간결(사유는 `pr-10-main-optional.md`).
-- **기준선**: `develop`=`41d2cde`, `flutter analyze` 0건, `flutter test test/blocs/` 74 PASS, 기존 `test/widget_test.dart`는 PR 1부터 broken(PR 11 위임).
+- **기준선**: `feature/bloc-11-cleanup` 브랜치, `flutter analyze` 0건, `flutter test test/blocs/` 74 PASS, 기존 `test/widget_test.dart`는 PR 1부터 broken(§2.6에서 처리 예정).
 
-### PR 1~9에서 누적된 후속 정리 항목 (PR 11 입력)
+### PR 11에서 처리 완료 (코드/문서)
 
-1. `labelsChangedNotifier` 로컬 CRUD 미발사 — `DatabaseService.createLabel/updateLabel/deleteLabel` 발사 경로 통합 (PR 8 발견, PR 9 재확인)
-2. `articlesChangedNotifier` 발사 경로 일원화 — 현재 `ShareService` / `SyncService`만 발사, `markAsRead/toggleBookmark/updateMemo/updateArticleLabels`는 미발사 → `DatabaseService` 내부로 승격 검토
-3. `HomeScreen._showMemoDialog`의 `TextEditingController` dispose 미호출(기존 관례, 다른 시트도 동일 패턴)
-4. 디자인 토큰 미적용 잔존: `BorderRadius.circular(20)` / 120/56/36/28/26/16/12 하드코딩 숫자, `_SwipeHint` 왼쪽 색이 `onSurfaceVariant`(공용 `swipeSkip=Muted Rose` 토큰 불일치)
-5. 리뷰어 지적 nit 이관(PR 6~7): `ArticleListItem`에 `Color? accentColor` 옵션 추가 / `_confirmBulkDelete` 3화면 중복 헬퍼 추출 / `adInterval=8` 매직 넘버 AdService 인접 상수 이동
-6. `bulkDelete` for-await 순차 → `DatabaseService.bulkDelete` batch + 단일 sync trigger (PR 6 TODO)
-7. 기존 `test/widget_test.dart` 재작성 (Firebase/Hive 초기화 헬퍼 포함)
-8. `CLAUDE.md` 갱신: flutter_bloc 기반 상태 관리 문서화(L103/L107의 `themeModeNotifier` 잔존 언급 제거, BlocProvider 전역/로컬 규칙, refreshToken/deckVersion 패턴)
-9. `pubspec.yaml`의 `environment.flutter` floor 명시 (`RadioGroup<T>` Flutter 3.32+ API)
-10. `selectedKeys: List<dynamic>` → `List<int>` 좁히기 (Hive key는 int)
+1. ✅ Notifier 발사 경로 일원화 — `DatabaseService` 모든 mutation에 `articlesChangedNotifier` / `labelsChangedNotifier` 발사 승격. `ShareService.processAndSave` 중복 발사 제거. `HomeBloc._onToggleBookmark/_onUpdateMemo` / `ArticleListCubit` 개별 액션의 수동 reload 제거(listener 경로로 자동 재로드).
+2. ✅ Notifier 정의를 `lib/state/app_notifiers.dart`로 분리(순환 import 회피). `main.dart`는 호환 위해 re-export 유지.
+3. ✅ `HomeScreen._showMemoDialog` / `share_label_sheet._showAddLabelDialog` / `label_management_screen._showLabelDialog` `TextEditingController` dispose 보강.
+4. ✅ `home_screen` 하드코딩 숫자(12/16/8/4/20)를 `Spacing.*` 토큰으로 치환. `BorderRadius.circular(20)` → `Radii.borderXl`.
+5. ✅ `adInterval = 8` → `AdService.adInterval` 상수로 이동. `home_screen` / `article_list_view` 둘 다 참조.
+6. ✅ `_confirmBulkDelete` 3화면 중복 → `lib/widgets/bulk_delete_confirm.dart`의 `showBulkDeleteConfirm()` 헬퍼.
+7. ✅ `ArticleListItem.accentColor` 옵션 + `ArticleListView.accentColor` 패스스루. `LabelDetailScreen`에서 `_labelColor` 전달.
+8. ✅ `ArticleListState.selectedKeys: List<dynamic>` → `List<int>` 좁힘. `ArticleListView.onSelectionToggle(int)` 시그니처도 좁힘.
+9. ✅ `DatabaseService.bulkDelete(articles)` 신규 — `_box.deleteAll` batch + 단일 notifier 발사. `ArticleListCubit.bulkDelete` for-await 순차 제거.
+10. ✅ 미사용 ARB 키 `syncing` / `syncComplete` 10 로케일 전부에서 제거(NotificationService 4개는 BuildContext 없이 동작하므로 보존).
+11. ✅ `CLAUDE.md` 갱신 — flutter_bloc 기반 전역/화면 BlocProvider 규칙, `lib/blocs/`/`lib/state/` 구조, `articlesChangedNotifier` 발사 일원화, refreshToken/deckVersion 패턴, controller 위젯 SSOT 규칙, bloc_test 미도입 사유.
+12. ✅ `pubspec.yaml`에 `environment.flutter: ">=3.32.0"` floor 명시(RadioGroup<T> 사용).
 
-### 시뮬레이터/실기기 스모크 (미수행 누적)
+### 남은 작업 (PR 11 §2.6 + §3 — 다음 세션)
 
-사용자 방침: 모든 PR 정리 후 일괄 진행. PR 11 최종 회귀 테스트 체크리스트(`pr-11-cleanup.md` §2.4)로 검증.
+- §2.6: `test/widget_test.dart` 재작성 + `test/helpers/hive_bootstrap.dart` 헬퍼 추출 + Firebase mock/skip 결정.
+- §3: 실기기 회귀 스모크 체크리스트 일괄 수행(`pr-11-cleanup.md` §3, 17개 항목).
+- 그 후 PR 11 머지 + 트래커 🟢 전환.
 
 ---
 
