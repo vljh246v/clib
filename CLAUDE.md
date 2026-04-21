@@ -7,6 +7,13 @@
 - **Local-first**: 회원가입 없이 Hive 로컬 DB 동작. Firebase 로그인 시 선택적 클라우드 동기화.
 - **핵심 가치**: 무마찰 수집 / 게임화된 소비 / 능동적 재방문
 
+## 관련 프로젝트
+
+| 프로젝트 | 경로 | 설명 |
+|----------|------|------|
+| **크롬 확장 프로그램** | `~/Documents/workspace/clib-extension` | Vite + TypeScript 기반 Chrome Extension. 브라우저에서 링크를 바로 Clib으로 저장 |
+| **설명 & 개인정보처리 페이지** | `~/Documents/workspace/clib-support` | 정적 HTML(`docs/index.html`). 앱스토어 지원 URL 및 개인정보처리방침 호스팅 |
+
 ## Quick Start
 
 ```bash
