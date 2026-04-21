@@ -2,7 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import 'helpers/test_harness.dart';
+import 'scenarios/bookmark_toggle.dart';
 import 'scenarios/home_smoke.dart';
+import 'scenarios/swipe_read.dart';
 
 /// integration_test 엔트리.
 ///
@@ -25,4 +27,6 @@ void main() {
   });
 
   registerHomeSmokeTests();
+  registerSwipeReadTests();
+  registerBookmarkToggleTests();
 }

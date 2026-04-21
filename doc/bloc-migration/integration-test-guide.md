@@ -13,7 +13,9 @@ integration_test/
 ├── helpers/
 │   └── test_harness.dart           # bootstrap 래퍼 + resetAll + seedArticle/Label + pumpUntil
 └── scenarios/
-    └── home_smoke.dart             # PoC #1 — 시드 1건 + 홈 카드 렌더 확인
+    ├── home_smoke.dart             # #1 — 시드 1건 + 홈 카드 렌더
+    ├── swipe_read.dart             # #2 — HomeSwipeRead dispatch → Hive isRead=true + 덱 교체
+    └── bookmark_toggle.dart        # #3 — HomeToggleBookmark 2회 → Hive on/off
 ```
 
 ---
@@ -44,14 +46,17 @@ integration_test/
 # 기본 실행
 flutter test integration_test/app_test.dart
 
-# 특정 기기 지정
-flutter test integration_test/app_test.dart -d <device-id>
+# 특정 기기 지정 (device name 에 공백이 있으면 반드시 quote)
+flutter test integration_test/app_test.dart -d "iPhone 17"
 
-# 예시: iPhone 15 Pro 시뮬레이터
-flutter test integration_test/app_test.dart -d "iPhone 15 Pro"
+# UDID 지정 (공백 이슈 회피)
+flutter test integration_test/app_test.dart -d <device-udid>
 
 # 예시: 실기기 Android
 flutter test integration_test/app_test.dart -d <adb-serial>
+
+# 타임아웃 여유 주기 (Xcode 빌드 포함 최초 실행 시)
+flutter test integration_test/app_test.dart -d "iPhone 17" --timeout 5m
 ```
 
 실행 후 `All tests passed!` 메시지를 확인한다. 실패 시 `expect` 메시지와
@@ -112,14 +117,19 @@ void registerBulkActionTests() {
 
 ## 현재 커버 / 미커버
 
-**커버(1 시나리오)**:
-- Home smoke: 시드 1건 + onboarding 완료 → 홈 카드 제목 렌더
+**커버(3 시나리오)**:
+- #1 Home smoke: 시드 1건 + onboarding 완료 → 홈 카드 제목 렌더
+- #2 Swipe read (3.1): `HomeSwipeRead` dispatch → 덱에서 제거 + Hive `isRead=true`
+- #3 Bookmark toggle (4.5): `HomeToggleBookmark` 2회 → Hive `isBookmarked` on/off
+
+스와이프/롱프레스 **실 제스처**는 `CardSwiper` + 액션시트 애니메이션 때문에
+integration_test 환경에서 불안정 → `context.read<HomeBloc>().add(...)` 로
+Bloc 이벤트를 직접 dispatch 한다. UI 경로 커버리지는 별도 확장에서 다룬다.
 
 **우선 확장 후보** (`pr-11-cleanup.md` §3.2 번호):
-- 3.1 홈 스와이프 (오른쪽 = 읽음) — CardSwiperController 직접 호출
-- 4.5 홈 롱프레스 → 북마크 토글
-- 6.9 일괄 삭제 (PR 11 핵심 회귀)
-- 7.1 라벨 CRUD
+- 6.9 일괄 삭제 (PR 11 핵심 회귀) — Library → 전체 → 선택 모드 → 삭제
+- 7.1 라벨 CRUD — LabelManagementScreen FAB → 생성/수정/삭제
+- 홈 실 제스처 스와이프 (`tester.drag` or `CardSwiperController.swipe`)
 
 **미커버(수동 유지)**:
 - 시스템 공유 시트 (2.4 / 2.5) — `patrol` 필요
