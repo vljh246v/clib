@@ -46,7 +46,7 @@
 
 **세션 결과**: 🟢 완료
 
-**브랜치**: `feature/bloc-09-home` (feature 커밋: `5a94a98`, docs 커밋: TBD, 머지 커밋: TBD)
+**브랜치**: `feature/bloc-09-home` (feature 커밋: `5a94a98`, docs 커밋: `5874113`, 머지 커밋: `68a1edb`)
 
 ### 계획대로 된 점
 - `lib/blocs/home/{home_bloc,home_event,home_state}.dart` 신규. 시리즈 유일 Bloc.
@@ -96,10 +96,11 @@
 - opus `flutter-code-reviewer`: must-fix 0, should-fix 1(refreshToken 반영), nit 1(bloc.isClosed 반영), nit 3건 범위 외 이관
 
 ### 머지 / 배포
-- feature 커밋: `5a94a98` (BLoC PR9: HomeBloc 도입)
-- docs 커밋: TBD
-- develop 머지: TBD (`--no-ff`)
-- origin push: TBD
+- feature 커밋: `5a94a98` (BLoC PR9: HomeBloc 도입 — 스와이프/필터/덱 관리 이벤트 소싱)
+- docs 커밋: `5874113` (docs(bloc): PR 9 완료 핸드오프 노트 + SESSION_LOG + README 트래커 업데이트)
+- **develop 머지**: `68a1edb` (`--no-ff` Merge feature/bloc-09-home)
+- **origin push 완료**: `feature/bloc-09-home` 최초 push, `develop` 8c8cbef..68a1edb
+- 브랜치 보존: `feature/bloc-09-home`
 
 ### 다음 세션 즉시 시작 프롬프트 (PR 11 — Cleanup 권장)
 
