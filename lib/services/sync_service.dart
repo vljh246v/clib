@@ -29,11 +29,14 @@ class SyncService {
   static Future<void> init(User user) async {
     dispose();
 
-    // 계정이 바뀌면 기존 firestoreId 초기화
+    // 계정이 바뀌면 이전 계정의 로컬 데이터를 완전히 wipe — (H-3)
+    // in-memory 플래그로는 앱 재시작 후 동일 계정 재로그인 시 우회가 가능하므로
+    // 영구 차단을 위해 Hive 박스를 비운다. 이전 계정 데이터는 해당 계정의
+    // Firestore에 보존되므로 재로그인 시 복구 가능하다.
     final lastUid = DatabaseService.lastLoginUid;
     if (lastUid != null && lastUid != user.uid) {
-      debugPrint('계정 전환 감지 ($lastUid → ${user.uid}): firestoreId 초기화');
-      await _clearFirestoreIds();
+      debugPrint('계정 전환 감지 ($lastUid → ${user.uid}): 로컬 데이터 wipe');
+      await _wipeLocalData();
     }
     await DatabaseService.saveLastLoginUid(user.uid);
 
@@ -63,24 +66,20 @@ class SyncService {
     _pendingLabelSnapshot = null;
   }
 
-  /// 계정 전환 시 이전 계정의 firestoreId 제거
-  static Future<void> _clearFirestoreIds() async {
-    final articleBox = Hive.box<Article>('articles');
-    for (final article in articleBox.values) {
-      if (article.firestoreId != null) {
-        article.firestoreId = null;
-        article.updatedAt = null;
-        await article.save();
-      }
-    }
+  /// 계정 전환 시 로컬 articles/labels 박스를 완전히 비운다.
+  /// 라벨 알림은 박스 clear 이전에 취소한다 (clear 후에는 label.key가 무효화됨). — (H-3)
+  static Future<void> _wipeLocalData() async {
     final labelBox = Hive.box<Label>('labels');
-    for (final label in labelBox.values) {
-      if (label.firestoreId != null) {
-        label.firestoreId = null;
-        label.updatedAt = null;
-        await label.save();
-      }
+    // clear() 전에 라이브 뷰에서 분리된 리스트를 만들어 알림 취소
+    final labelsToCancel = labelBox.values.toList();
+    for (final label in labelsToCancel) {
+      await NotificationService.cancelForLabel(label);
     }
+    await labelBox.clear();
+    await Hive.box<Article>('articles').clear();
+    // 구독 중인 Cubit/Bloc이 빈 상태로 재로드하도록 알림 발사
+    articlesChangedNotifier.value++;
+    labelsChangedNotifier.value++;
   }
 
   /// 첫 스냅샷 이후 firestoreId 없는 로컬 아티클을 업로드
@@ -252,6 +251,7 @@ class SyncService {
     }
 
     // 첫 스냅샷: 리모트에 없는 로컬 아티클을 업로드
+    // wipe 후에는 박스가 비어있으므로 업로드할 항목이 없어 자연스럽게 no-op — (H-3)
     if (!_articleMergeDone) {
       final uid = _uid;
       if (uid != null) {
@@ -370,6 +370,7 @@ class SyncService {
     }
 
     // 첫 스냅샷: 리모트에 없는 로컬 라벨을 업로드
+    // wipe 후에는 박스가 비어있으므로 업로드할 항목이 없어 자연스럽게 no-op — (H-3)
     if (!_labelMergeDone) {
       final uid = _uid;
       if (uid != null) {
@@ -516,5 +517,24 @@ class SyncService {
       List<Label> remoteLabels) async {
     _labelMergeDone = true; // uid 조회(FirebaseAuth) 경로 건너뜀
     await _processLabelsSnapshot(remoteLabels);
+  }
+
+  // ── H-3 테스트 전용 헬퍼 ──
+
+  /// 계정 전환 감지 + wipe 실행을 검증하는 단위 테스트용 진입점.
+  /// FirebaseAuth / Firestore 리스너를 생략하므로 단위 테스트에서 안전하게 호출 가능.
+  /// lastUid != newUid 시 _wipeLocalData()를 실행하고 lastLoginUid를 newUid로 갱신한다.
+  @visibleForTesting
+  static Future<void> initForTest({
+    required String? lastUid,
+    required String newUid,
+  }) async {
+    if (lastUid != null && lastUid != newUid) {
+      await _wipeLocalData();
+    }
+    await DatabaseService.saveLastLoginUid(newUid);
+
+    _articleMergeDone = false;
+    _labelMergeDone = false;
   }
 }
