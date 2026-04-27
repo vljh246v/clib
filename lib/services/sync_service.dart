@@ -446,6 +446,8 @@ class SyncService {
   }
 
   /// 아티클 삭제 동기화
+  /// Firestore softDelete 실패 시 예외를 rethrow하여 호출자(DatabaseService.deleteArticle)가
+  /// 로컬 Hive 삭제를 차단할 수 있도록 한다 (H-1 부활 버그 수정).
   static Future<void> syncDeleteArticle(Article article) async {
     final uid = _uid;
     if (uid == null || article.firestoreId == null) return;
@@ -454,6 +456,7 @@ class SyncService {
       await FirestoreService.softDeleteArticle(uid, article.firestoreId!);
     } catch (e) {
       debugPrint('아티클 삭제 동기화 실패: $e');
+      rethrow; // 로컬 삭제 차단을 위해 예외를 상위로 전파한다
     }
   }
 
