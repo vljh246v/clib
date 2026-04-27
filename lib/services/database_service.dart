@@ -17,6 +17,12 @@ class DatabaseService {
   /// true일 때 Firestore 동기화를 건너뜀 (데모 데이터 시드 등)
   static bool skipSync = false;
 
+  /// 테스트 전용 심(Seam): null이면 프로덕션 경로(SyncService.syncDeleteArticle)를 사용.
+  /// 테스트에서 실패 시나리오를 주입하기 위해 사용한다.
+  /// @visibleForTesting
+  @visibleForTesting
+  static Future<void> Function(Article)? syncDeleteOverride;
+
   static Future<void> init() async {
     await Hive.initFlutter();
     Hive.registerAdapter(ArticleAdapter());
@@ -205,8 +211,15 @@ class DatabaseService {
   }
 
   // 아티클 삭제
+  // Firestore 동기화 실패 시 로컬 Hive 엔트리를 보존하고 예외를 전파한다 (H-1).
+  // TODO: 호출자(UI)에서 이 예외를 받아 사용자에게 안내 메시지를 표시해야 한다.
   static Future<void> deleteArticle(Article article) async {
-    if (!skipSync && AuthService.isLoggedIn) {
+    final overrideFn = syncDeleteOverride;
+    if (overrideFn != null) {
+      // 테스트 경로: 오버라이드 함수 호출 (실패 시 rethrow → 로컬 삭제 차단)
+      await overrideFn(article);
+    } else if (!skipSync && AuthService.isLoggedIn) {
+      // 프로덕션 경로: Firestore softDelete 실패 시 rethrow → 로컬 삭제 차단
       await SyncService.syncDeleteArticle(article);
     }
     await article.delete();
