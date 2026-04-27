@@ -1,4 +1,5 @@
 import 'dart:io' as io;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -8,6 +9,11 @@ import 'package:clib/services/database_service.dart';
 
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
+
+  /// 테스트 전용 심(Seam) — null이 아닐 때 cancelForLabel이 플러그인 대신 이 함수를 호출한다.
+  /// 프로덕션에서는 반드시 null이어야 한다.
+  @visibleForTesting
+  static Future<void> Function(Label)? cancelOverride;
 
   static String get _langCode {
     final locale = io.Platform.localeName;
@@ -124,6 +130,11 @@ class NotificationService {
 
   /// 라벨의 모든 알림 취소
   static Future<void> cancelForLabel(Label label) async {
+    // 테스트 심: cancelOverride가 주입된 경우 플러그인 대신 호출
+    if (cancelOverride != null) {
+      await cancelOverride!(label);
+      return;
+    }
     for (var day = 0; day < 7; day++) {
       await _plugin.cancel(_notificationId(label, day));
     }
