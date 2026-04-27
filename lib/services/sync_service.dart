@@ -6,6 +6,7 @@ import 'package:clib/models/article.dart';
 import 'package:clib/models/label.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/services/firestore_service.dart';
+import 'package:clib/services/notification_service.dart';
 import 'package:clib/state/app_notifiers.dart';
 
 class SyncService {
@@ -325,6 +326,8 @@ class SyncService {
         if (local != null && local.isInBox) {
           localByFsId.remove(entry.key);
           localByName.remove(local.name);
+          // 알림 취소를 delete 이전에 수행 — delete 후에는 label.key가 무효화됨 (H-2)
+          await NotificationService.cancelForLabel(local);
           await local.delete();
           changed = true;
         }
@@ -502,5 +505,16 @@ class SyncService {
     } catch (e) {
       debugPrint('라벨 삭제 동기화 실패: $e');
     }
+  }
+
+  // ── 테스트 전용 헬퍼 ──
+
+  /// 테스트에서 _processLabelsSnapshot을 직접 호출할 수 있도록 노출한다.
+  /// _labelMergeDone을 true로 설정해 FirebaseAuth 접근(uid 조회)을 우회한다.
+  @visibleForTesting
+  static Future<void> processLabelsSnapshotForTest(
+      List<Label> remoteLabels) async {
+    _labelMergeDone = true; // uid 조회(FirebaseAuth) 경로 건너뜀
+    await _processLabelsSnapshot(remoteLabels);
   }
 }
