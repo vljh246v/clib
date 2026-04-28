@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:clib/utils/app_logger.dart';
 
 class AdService {
   /// 아티클 리스트 / 홈 덱에서 N개마다 광고를 1개 삽입한다.
@@ -36,9 +37,9 @@ class AdService {
 
   static Future<void> initialize() async {
     final status = await MobileAds.instance.initialize();
-    debugPrint('✅ AdMob SDK initialized');
+    log('✅ AdMob SDK initialized');
     status.adapterStatuses.forEach((adapter, status) {
-      debugPrint('  Adapter: $adapter → ${status.state}');
+      log('  Adapter: $adapter → ${status.state}');
     });
   }
 

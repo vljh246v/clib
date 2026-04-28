@@ -8,6 +8,7 @@ import 'package:clib/services/database_service.dart';
 import 'package:clib/services/firestore_service.dart';
 import 'package:clib/services/notification_service.dart';
 import 'package:clib/state/app_notifiers.dart';
+import 'package:clib/utils/app_logger.dart';
 
 class SyncService {
   static StreamSubscription? _articleSub;
@@ -35,7 +36,7 @@ class SyncService {
     // Firestore에 보존되므로 재로그인 시 복구 가능하다.
     final lastUid = DatabaseService.lastLoginUid;
     if (lastUid != null && lastUid != user.uid) {
-      debugPrint('계정 전환 감지 ($lastUid → ${user.uid}): 로컬 데이터 wipe');
+      log('계정 전환 감지 (${maskUid(lastUid)} → ${maskUid(user.uid)}): 로컬 데이터 wipe');
       await _wipeLocalData();
     }
     await DatabaseService.saveLastLoginUid(user.uid);
@@ -47,12 +48,12 @@ class SyncService {
     // Firestore → Hive 실시간 동기화 (첫 스냅샷이 머지 역할을 겸함)
     _articleSub = FirestoreService.listenArticles(user.uid).listen(
       _onArticlesSnapshot,
-      onError: (e) => debugPrint('아티클 동기화 오류: $e'),
+      onError: (e) => logError('아티클 동기화 오류: $e'),
     );
 
     _labelSub = FirestoreService.listenLabels(user.uid).listen(
       _onLabelsSnapshot,
-      onError: (e) => debugPrint('라벨 동기화 오류: $e'),
+      onError: (e) => logError('라벨 동기화 오류: $e'),
     );
   }
 
@@ -104,7 +105,7 @@ class SyncService {
     }
 
     if (toUpload.isNotEmpty) {
-      debugPrint('초기 동기화: 아티클 ${toUpload.length}개 업로드');
+      log('초기 동기화: 아티클 ${toUpload.length}개 업로드');
       await FirestoreService.batchUpload(uid, toUpload, []);
     }
   }
@@ -130,7 +131,7 @@ class SyncService {
     }
 
     if (toUpload.isNotEmpty) {
-      debugPrint('초기 동기화: 라벨 ${toUpload.length}개 업로드');
+      log('초기 동기화: 라벨 ${toUpload.length}개 업로드');
       await FirestoreService.batchUpload(uid, [], toUpload);
     }
   }
@@ -265,7 +266,7 @@ class SyncService {
           await _uploadUnlinkedArticles(uid, remoteUrlToId);
           _articleMergeDone = true;
         } catch (e) {
-          debugPrint('아티클 초기 머지 실패 (다음 스냅샷에서 재시도): $e');
+          logError('아티클 초기 머지 실패 (다음 스냅샷에서 재시도): $e');
         }
       } else {
         _articleMergeDone = true;
@@ -384,7 +385,7 @@ class SyncService {
           await _uploadUnlinkedLabels(uid, remoteNameToId);
           _labelMergeDone = true;
         } catch (e) {
-          debugPrint('라벨 초기 머지 실패 (다음 스냅샷에서 재시도): $e');
+          logError('라벨 초기 머지 실패 (다음 스냅샷에서 재시도): $e');
         }
       } else {
         _labelMergeDone = true;
@@ -411,7 +412,7 @@ class SyncService {
         if (article.isInBox) await article.save();
       }
     } catch (e) {
-      debugPrint('아티클 동기화 실패: $e');
+      logError('아티클 동기화 실패: $e');
     }
   }
 
@@ -429,7 +430,7 @@ class SyncService {
     try {
       await FirestoreService.batchUpdateArticleFields(uid, syncable, fields);
     } catch (e) {
-      debugPrint('일괄 아티클 동기화 실패: $e');
+      logError('일괄 아티클 동기화 실패: $e');
     }
   }
 
@@ -445,7 +446,7 @@ class SyncService {
       await FirestoreService.updateArticleFields(
           uid, article.firestoreId!, fields);
     } catch (e) {
-      debugPrint('아티클 필드 동기화 실패: $e');
+      logError('아티클 필드 동기화 실패: $e');
     }
   }
 
@@ -459,7 +460,7 @@ class SyncService {
     try {
       await FirestoreService.softDeleteArticle(uid, article.firestoreId!);
     } catch (e) {
-      debugPrint('아티클 삭제 동기화 실패: $e');
+      logError('아티클 삭제 동기화 실패: $e');
       rethrow; // 로컬 삭제 차단을 위해 예외를 상위로 전파한다
     }
   }
@@ -476,7 +477,7 @@ class SyncService {
         if (label.isInBox) await label.save();
       }
     } catch (e) {
-      debugPrint('라벨 동기화 실패: $e');
+      logError('라벨 동기화 실패: $e');
     }
   }
 
@@ -492,7 +493,7 @@ class SyncService {
       await FirestoreService.updateLabelFields(
           uid, label.firestoreId!, fields);
     } catch (e) {
-      debugPrint('라벨 필드 동기화 실패: $e');
+      logError('라벨 필드 동기화 실패: $e');
     }
   }
 
@@ -504,7 +505,7 @@ class SyncService {
     try {
       await FirestoreService.softDeleteLabel(uid, label.firestoreId!);
     } catch (e) {
-      debugPrint('라벨 삭제 동기화 실패: $e');
+      logError('라벨 삭제 동기화 실패: $e');
     }
   }
 

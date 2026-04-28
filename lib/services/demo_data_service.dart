@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:clib/models/article.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/theme/design_tokens.dart';
+import 'package:clib/utils/app_logger.dart';
 
 /// 앱스토어 스크린샷용 데모 데이터 시드
 class DemoDataService {
@@ -156,7 +156,7 @@ class DemoDataService {
       await DatabaseService.saveArticle(article);
     }
 
-    debugPrint('✅ Demo data seeded: ${articles.length} articles, 5 labels');
+    log('✅ Demo data seeded: ${articles.length} articles, 5 labels');
 
     // 동기화 다시 활성화
     DatabaseService.skipSync = false;

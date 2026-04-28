@@ -8,6 +8,7 @@ import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/screens/label_management_screen.dart';
 import 'package:clib/screens/onboarding_screen.dart';
 import 'package:clib/screens/theme_settings_screen.dart';
+import 'package:clib/utils/app_logger.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:clib/theme/design_tokens.dart';
 
@@ -350,8 +351,7 @@ class _AccountSection extends StatelessWidget {
     try {
       await signInMethod();
     } catch (e, st) {
-      debugPrint('로그인 실패: $e');
-      debugPrint('$st');
+      logError('로그인 실패: $e', e, st);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${l.loginFailed}: $e')),
@@ -385,7 +385,7 @@ class _AccountSection extends StatelessWidget {
     try {
       await context.read<AuthCubit>().deleteAccount();
     } catch (e) {
-      debugPrint('계정 삭제 실패: $e');
+      logError('계정 삭제 실패: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.toString())),
