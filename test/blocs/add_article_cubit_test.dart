@@ -114,6 +114,30 @@ void main() {
       await cubit.close();
     });
 
+    // M-4: URL 스킴 화이트리스트 — 허용되지 않는 스킴 거부
+    test('save(javascript: URL)은 urlError="invalid_url"을 emit한다 (M-4)', () async {
+      final cubit = AddArticleCubit();
+      await cubit.save('javascript:alert(1)');
+      expect(cubit.state.urlError, 'invalid_url');
+      expect(cubit.state.isSaving, isFalse);
+      expect(cubit.state.isDone, isFalse);
+      await cubit.close();
+    });
+
+    test('save(intent:// URL)은 urlError="invalid_url"을 emit한다 (M-4)', () async {
+      final cubit = AddArticleCubit();
+      await cubit.save('intent://attacker.app/x#Intent;end');
+      expect(cubit.state.urlError, 'invalid_url');
+      await cubit.close();
+    });
+
+    test('save(file:// URL)은 urlError="invalid_url"을 emit한다 (M-4)', () async {
+      final cubit = AddArticleCubit();
+      await cubit.save('file:///etc/passwd');
+      expect(cubit.state.urlError, 'invalid_url');
+      await cubit.close();
+    });
+
     test('urlInputChanged는 urlError를 해제한다', () async {
       final cubit = AddArticleCubit();
       await cubit.save('');

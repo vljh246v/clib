@@ -12,6 +12,7 @@ import 'package:clib/models/article.dart';
 import 'package:clib/services/ad_service.dart';
 import 'package:clib/theme/app_theme.dart';
 import 'package:clib/theme/design_tokens.dart';
+import 'package:clib/utils/url_safety.dart';
 import 'package:clib/widgets/add_article_sheet.dart';
 import 'package:clib/widgets/article_card.dart';
 import 'package:clib/widgets/label_edit_sheet.dart';
@@ -179,10 +180,10 @@ class _HomeBodyState extends State<_HomeBody> {
               title: Text(l.openInBrowser),
               onTap: () async {
                 Navigator.pop(ctx);
-                final uri = Uri.tryParse(article.url);
-                if (uri != null) {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                }
+                // M-4: http/https 스킴만 허용 (legacy 또는 변조된 DB 방어)
+                final uri = parseAllowedUrl(article.url);
+                if (uri == null) return;
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
               },
             ),
           ],
@@ -587,11 +588,11 @@ class _HomeBodyState extends State<_HomeBody> {
                           final article = state.articles[artIdx];
                           return GestureDetector(
                             onTap: () async {
-                              final uri = Uri.tryParse(article.url);
-                              if (uri != null) {
-                                await launchUrl(uri,
-                                    mode: LaunchMode.externalApplication);
-                              }
+                              // M-4: http/https 스킴만 허용 (legacy 또는 변조된 DB 방어)
+                              final uri = parseAllowedUrl(article.url);
+                              if (uri == null) return;
+                              await launchUrl(uri,
+                                  mode: LaunchMode.externalApplication);
                             },
                             onLongPress: () {
                               HapticFeedback.heavyImpact();

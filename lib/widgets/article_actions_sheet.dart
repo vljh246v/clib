@@ -4,6 +4,7 @@ import 'package:clib/blocs/article_list/article_list_cubit.dart';
 import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/models/article.dart';
 import 'package:clib/theme/design_tokens.dart';
+import 'package:clib/utils/url_safety.dart';
 import 'package:clib/widgets/memo_sheet.dart';
 
 /// 아티클 롱프레스 액션 시트 (북마크/메모/읽음토글/브라우저/삭제).
@@ -111,10 +112,10 @@ class _SheetBody extends StatelessWidget {
             title: Text(l.openInBrowser),
             onTap: () async {
               Navigator.pop(context);
-              final uri = Uri.tryParse(article.url);
-              if (uri != null) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
+              // M-4: http/https 스킴만 허용 (legacy 또는 변조된 DB 방어)
+              final uri = parseAllowedUrl(article.url);
+              if (uri == null) return;
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
             },
           ),
           ListTile(

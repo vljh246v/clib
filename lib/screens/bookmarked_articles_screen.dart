@@ -7,6 +7,7 @@ import 'package:clib/blocs/article_list/article_list_state.dart';
 import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/models/article.dart';
 import 'package:clib/theme/design_tokens.dart';
+import 'package:clib/utils/url_safety.dart';
 import 'package:clib/widgets/article_actions_sheet.dart';
 import 'package:clib/widgets/article_list_view.dart';
 import 'package:clib/widgets/bulk_action_bar.dart';
@@ -181,10 +182,10 @@ class _BookmarkedBodyState extends State<_BookmarkedBody>
       selectedKeys: state.selectedKeys,
       emptyWidget: emptyWidget,
       onTap: (article) async {
-        final uri = Uri.tryParse(article.url);
-        if (uri != null) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        }
+        // M-4: http/https 스킴만 허용 (legacy 또는 변조된 DB 방어)
+        final uri = parseAllowedUrl(article.url);
+        if (uri == null) return;
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       },
       onLongPress: (article) => ArticleActionsSheet.show(
         context,
