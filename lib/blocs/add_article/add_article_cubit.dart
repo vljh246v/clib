@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:clib/state/app_notifiers.dart' show labelsChangedNotifier;
 import 'package:clib/services/database_service.dart';
 import 'package:clib/services/share_service.dart';
+import 'package:clib/utils/url_safety.dart';
 import 'add_article_state.dart';
 
 /// 수동 아티클 추가 바텀시트 Cubit.
@@ -62,7 +63,8 @@ class AddArticleCubit extends Cubit<AddArticleState> {
 
   Future<void> save(String rawUrl) async {
     final url = rawUrl.trim();
-    if (!_isValidUrl(url)) {
+    // http/https 스킴만 허용 (M-4 URL 스킴 화이트리스트)
+    if (!isAllowedUrl(url)) {
       emit(state.copyWith(urlError: 'invalid_url'));
       return;
     }
@@ -76,11 +78,6 @@ class AddArticleCubit extends Cubit<AddArticleState> {
     } catch (_) {
       emit(state.copyWith(isSaving: false, saveFailure: true));
     }
-  }
-
-  static bool _isValidUrl(String text) {
-    final uri = Uri.tryParse(text);
-    return uri != null && uri.hasScheme && uri.host.isNotEmpty;
   }
 
   @override

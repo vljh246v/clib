@@ -158,4 +158,35 @@ void main() {
       },
     );
   });
+
+  // M-4: URL 스킴 화이트리스트 — 허용되지 않는 스킴은 override 미호출
+  group('processSharedItem — M-4 스킴 화이트리스트 검증', () {
+    test(
+      '(M-4-1) JSON url 필드가 javascript: 스킴이면 override가 호출되지 않는다',
+      () async {
+        // extractURL regex는 https?:// 만 매칭하므로 이미 null 반환.
+        // isAllowedUrl 이중 검증(방어-심층) 보장을 위한 테스트.
+        final item = jsonEncode({'url': 'javascript:alert(1)'});
+
+        final result = await ShareService.processSharedItem(item);
+
+        expect(overrideCallCount, 0,
+            reason: 'javascript: URL은 저장이 건너뛰어져야 한다');
+        expect(result, isNull);
+      },
+    );
+
+    test(
+      '(M-4-2) JSON url 필드가 intent:// 스킴이면 override가 호출되지 않는다',
+      () async {
+        final item = jsonEncode({'url': 'intent://attacker.app/x'});
+
+        final result = await ShareService.processSharedItem(item);
+
+        expect(overrideCallCount, 0,
+            reason: 'intent:// URL은 저장이 건너뛰어져야 한다');
+        expect(result, isNull);
+      },
+    );
+  });
 }

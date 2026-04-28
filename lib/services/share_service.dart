@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:clib/models/article.dart';
 import 'package:clib/services/database_service.dart';
 import 'package:clib/services/scraping_service.dart';
+import 'package:clib/utils/url_safety.dart';
 
 class ShareService {
   static const _channel = MethodChannel('com.jaehyun.clibapp/share');
@@ -55,10 +56,15 @@ class ShareService {
   }
 
   /// URL을 스크래핑하여 Article로 저장
+  ///
+  /// [url]이 http/https 스킴이 아니면 null을 반환하고 저장하지 않는다.
+  /// (M-4 방어-심층: extractURL 이후에도 스킴 검증 재수행)
   static Future<Article?> processAndSave(
     String url, {
     List<String> labels = const [],
   }) async {
+    // 방어-심층: 입력 URL이 허용된 스킴이 아니면 저장하지 않고 반환
+    if (!isAllowedUrl(url)) return null;
     final ogData = await ScrapingService.scrape(url);
 
     final article = Article()
@@ -101,6 +107,8 @@ class ShareService {
       // URL 필드 유효성 검증 — 비-URL이면 저장하지 않고 반환
       final extracted = extractURL(rawUrl);
       if (extracted == null) return null;
+      // M-4 방어-심층: extractURL regex 변경 시에도 스킴 화이트리스트 보장
+      if (!isAllowedUrl(extracted)) return null;
 
       // Share Extension에서 생성한 신규 라벨을 Hive에 저장
       // (URL 검증 통과 후에 라벨을 생성해 고아 라벨 생성 방지)
