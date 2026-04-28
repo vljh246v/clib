@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:clib/blocs/auth/auth_state.dart';
 import 'package:clib/services/auth_service.dart';
 import 'package:clib/services/sync_service.dart';
+import 'package:clib/utils/app_logger.dart';
 
 /// `FirebaseAuth.authStateChanges` 구독을 소유하고, 로그인/로그아웃 전이 시
 /// `SyncService.init/dispose` 사이드이펙트까지 일괄 관리한다.
@@ -30,8 +30,7 @@ class AuthCubit extends Cubit<AuthState> {
         SyncService.dispose();
       }
     } catch (e, st) {
-      debugPrint('AuthCubit SyncService 전이 실패: $e');
-      debugPrint('$st');
+      logError('AuthCubit SyncService 전이 실패: $e', e, st);
     }
     emit(state.copyWith(
       user: user,

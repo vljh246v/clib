@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:clib/models/article.dart';
 import 'package:clib/models/label.dart';
-import 'package:flutter/foundation.dart';
+import 'package:clib/utils/app_logger.dart';
 
 class FirestoreService {
   static final _db = FirebaseFirestore.instance;
@@ -45,19 +45,19 @@ class FirestoreService {
     // 필수 필드 검증 — 누락·타입 불일치 시 null 반환
     final url = map['url'] as String?;
     if (url == null) {
-      debugPrint('articleFromMap: url 필드 누락 (docId=$docId)');
+      log('articleFromMap: url 필드 누락 (docId=$docId)');
       return null;
     }
 
     final title = map['title'] as String?;
     if (title == null) {
-      debugPrint('articleFromMap: title 필드 누락 (docId=$docId)');
+      log('articleFromMap: title 필드 누락 (docId=$docId)');
       return null;
     }
 
     final createdAtTs = map['createdAt'];
     if (createdAtTs is! Timestamp) {
-      debugPrint('articleFromMap: createdAt 필드 누락 또는 타입 불일치 (docId=$docId)');
+      log('articleFromMap: createdAt 필드 누락 또는 타입 불일치 (docId=$docId)');
       return null;
     }
 
@@ -68,7 +68,7 @@ class FirestoreService {
       if (platformName == null) throw ArgumentError('platform null');
       platform = Platform.values.byName(platformName);
     } catch (_) {
-      debugPrint('articleFromMap: 알 수 없는 platform 값, Platform.etc로 폴백 (docId=$docId)');
+      log('articleFromMap: 알 수 없는 platform 값, Platform.etc로 폴백 (docId=$docId)');
       platform = Platform.etc;
     }
 
@@ -115,21 +115,21 @@ class FirestoreService {
     // 필수 필드 검증
     final name = map['name'] as String?;
     if (name == null) {
-      debugPrint('labelFromMap: name 필드 누락 (docId=$docId)');
+      log('labelFromMap: name 필드 누락 (docId=$docId)');
       return null;
     }
 
     // int? 캐스트는 null만 허용하므로 잘못된 타입(예: String)은 is int로 사전 검증
     final colorRaw = map['colorValue'];
     if (colorRaw is! int) {
-      debugPrint('labelFromMap: colorValue 필드 누락 또는 타입 불일치 (docId=$docId)');
+      log('labelFromMap: colorValue 필드 누락 또는 타입 불일치 (docId=$docId)');
       return null;
     }
     final colorValue = colorRaw;
 
     final createdAtTs = map['createdAt'];
     if (createdAtTs is! Timestamp) {
-      debugPrint('labelFromMap: createdAt 필드 누락 또는 타입 불일치 (docId=$docId)');
+      log('labelFromMap: createdAt 필드 누락 또는 타입 불일치 (docId=$docId)');
       return null;
     }
 
