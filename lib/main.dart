@@ -1,4 +1,5 @@
 import 'dart:io' as io;
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -58,6 +59,23 @@ Future<void> bootstrap({required bool forTest}) async {
     }
   } else {
     await Firebase.initializeApp();
+    // Firebase App Check 활성화.
+    // - release: Play Integrity (Android) / App Attest (iOS) — 불법 클라이언트 차단.
+    // - debug : Debug provider — Firebase Console에서 debug token 등록 필요.
+    // 활성화 실패 시 앱 부팅을 막지 않도록 try/catch 처리.
+    // (요청은 서버 수준에서 거부되지만 클라이언트는 정상 실행됨)
+    try {
+      await FirebaseAppCheck.instance.activate(
+        androidProvider: kDebugMode
+            ? AndroidProvider.debug
+            : AndroidProvider.playIntegrity,
+        appleProvider: kDebugMode
+            ? AppleProvider.debug
+            : AppleProvider.appAttest,
+      );
+    } catch (e, st) {
+      debugPrint('FirebaseAppCheck.activate failed: $e\n$st');
+    }
   }
 
   await DatabaseService.init();
