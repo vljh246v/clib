@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:clib/models/article.dart';
 import 'package:clib/models/label.dart';
+import 'package:flutter/foundation.dart';
 
 class FirestoreService {
   static final _db = FirebaseFirestore.instance;
@@ -33,18 +34,61 @@ class FirestoreService {
     };
   }
 
-  static Article articleFromMap(Map<String, dynamic> map, String docId) {
+  /// Firestore 문서 맵을 [Article]로 변환한다.
+  ///
+  /// 필수 필드(url, title, createdAt)가 누락·타입 불일치인 경우 null을 반환하고
+  /// [docId]와 함께 로그를 남긴다. 한 doc의 스키마 위반이 전체 동기화 stream을
+  /// 중단시키지 않도록 null-skip 전략을 사용한다.
+  ///
+  /// Platform: byName 실패 시 [Platform.etc]로 폴백 (article 보존).
+  static Article? articleFromMap(Map<String, dynamic> map, String docId) {
+    // 필수 필드 검증 — 누락·타입 불일치 시 null 반환
+    final url = map['url'] as String?;
+    if (url == null) {
+      debugPrint('articleFromMap: url 필드 누락 (docId=$docId)');
+      return null;
+    }
+
+    final title = map['title'] as String?;
+    if (title == null) {
+      debugPrint('articleFromMap: title 필드 누락 (docId=$docId)');
+      return null;
+    }
+
+    final createdAtTs = map['createdAt'];
+    if (createdAtTs is! Timestamp) {
+      debugPrint('articleFromMap: createdAt 필드 누락 또는 타입 불일치 (docId=$docId)');
+      return null;
+    }
+
+    // Platform: unknown enum 값은 Platform.etc로 폴백
+    Platform platform;
+    try {
+      final platformName = map['platform'] as String?;
+      if (platformName == null) throw ArgumentError('platform null');
+      platform = Platform.values.byName(platformName);
+    } catch (_) {
+      debugPrint('articleFromMap: 알 수 없는 platform 값, Platform.etc로 폴백 (docId=$docId)');
+      platform = Platform.etc;
+    }
+
+    // 선택 필드 — 안전한 캐스트 + 기본값
+    final topicLabels =
+        (map['topicLabels'] as List?)?.cast<String>() ?? <String>[];
+    final isRead = map['isRead'] as bool? ?? false;
+    final isBookmarked = map['isBookmarked'] as bool? ?? false;
+
     return Article()
       ..firestoreId = docId
-      ..url = map['url'] as String
-      ..title = map['title'] as String
+      ..url = url
+      ..title = title
       ..thumbnailUrl = map['thumbnailUrl'] as String?
-      ..platform = Platform.values.byName(map['platform'] as String)
-      ..topicLabels = List<String>.from(map['topicLabels'] as List)
-      ..isRead = map['isRead'] as bool
-      ..isBookmarked = map['isBookmarked'] as bool? ?? false
+      ..platform = platform
+      ..topicLabels = topicLabels
+      ..isRead = isRead
+      ..isBookmarked = isBookmarked
       ..memo = map['memo'] as String?
-      ..createdAt = (map['createdAt'] as Timestamp).toDate()
+      ..createdAt = createdAtTs.toDate()
       ..updatedAt = (map['updatedAt'] as Timestamp?)?.toDate()
       ..deletedAt = (map['deletedAt'] as Timestamp?)?.toDate();
   }
@@ -63,12 +107,37 @@ class FirestoreService {
     };
   }
 
-  static Label labelFromMap(Map<String, dynamic> map, String docId) {
+  /// Firestore 문서 맵을 [Label]로 변환한다.
+  ///
+  /// 필수 필드(name, colorValue, createdAt)가 누락·타입 불일치인 경우 null을 반환하고
+  /// [docId]와 함께 로그를 남긴다.
+  static Label? labelFromMap(Map<String, dynamic> map, String docId) {
+    // 필수 필드 검증
+    final name = map['name'] as String?;
+    if (name == null) {
+      debugPrint('labelFromMap: name 필드 누락 (docId=$docId)');
+      return null;
+    }
+
+    // int? 캐스트는 null만 허용하므로 잘못된 타입(예: String)은 is int로 사전 검증
+    final colorRaw = map['colorValue'];
+    if (colorRaw is! int) {
+      debugPrint('labelFromMap: colorValue 필드 누락 또는 타입 불일치 (docId=$docId)');
+      return null;
+    }
+    final colorValue = colorRaw;
+
+    final createdAtTs = map['createdAt'];
+    if (createdAtTs is! Timestamp) {
+      debugPrint('labelFromMap: createdAt 필드 누락 또는 타입 불일치 (docId=$docId)');
+      return null;
+    }
+
     return Label()
       ..firestoreId = docId
-      ..name = map['name'] as String
-      ..colorValue = map['colorValue'] as int
-      ..createdAt = (map['createdAt'] as Timestamp).toDate()
+      ..name = name
+      ..colorValue = colorValue
+      ..createdAt = createdAtTs.toDate()
       ..updatedAt = (map['updatedAt'] as Timestamp?)?.toDate()
       ..deletedAt = (map['deletedAt'] as Timestamp?)?.toDate();
   }
@@ -164,16 +233,20 @@ class FirestoreService {
 
   static Stream<List<Article>> listenArticles(String uid) {
     return _articlesRef(uid).snapshots().map((snapshot) {
+      // null 반환된 doc(필수 필드 이상)은 whereType으로 필터링해 stream 무결성 유지
       return snapshot.docs
           .map((doc) => articleFromMap(doc.data(), doc.id))
+          .whereType<Article>()
           .toList();
     });
   }
 
   static Stream<List<Label>> listenLabels(String uid) {
     return _labelsRef(uid).snapshots().map((snapshot) {
+      // null 반환된 doc(필수 필드 이상)은 whereType으로 필터링해 stream 무결성 유지
       return snapshot.docs
           .map((doc) => labelFromMap(doc.data(), doc.id))
+          .whereType<Label>()
           .toList();
     });
   }
