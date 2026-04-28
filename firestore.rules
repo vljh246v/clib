@@ -1,15 +1,134 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 헬퍼 함수: Article 문서 유효성 검증
+    //
+    // request.resource.data (create 시 신규 doc, update 시 병합 후 결과 doc) 를 받아
+    // 필드 타입 · 크기 상한을 검사한다.
+    //
+    // [주의] update 는 병합 결과를 검증하므로, 구버전 doc (필수 필드 누락) 에 대한
+    // softDelete / 부분 업데이트가 실패할 수 있다.
+    // → staging 에서 실 데이터 스냅샷으로 검증 후 배포 권장.
+    // ──────────────────────────────────────────────────────────────────────────
+    function isValidArticle(d) {
+      return
+        // 필수 필드 존재 확인
+        d.keys().hasAll(['url', 'title', 'platform', 'isRead', 'createdAt'])
+
+        // url: 필수 string, 최대 2048자
+        && d.url is string
+        && d.url.size() <= 2048
+
+        // title: 필수 string, 최대 1024자
+        && d.title is string
+        && d.title.size() <= 1024
+
+        // platform: 필수 string (enum 이름), 최대 64자
+        && d.platform is string
+        && d.platform.size() <= 64
+
+        // isRead: 필수 bool
+        && d.isRead is bool
+
+        // createdAt: 필수 timestamp
+        && d.createdAt is timestamp
+
+        // thumbnailUrl: 선택 — null 허용, string 시 최대 2048자
+        && (!('thumbnailUrl' in d) || d.thumbnailUrl == null
+            || (d.thumbnailUrl is string && d.thumbnailUrl.size() <= 2048))
+
+        // memo: 선택 — null 허용, string 시 최대 100자 (모델 제한)
+        && (!('memo' in d) || d.memo == null
+            || (d.memo is string && d.memo.size() <= 100))
+
+        // isBookmarked: 선택 — 존재하면 bool
+        && (!('isBookmarked' in d) || d.isBookmarked is bool)
+
+        // topicLabels: 선택 — 존재하면 list, 최대 50개 (비용 폭탄 방어)
+        && (!('topicLabels' in d) || (d.topicLabels is list && d.topicLabels.size() <= 50))
+
+        // updatedAt: 선택 — null 허용, timestamp
+        && (!('updatedAt' in d) || d.updatedAt == null || d.updatedAt is timestamp)
+
+        // deletedAt: 선택 — null 허용, timestamp (tombstone)
+        && (!('deletedAt' in d) || d.deletedAt == null || d.deletedAt is timestamp);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 헬퍼 함수: Label 문서 유효성 검증
+    //
+    // notificationEnabled / notificationDays / notificationTime 은 로컬 전용
+    // Hive 필드로 Firestore 에 쓰지 않으므로 rules 에 포함하지 않는다.
+    // ──────────────────────────────────────────────────────────────────────────
+    function isValidLabel(d) {
+      return
+        // 필수 필드 존재 확인
+        d.keys().hasAll(['name', 'colorValue', 'createdAt'])
+
+        // name: 필수 string, 최대 64자
+        && d.name is string
+        && d.name.size() <= 64
+
+        // colorValue: 필수 int (Color.value 0xAARRGGBB)
+        && d.colorValue is int
+
+        // createdAt: 필수 timestamp
+        && d.createdAt is timestamp
+
+        // updatedAt: 선택 — null 허용, timestamp
+        && (!('updatedAt' in d) || d.updatedAt == null || d.updatedAt is timestamp)
+
+        // deletedAt: 선택 — null 허용, timestamp (tombstone)
+        && (!('deletedAt' in d) || d.deletedAt == null || d.deletedAt is timestamp);
+    }
+
     match /users/{userId} {
+      // users/{userId} 문서 자체는 계정 삭제 시 FirestoreService.deleteAllUserData() 에서
+      // _db.collection('users').doc(uid).delete() 로 삭제하므로 write 허용을 유지한다.
+      // TODO: 계정 삭제 로직을 Cloud Functions 로 이전 후 이 규칙을 강화 가능.
+      // (문서 수 상한 제어는 Cloud Functions trigger 로 보완 — 현재 범위 외)
       allow read, write: if request.auth != null && request.auth.uid == userId;
+
       match /articles/{articleId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        // 읽기: 인증된 본인만
+        allow read: if request.auth != null && request.auth.uid == userId;
+
+        // 생성: 인증 + 스키마 검증
+        allow create: if request.auth != null
+            && request.auth.uid == userId
+            && isValidArticle(request.resource.data);
+
+        // 수정: 인증 + 스키마 검증 (request.resource.data = 병합 결과)
+        allow update: if request.auth != null
+            && request.auth.uid == userId
+            && isValidArticle(request.resource.data);
+
+        // 삭제: 인증만 (영구 삭제는 계정 삭제 시에만 발생)
+        allow delete: if request.auth != null && request.auth.uid == userId;
       }
+
       match /labels/{labelId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        // 읽기: 인증된 본인만
+        allow read: if request.auth != null && request.auth.uid == userId;
+
+        // 생성: 인증 + 스키마 검증
+        allow create: if request.auth != null
+            && request.auth.uid == userId
+            && isValidLabel(request.resource.data);
+
+        // 수정: 인증 + 스키마 검증 (request.resource.data = 병합 결과)
+        allow update: if request.auth != null
+            && request.auth.uid == userId
+            && isValidLabel(request.resource.data);
+
+        // 삭제: 인증만
+        allow delete: if request.auth != null && request.auth.uid == userId;
       }
     }
+
+    // 그 외 모든 경로 차단
     match /{document=**} {
       allow read, write: if false;
     }
