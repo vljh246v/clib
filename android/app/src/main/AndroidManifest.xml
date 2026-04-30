@@ -6,6 +6,7 @@
         android:label="clib"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
         android:localeConfig="@xml/locales_config">
         <activity
             android:name=".MainActivity"
