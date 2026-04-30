@@ -78,7 +78,7 @@ Future<void> bootstrap({required bool forTest}) async {
     }
   }
 
-  await DatabaseService.init();
+  await DatabaseService.init(forTest: forTest);
 
   if (forTest) {
     DatabaseService.skipSync = true;

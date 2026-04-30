@@ -5,8 +5,10 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:clib/models/article.dart';
 import 'package:clib/models/label.dart';
 import 'package:clib/services/auth_service.dart';
+import 'package:clib/services/hive_cipher_service.dart';
 import 'package:clib/services/sync_service.dart';
 import 'package:clib/state/app_notifiers.dart';
+import 'package:clib/utils/app_logger.dart';
 
 class DatabaseService {
   static const _boxName = 'articles';
@@ -23,14 +25,168 @@ class DatabaseService {
   @visibleForTesting
   static Future<void> Function(Article)? syncDeleteOverride;
 
-  static Future<void> init() async {
+  /// 앱 초기화. Hive를 열고, 필요 시 평문 → AES 암호화 마이그레이션을 수행한다.
+  ///
+  /// [forTest] 가 `true`이면 마이그레이션을 건너뛰고 평문 박스를 그대로 연다.
+  /// 단위·통합 테스트는 반드시 `forTest: true`로 호출할 것.
+  ///
+  /// ### 마이그레이션 전략
+  /// preferences 박스의 `hive_encrypted_v1` 플래그로 암호화 여부를 추적한다.
+  ///
+  /// - **플래그 = true** (기존 설치·마이그레이션 완료): 암호화 키로 박스를 열기만 한다.
+  /// - **플래그 = false/미설정** (평문 박스 존재): 평문 읽기 → 박스 삭제 → 암호화 재오픈 → 쓰기.
+  ///
+  /// #### 프로세스 강제 종료 시 안전성
+  /// 마이그레이션은 `deleteBoxFromDisk` → 암호화 재오픈 → 쓰기 순서로 진행된다.
+  /// 이 구간에서 OS가 프로세스를 종료하면 평문 박스는 이미 삭제된 상태이고
+  /// 플래그도 `false`이므로 다음 부팅에서 마이그레이션이 다시 시도된다.
+  /// 이때 빈 박스가 암호화되어 열리므로 **마이그레이션 구간 내 강제 종료 시
+  /// 해당 구간에 쓰지 못한 아티클/라벨 데이터는 손실된다.**
+  /// 이 창(window)은 통상 1초 미만이며, 앱 시작 시 주로 발생한다.
+  ///
+  /// #### preferences 박스
+  /// preferences 박스는 마이그레이션 플래그를 보관하기 위해 평문으로 유지한다.
+  /// 평문 암호화하면 닭-달걀 문제가 발생한다.
+  static Future<void> init({bool forTest = false}) async {
     await Hive.initFlutter();
-    Hive.registerAdapter(ArticleAdapter());
-    Hive.registerAdapter(PlatformAdapter());
-    Hive.registerAdapter(LabelAdapter());
-    await Hive.openBox<Article>(_boxName);
-    await Hive.openBox<Label>(_labelBoxName);
+    // 어댑터는 프로세스 내 싱글톤 — 중복 등록 방지
+    if (!Hive.isAdapterRegistered(0)) Hive.registerAdapter(ArticleAdapter());
+    if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(PlatformAdapter());
+    if (!Hive.isAdapterRegistered(2)) Hive.registerAdapter(LabelAdapter());
+
+    // preferences 박스는 마이그레이션 플래그 보관용으로 평문 유지
     await Hive.openBox(_prefsBoxName);
+
+    if (forTest) {
+      // 테스트 경로: 마이그레이션 없이 평문 박스 오픈
+      await Hive.openBox<Article>(_boxName);
+      await Hive.openBox<Label>(_labelBoxName);
+      return;
+    }
+
+    // 프로덕션 경로: AES 암호화 마이그레이션
+    final alreadyEncrypted =
+        _prefsBox.get('hive_encrypted_v1', defaultValue: false) as bool;
+
+    if (alreadyEncrypted) {
+      // 이미 암호화된 박스 — 키를 가져와 열기만 한다
+      final cipher = await HiveCipherService.getCipher();
+      await Hive.openBox<Article>(_boxName, encryptionCipher: cipher);
+      await Hive.openBox<Label>(_labelBoxName, encryptionCipher: cipher);
+    } else {
+      // 평문 → 암호화 마이그레이션
+      await _migrateToEncrypted();
+    }
+  }
+
+  /// 평문 Hive 박스를 AES 암호화 박스로 마이그레이션한다.
+  ///
+  /// 실패 시 평문 박스를 다시 열어 데이터를 보존하고 플래그를 false로 유지한다.
+  /// 다음 부팅에서 재시도한다.
+  static Future<void> _migrateToEncrypted() async {
+    try {
+      await _migrateBoxesForTest(cipher: await HiveCipherService.getCipher());
+    } catch (e, st) {
+      logError('Hive 암호화 마이그레이션 실패 — 평문 폴백', e, st);
+      // 박스가 닫혀 있을 수 있으므로 안전하게 다시 열기 시도
+      try {
+        if (!Hive.isBoxOpen(_boxName)) {
+          await Hive.openBox<Article>(_boxName);
+        }
+        if (!Hive.isBoxOpen(_labelBoxName)) {
+          await Hive.openBox<Label>(_labelBoxName);
+        }
+      } catch (reopenError, reopenSt) {
+        logError('평문 폴백 재오픈 실패', reopenError, reopenSt);
+      }
+      // 플래그를 false로 유지 → 다음 실행에서 재시도
+    }
+  }
+
+  /// 암호화 마이그레이션 핵심 로직.
+  ///
+  /// [cipher]를 외부에서 주입받아 FlutterSecureStorage 없이 단위 테스트 가능하다.
+  /// `@visibleForTesting` 으로 표시 — 프로덕션 코드는 `_migrateToEncrypted()`를 사용할 것.
+  @visibleForTesting
+  static Future<void> migrateBoxesForTest({
+    required HiveAesCipher cipher,
+  }) async {
+    await _migrateBoxesForTest(cipher: cipher);
+  }
+
+  static Future<void> _migrateBoxesForTest({
+    required HiveAesCipher cipher,
+  }) async {
+    // 1. 평문 박스 열기 (이미 열려 있으면 재사용)
+    final Box<Article> plainArticles = Hive.isBoxOpen(_boxName)
+        ? Hive.box<Article>(_boxName)
+        : await Hive.openBox<Article>(_boxName);
+    final Box<Label> plainLabels = Hive.isBoxOpen(_labelBoxName)
+        ? Hive.box<Label>(_labelBoxName)
+        : await Hive.openBox<Label>(_labelBoxName);
+
+    // 2. 평문 데이터 메모리에 읽기
+    final articleEntries = {
+      for (final key in plainArticles.keys)
+        key as dynamic: plainArticles.get(key)!
+    };
+    final labelEntries = {
+      for (final key in plainLabels.keys)
+        key as dynamic: plainLabels.get(key)!
+    };
+
+    // 3. 평문 박스 닫기 + 디스크에서 삭제
+    await plainArticles.close();
+    await plainLabels.close();
+    await Hive.deleteBoxFromDisk(_boxName);
+    await Hive.deleteBoxFromDisk(_labelBoxName);
+
+    // 4. 암호화 박스 오픈
+    final encArticles = await Hive.openBox<Article>(
+      _boxName,
+      encryptionCipher: cipher,
+    );
+    final encLabels = await Hive.openBox<Label>(
+      _labelBoxName,
+      encryptionCipher: cipher,
+    );
+
+    // 5. 데이터 복원 — HiveObject는 동일 인스턴스가 두 박스에 속할 수 없으므로
+    //    필드 복사로 새 인스턴스를 만들어 저장한다.
+    final clonedArticles = <dynamic, Article>{
+      for (final e in articleEntries.entries)
+        e.key: (Article()
+          ..url = e.value.url
+          ..title = e.value.title
+          ..thumbnailUrl = e.value.thumbnailUrl
+          ..platform = e.value.platform
+          ..topicLabels = List<String>.from(e.value.topicLabels)
+          ..isRead = e.value.isRead
+          ..createdAt = e.value.createdAt
+          ..isBookmarked = e.value.isBookmarked
+          ..memo = e.value.memo
+          ..firestoreId = e.value.firestoreId
+          ..updatedAt = e.value.updatedAt
+          ..deletedAt = e.value.deletedAt),
+    };
+    final clonedLabels = <dynamic, Label>{
+      for (final e in labelEntries.entries)
+        e.key: (Label()
+          ..name = e.value.name
+          ..colorValue = e.value.colorValue
+          ..createdAt = e.value.createdAt
+          ..notificationEnabled = e.value.notificationEnabled
+          ..notificationDays = List<int>.from(e.value.notificationDays)
+          ..notificationTime = e.value.notificationTime
+          ..firestoreId = e.value.firestoreId
+          ..updatedAt = e.value.updatedAt
+          ..deletedAt = e.value.deletedAt),
+    };
+    await encArticles.putAll(clonedArticles);
+    await encLabels.putAll(clonedLabels);
+
+    // 6. 마이그레이션 완료 플래그 설정
+    await _prefsBox.put('hive_encrypted_v1', true);
   }
 
   static Box<Article> get _box => Hive.box<Article>(_boxName);
