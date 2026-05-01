@@ -15,7 +15,7 @@ import 'scenarios/swipe_read.dart';
 /// flutter test integration_test/app_test.dart -d <device-id>
 /// ```
 ///
-/// 자세한 실행 가이드: `doc/bloc-migration/integration-test-guide.md`.
+/// 자세한 실행 가이드: `docs/archive/bloc-migration/integration-test-guide.md`.
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 

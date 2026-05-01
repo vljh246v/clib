@@ -1,10 +1,12 @@
-# BLoC 점진적 전환 — 마스터 문서
+# BLoC 점진적 전환 — 마스터 문서 (Archived)
 
-> Clib 상태 관리를 `setState` + `ValueNotifier`에서 `flutter_bloc`(Cubit 중심)으로
-> **화면 단위로 점진 전환**하는 장기 작업.
+> **상태: 완료. 본 폴더는 history 보존용 아카이브.**
+> 마이그레이션 결과로 정착된 패턴(컨트롤러 SSOT, `refreshToken`, `deckVersion`,
+> 에러 채널 분리 등)은 `/CLAUDE.md` §4 / `docs/conventions.md` §2에 정식 정의되어 있다.
+> 현재 코드와 다를 수 있는 항목이 있으니 **운영 규칙은 CLAUDE.md를 우선** 참조.
 >
-> PR 1~10 + PR 11 코드/문서 정리까지 완료. **남은 작업은 PR 11 §2.6
-> widget_test 재작성 + §3 실기기 스모크**(다음 세션).
+> Clib 상태 관리를 `setState` + `ValueNotifier`에서 `flutter_bloc`(Cubit 중심)으로
+> **화면 단위로 점진 전환**한 장기 작업의 기록.
 
 ## 활성 문서 (이 폴더)
 
