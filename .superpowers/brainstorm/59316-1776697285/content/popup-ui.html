@@ -1,0 +1,394 @@
+<h2>Section 2 — 팝업 UI 구조</h2>
+<p class="subtitle">3개 뷰의 레이아웃. 실제 Chrome 팝업 비율(360×520px)로 표현.</p>
+
+<style>
+.popup-grid {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  margin: 24px 0;
+}
+.popup-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.popup-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.popup {
+  width: 320px;
+  min-height: 420px;
+  border-radius: 12px;
+  border: 1.5px solid #ddd;
+  background: #F8F7F4;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,.10);
+  font-family: -apple-system, sans-serif;
+}
+/* Header */
+.p-header {
+  background: #2C2C3A;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #fff;
+}
+.p-header .logo {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .5px;
+}
+.p-header .user-info {
+  font-size: 11px;
+  color: #aaa;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.p-header .avatar {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #5BA67D;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  color: #fff;
+}
+/* Tab bar */
+.p-tabs {
+  display: flex;
+  border-bottom: 1.5px solid #e5e5e5;
+  background: #fff;
+}
+.p-tab {
+  flex: 1;
+  text-align: center;
+  padding: 9px 0;
+  font-size: 12px;
+  color: #888;
+  font-weight: 500;
+  cursor: pointer;
+}
+.p-tab.active {
+  color: #2C2C3A;
+  font-weight: 700;
+  border-bottom: 2px solid #5BA67D;
+  margin-bottom: -1.5px;
+}
+/* Body */
+.p-body {
+  padding: 16px;
+}
+/* Form elements */
+.p-field {
+  margin-bottom: 12px;
+}
+.p-field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  margin-bottom: 4px;
+}
+.p-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1.5px solid #e0e0e0;
+  background: #fff;
+  font-size: 13px;
+  color: #1C1C1E;
+}
+.p-input.url {
+  color: #888;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Thumbnail row */
+.p-thumb-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.p-thumb {
+  width: 56px; height: 40px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #c8e6c9, #5BA67D);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.p-title-field { flex: 1; }
+/* Labels */
+.p-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.p-chip {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+}
+.p-chip.sel { border-color: #5BA67D; color: #2e7d52; background: #e8f5e9; }
+.p-chip.plain { background: #f0f0f0; color: #555; }
+.p-chip.new { background: #fff; border: 1.5px dashed #bbb; color: #888; }
+/* Button */
+.p-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  background: #2C2C3A;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 4px;
+}
+.p-btn.secondary {
+  background: #f0f0f2;
+  color: #2C2C3A;
+  margin-top: 8px;
+}
+/* Recent list */
+.p-recent-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.p-recent-thumb {
+  width: 40px; height: 40px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.p-recent-info { flex: 1; min-width: 0; }
+.p-recent-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1C1C1E;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.p-recent-meta { font-size: 10px; color: #999; margin-top: 2px; }
+.p-recent-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.p-icon-btn {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  background: #f2f2f2;
+  border: none;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+}
+.p-icon-btn.del { background: #fdecea; }
+/* Auth view */
+.p-auth-body {
+  padding: 32px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.p-auth-logo { font-size: 40px; margin-bottom: 8px; }
+.p-auth-title { font-size: 16px; font-weight: 700; color: #2C2C3A; }
+.p-auth-sub { font-size: 12px; color: #888; text-align: center; line-height: 1.5; }
+.p-google-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  border: 1.5px solid #ddd;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  width: 100%;
+  justify-content: center;
+  margin-top: 8px;
+}
+</style>
+
+<div class="popup-grid">
+
+  <!-- View 1: Auth -->
+  <div class="popup-wrap">
+    <div class="popup-label">① 로그인 전 (Auth View)</div>
+    <div class="popup">
+      <div class="p-header">
+        <span class="logo">📎 clib</span>
+      </div>
+      <div class="p-auth-body">
+        <div class="p-auth-logo">📎</div>
+        <div class="p-auth-title">clib에 오신 것을 환영해요</div>
+        <div class="p-auth-sub">로그인 후 현재 탭의 링크를<br>clib에 저장할 수 있어요.</div>
+        <button class="p-google-btn">
+          <span style="font-size:16px">G</span>
+          Google로 계속하기
+        </button>
+        <div style="font-size:11px;color:#bbb;margin-top:8px">앱에서 같은 계정으로 로그인하면<br>저장한 링크를 확인할 수 있어요</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- View 2: Add Article -->
+  <div class="popup-wrap">
+    <div class="popup-label">② 링크 저장 (Add View)</div>
+    <div class="popup">
+      <div class="p-header">
+        <span class="logo">📎 clib</span>
+        <div class="user-info">
+          <div class="avatar">J</div>
+          <span>jaehyun@gmail.com</span>
+        </div>
+      </div>
+      <div class="p-tabs">
+        <div class="p-tab active">저장</div>
+        <div class="p-tab">최근 목록</div>
+      </div>
+      <div class="p-body">
+        <div class="p-thumb-row">
+          <div class="p-thumb">🌐</div>
+          <div class="p-title-field">
+            <div class="p-input" style="font-size:12px;padding:6px 8px;border-radius:6px;border:1.5px solid #e0e0e0;background:#fff;color:#1C1C1E">
+              Flutter 공식 문서 — 레이아웃
+            </div>
+          </div>
+        </div>
+        <div class="p-field">
+          <label>URL</label>
+          <div class="p-input url">https://docs.flutter.dev/ui/layout</div>
+        </div>
+        <div class="p-field">
+          <label>라벨</label>
+          <div class="p-chips">
+            <div class="p-chip sel">Flutter</div>
+            <div class="p-chip plain">iOS</div>
+            <div class="p-chip plain">개발</div>
+            <div class="p-chip new">+ 새 라벨</div>
+          </div>
+        </div>
+        <button class="p-btn">저장하기</button>
+        <button class="p-btn secondary" style="font-size:12px;font-weight:500">로그아웃</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- View 3: Recent List -->
+  <div class="popup-wrap">
+    <div class="popup-label">③ 최근 저장 (Recent View)</div>
+    <div class="popup">
+      <div class="p-header">
+        <span class="logo">📎 clib</span>
+        <div class="user-info">
+          <div class="avatar">J</div>
+          <span>jaehyun@gmail.com</span>
+        </div>
+      </div>
+      <div class="p-tabs">
+        <div class="p-tab">저장</div>
+        <div class="p-tab active">최근 목록</div>
+      </div>
+      <div class="p-body" style="padding-top:8px">
+        <div style="font-size:11px;color:#aaa;margin-bottom:8px">최근 저장 10개</div>
+
+        <div class="p-recent-item">
+          <div class="p-recent-thumb" style="background:#e8f5e9">📄</div>
+          <div class="p-recent-info">
+            <div class="p-recent-title">Flutter 공식 문서 — 레이아웃</div>
+            <div class="p-recent-meta">Flutter · 방금 전</div>
+          </div>
+          <div class="p-recent-actions">
+            <button class="p-icon-btn">↗</button>
+            <button class="p-icon-btn del">🗑</button>
+          </div>
+        </div>
+
+        <div class="p-recent-item">
+          <div class="p-recent-thumb" style="background:#fff3e0">🎬</div>
+          <div class="p-recent-info">
+            <div class="p-recent-title">Riverpod 완벽 가이드 2024</div>
+            <div class="p-recent-meta">개발 · 2시간 전</div>
+          </div>
+          <div class="p-recent-actions">
+            <button class="p-icon-btn">↗</button>
+            <button class="p-icon-btn del">🗑</button>
+          </div>
+        </div>
+
+        <div class="p-recent-item">
+          <div class="p-recent-thumb" style="background:#e3f2fd">📰</div>
+          <div class="p-recent-info">
+            <div class="p-recent-title">2024 모바일 디자인 트렌드 정리</div>
+            <div class="p-recent-meta">디자인 · 어제</div>
+          </div>
+          <div class="p-recent-actions">
+            <button class="p-icon-btn">↗</button>
+            <button class="p-icon-btn del">🗑</button>
+          </div>
+        </div>
+
+        <div class="p-recent-item">
+          <div class="p-recent-thumb" style="background:#fce4ec">🐦</div>
+          <div class="p-recent-info">
+            <div class="p-recent-title">Dart 3.3 새 기능 요약 스레드</div>
+            <div class="p-recent-meta">Flutter · 어제</div>
+          </div>
+          <div class="p-recent-actions">
+            <button class="p-icon-btn">↗</button>
+            <button class="p-icon-btn del">🗑</button>
+          </div>
+        </div>
+
+        <div class="p-recent-item" style="border-bottom:none">
+          <div class="p-recent-thumb" style="background:#f3e5f5">📰</div>
+          <div class="p-recent-info">
+            <div class="p-recent-title">The Evolution of Design Systems</div>
+            <div class="p-recent-meta">디자인 · 3일 전</div>
+          </div>
+          <div class="p-recent-actions">
+            <button class="p-icon-btn">↗</button>
+            <button class="p-icon-btn del">🗑</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+<p style="font-size:13px;color:#555">
+  <b>UX 노트:</b><br>
+  • Add View에서 "저장 성공" 시 간단한 토스트 → 팝업 자동 닫힘<br>
+  • "새 라벨" 칩 클릭 → 인라인 입력 필드 확장 (이름만, 색상 자동)<br>
+  • 삭제 버튼은 soft-delete (deletedAt) — 앱 SyncService에서 자동 처리<br>
+  • ↗ 버튼은 chrome.tabs.create로 새 탭 열기
+</p>

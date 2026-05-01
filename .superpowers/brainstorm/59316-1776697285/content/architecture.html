@@ -1,0 +1,145 @@
+<h2>Section 1 — 시스템 아키텍처</h2>
+<p class="subtitle">Chrome Extension이 기존 Firebase 인프라와 어떻게 연결되는지</p>
+
+<style>
+.arch-diagram {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin: 24px 0;
+}
+.arch-box {
+  border: 2px solid #ccc;
+  border-radius: 12px;
+  padding: 14px 18px;
+  min-width: 160px;
+  background: #fff;
+}
+.arch-box.ext { border-color: #5BA67D; background: #f0faf4; }
+.arch-box.firebase { border-color: #F5A623; background: #fffbf0; }
+.arch-box.app { border-color: #A8B5D6; background: #f4f6fc; }
+.arch-box h4 { margin: 0 0 8px 0; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+.arch-box ul { margin: 0; padding-left: 16px; font-size: 13px; line-height: 1.7; color: #444; }
+.arch-arrow {
+  display: flex;
+  align-items: center;
+  font-size: 22px;
+  color: #888;
+  margin-top: 40px;
+  flex-shrink: 0;
+}
+.flow-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 20px 0 8px;
+}
+.flow-step {
+  background: #f5f5f7;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: #333;
+  border: 1px solid #ddd;
+}
+.flow-arrow { font-size: 18px; color: #888; }
+.tag { display: inline-block; font-size: 11px; border-radius: 4px; padding: 1px 6px; margin-right: 4px; }
+.tag.green { background: #e0f5e9; color: #2e7d52; }
+.tag.orange { background: #fff3cd; color: #856404; }
+.tag.blue { background: #e8eef8; color: #3a5a9b; }
+</style>
+
+<div class="arch-diagram">
+  <!-- Extension -->
+  <div class="arch-box ext">
+    <h4>🧩 Chrome Extension</h4>
+    <ul>
+      <li><b>popup</b> (React 앱)<br>
+        <span class="tag green">Auth View</span><br>
+        <span class="tag green">Add View</span><br>
+        <span class="tag green">Recent View</span>
+      </li>
+      <li style="margin-top:6px"><b>background.ts</b><br>
+        <span style="font-size:12px;color:#666">service worker<br>chrome.identity 토큰</span>
+      </li>
+    </ul>
+  </div>
+
+  <div class="arch-arrow">⇄</div>
+
+  <!-- Firebase -->
+  <div class="arch-box firebase">
+    <h4>🔥 Firebase (공유 프로젝트)</h4>
+    <ul>
+      <li><b>Auth</b> — Google OAuth<br>
+        <span style="font-size:12px;color:#666">chrome.identity.launchWebAuthFlow<br>→ signInWithCredential</span>
+      </li>
+      <li style="margin-top:6px"><b>Firestore</b><br>
+        <span style="font-size:12px;color:#666">users/{uid}/articles<br>users/{uid}/labels</span>
+      </li>
+    </ul>
+  </div>
+
+  <div class="arch-arrow">⇄</div>
+
+  <!-- App -->
+  <div class="arch-box app">
+    <h4>📱 clib 앱 (Flutter)</h4>
+    <ul>
+      <li>동일 Firebase 프로젝트<br>
+        <span style="font-size:12px;color:#666">동일 컬렉션 구조<br>SyncService 실시간 수신</span>
+      </li>
+      <li style="margin-top:6px">크롬 저장 → Firestore<br>→ 앱 snapshot listener<br>→ 자동 반영</li>
+    </ul>
+  </div>
+</div>
+
+<hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+
+<h3>주요 데이터 흐름</h3>
+
+<p class="label">1. 링크 저장</p>
+<div class="flow-row">
+  <div class="flow-step">팝업 열림</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">chrome.scripting<br>executeScript</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">탭 DOM 읽기<br>(og:title, og:image)</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">폼 자동 채움</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">저장 버튼</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">Firestore<br>articles 추가</div>
+</div>
+
+<p class="label" style="margin-top:16px">2. 최근 목록</p>
+<div class="flow-row">
+  <div class="flow-step">Recent 탭 전환</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">Firestore query<br>최근 10개</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">목록 렌더링<br>(제목+썸네일)</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">열기 / 삭제</div>
+</div>
+
+<p class="label" style="margin-top:16px">3. 삭제</p>
+<div class="flow-row">
+  <div class="flow-step">삭제 버튼</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">soft delete<br>(deletedAt 설정)</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">앱 SyncService<br>tombstone 수신</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">앱에서도 삭제</div>
+</div>
+
+<hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+
+<p style="font-size:13px;color:#666">
+  <b>핵심 포인트:</b> Extension은 <b>동일 Firebase 프로젝트</b>를 공유. 별도 서버 없음.<br>
+  Firestore Security Rules는 현재 <code>request.auth.uid == userId</code> — 변경 불필요.
+</p>

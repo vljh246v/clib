@@ -74,7 +74,7 @@ docs/                          본 문서·conventions·security 등 reference
 |--------|------|
 | **DatabaseService** | Hive CRUD, 통계, 테마/온보딩 preferences, 북마크/메모, 라벨 정규화. **모든 mutation 직후 `articlesChangedNotifier`/`labelsChangedNotifier` 발사**(Cubit/Bloc 자동 재로드). `skipSync` 플래그로 동기화 억제 가능 |
 | **HiveCipherService** | `flutter_secure_storage` 기반 32B AES 키 발급/조회. 첫 실행 시 생성, 이후 재사용 |
-| **NotificationService** | 주간 weekly 반복 알림. ID = `label.key * 10 + dayOfWeek`. 메시지는 `Platform.localeName` 기반 다국어(BuildContext 없이) |
+| **NotificationService** | 주간 weekly 반복 알림. ID = `label.key * 10 + dayOfWeek`. 메시지는 `Platform.localeName` 기반 다국어(BuildContext 없이). 알림 payload에는 `label.key`를 JSON으로 저장하고, 탭 시 `notificationLabelTapNotifier` 발사 |
 | **ShareService** | Android: MethodChannel `com.jaehyun.clib/share`. iOS: App Group `group.com.jaehyun.clib.share` UserDefaults. `processAndSave()`가 스크래핑 후 `DatabaseService.saveArticle()` 위임(notifier 발사는 DB 서비스 내부) |
 | **ScrapingService** | HTTP(User-Agent: iPhone Safari) + charset 감지 디코딩(`utf8.decode(allowMalformed: true)`). `og:title/image/description` → `<title>` → URL fallback. **SSRF/OOM 가드**: IP literal·redirect 차단 + 응답 크기 상한 (M-5) |
 | **AdService** | AdMob 초기화. debug=Google 테스트 ID, release=프로덕션. 네이티브는 `NativeTemplateStyle(TemplateType.medium)` Flutter 렌더링. `adInterval` 단일 출처 |
@@ -103,9 +103,13 @@ docs/                          본 문서·conventions·security 등 reference
 ```dart
 final articlesChangedNotifier = ValueNotifier<int>(0); // DB 변경 시 increment
 final labelsChangedNotifier   = ValueNotifier<int>(0);
+final notificationLabelTapNotifier =
+    ValueNotifier<NotificationLabelTapRequest?>(null);
 ```
 
 발사 위치는 **`DatabaseService` mutation + `SyncService` 원격 스냅샷 적용 분기 단독**. 그 외(Cubit/Bloc/`ShareService`) 직접 발사 금지(중복 reload). 각 Cubit/Bloc은 `addListener(_onChanged)` ↔ `close()`에서 `removeListener` 짝.
+
+`notificationLabelTapNotifier`는 라벨 알림 클릭 요청 전용. `NotificationService`가 payload를 파싱해 발사하고, `MainScreen`이 root route 복귀 + Home 탭 전환, `HomeScreen`이 라벨 필터 적용 + 선택 라벨 칩 자동 스크롤을 처리한다.
 
 `lib/main.dart`는 호환을 위해 `state/app_notifiers.dart`를 re-export — `package:clib/main.dart show ...` 경로도 계속 동작.
 
@@ -124,10 +128,11 @@ final labelsChangedNotifier   = ValueNotifier<int>(0);
 
 `MainScreen`:
 - `WidgetsBindingObserver`로 `AppLifecycleState.resumed` 시 `_checkPendingShares()` 호출 (Android `ShareLabelSheet` / iOS `ShareService.checkPendingShares()`)
+- 라벨 알림 탭 요청 수신 시 root route까지 pop 후 Home 탭으로 전환
 
 ## 6. 화면별 주요 로직
 
-- **HomeScreen** (`HomeBloc` — 시리즈 유일 Bloc): 이벤트 소싱 — `HomeLoadDeck/SwipeRead/SwipeLater/FilterLabelsChanged/ToggleBookmark/UpdateMemo/ToggleExpand`. `CardSwiper(isLoop: true)` 덱. 우=읽음, 좌=나중에. 스와이프 중 테두리 = `AppColors.swipeRead/swipeSkip`. 컨트롤러는 `_HomeBody` 로컬 SSOT(Bloc state 진입 금지). `state.deckVersion`을 `CardSwiper(key: ValueKey(...))`로 사용해 인덱스 out-of-range 방지. `AdService.adInterval` 카드마다 `SwipeAdCard`. 첫 실행 시 `home_overlay_guide`.
+- **HomeScreen** (`HomeBloc` — 시리즈 유일 Bloc): 이벤트 소싱 — `HomeLoadDeck/SwipeRead/SwipeLater/FilterLabelsChanged/ToggleBookmark/UpdateMemo/ToggleExpand`. `CardSwiper(isLoop: true)` 덱. 우=읽음, 좌=나중에. 스와이프 중 테두리 = `AppColors.swipeRead/swipeSkip`. 컨트롤러는 `_HomeBody` 로컬 SSOT(Bloc state 진입 금지). `state.deckVersion`을 `CardSwiper(key: ValueKey(...))`로 사용해 인덱스 out-of-range 방지. 라벨 알림 탭 시 해당 라벨 필터를 적용하고 선택 칩을 가로 목록 안으로 자동 스크롤. `AdService.adInterval` 카드마다 `SwipeAdCard`. 첫 실행 시 `home_overlay_guide`.
 - **LibraryScreen** (`LibraryCubit`): 2열 GridView. 인덱스 0="전체", 1="북마크", 이후 라벨 카드(원형 프로그레스). `articlesChangedNotifier` + `labelsChangedNotifier` 양쪽 구독.
 - **AllArticles / Bookmarked / LabelDetail** (`ArticleListCubit` 재사용): `ArticleListSource`로 분기 (`All`/`Bookmarked`/`ByLabel`). 공통 위젯 `ArticleListView` + `ArticleListItem(accentColor)` + `BulkActionBar` + `showBulkDeleteConfirm`. `selectedKeys: List<int>`(Hive key는 int). `AdService.adInterval`마다 `InlineBannerAd`.
 - **LabelManagementScreen** (`LabelManagementCubit`): 라벨 CRUD + 알림(요일 칩 + TimePicker).
