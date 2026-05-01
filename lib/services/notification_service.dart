@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io' as io;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -6,9 +7,11 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:clib/models/label.dart';
 import 'package:clib/services/database_service.dart';
+import 'package:clib/state/app_notifiers.dart';
 
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
+  static int _labelTapRequestId = 0;
 
   /// 테스트 전용 심(Seam) — null이 아닐 때 cancelForLabel이 플러그인 대신 이 함수를 호출한다.
   /// 프로덕션에서는 반드시 null이어야 한다.
@@ -44,7 +47,43 @@ class NotificationService {
         android: androidSettings,
         iOS: iosSettings,
       ),
+      onDidReceiveNotificationResponse: (response) {
+        handleLabelTapPayload(response.payload);
+      },
     );
+
+    final launchDetails = await _plugin.getNotificationAppLaunchDetails();
+    if (launchDetails?.didNotificationLaunchApp ?? false) {
+      handleLabelTapPayload(launchDetails?.notificationResponse?.payload);
+    }
+  }
+
+  static String buildLabelTapPayload(int labelKey) {
+    return jsonEncode({'type': 'label', 'labelKey': labelKey});
+  }
+
+  static NotificationLabelTapRequest? parseLabelTapPayload(String? payload) {
+    if (payload == null || payload.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(payload);
+      if (decoded is! Map<String, Object?>) return null;
+      if (decoded['type'] != 'label') return null;
+      final labelKey = decoded['labelKey'];
+      if (labelKey is! int) return null;
+      return NotificationLabelTapRequest(
+        labelKey: labelKey,
+        requestId: _labelTapRequestId + 1,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static void handleLabelTapPayload(String? payload) {
+    final request = parseLabelTapPayload(payload);
+    if (request == null) return;
+    _labelTapRequestId = request.requestId;
+    notificationLabelTapNotifier.value = request;
   }
 
   /// 알림 권한 요청
@@ -124,6 +163,7 @@ class NotificationService {
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+        payload: buildLabelTapPayload(label.key as int),
       );
     }
   }

@@ -537,6 +537,10 @@ class DatabaseService {
     }
   }
 
+  static Label? getLabelByKey(int key) {
+    return _labelBox.get(key);
+  }
+
   // ── 라벨 알림 설정 ──
 
   // 라벨 알림 설정 저장

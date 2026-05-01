@@ -10,6 +10,8 @@ import 'package:clib/blocs/home/home_state.dart';
 import 'package:clib/l10n/app_localizations.dart';
 import 'package:clib/models/article.dart';
 import 'package:clib/services/ad_service.dart';
+import 'package:clib/services/database_service.dart';
+import 'package:clib/state/app_notifiers.dart';
 import 'package:clib/theme/app_theme.dart';
 import 'package:clib/theme/design_tokens.dart';
 import 'package:clib/utils/url_safety.dart';
@@ -29,10 +31,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => HomeBloc(),
-      child: _HomeBody(
-        cardAreaKey: cardAreaKey,
-        addButtonKey: addButtonKey,
-      ),
+      child: _HomeBody(cardAreaKey: cardAreaKey, addButtonKey: addButtonKey),
     );
   }
 }
@@ -51,18 +50,69 @@ class _HomeBodyState extends State<_HomeBody> {
   CardSwiperController _swiperController = CardSwiperController();
   final List<CardSwiperController> _pendingDispose = [];
   final ValueNotifier<double> _thresholdNotifier = ValueNotifier<double>(0.0);
+  final ScrollController _labelScrollController = ScrollController();
+  final Map<String, GlobalKey> _labelChipKeys = {};
   int _currentDeckVersion = 0;
+  int? _lastNotificationRequestId;
 
   static const _adInterval = AdService.adInterval;
 
   @override
+  void initState() {
+    super.initState();
+    notificationLabelTapNotifier.addListener(_onNotificationLabelTap);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _onNotificationLabelTap();
+    });
+  }
+
+  @override
   void dispose() {
+    notificationLabelTapNotifier.removeListener(_onNotificationLabelTap);
     _disposePendingControllers();
     try {
       _swiperController.dispose();
     } catch (_) {}
+    _labelScrollController.dispose();
     _thresholdNotifier.dispose();
     super.dispose();
+  }
+
+  void _onNotificationLabelTap() {
+    if (!mounted) return;
+    final request = notificationLabelTapNotifier.value;
+    if (request == null || request.requestId == _lastNotificationRequestId) {
+      return;
+    }
+    _lastNotificationRequestId = request.requestId;
+    final label = DatabaseService.getLabelByKey(request.labelKey);
+    if (label != null) {
+      context.read<HomeBloc>().add(HomeFilterLabelsChanged({label.name}));
+      _scrollLabelIntoView(label.name);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (notificationLabelTapNotifier.value?.requestId == request.requestId) {
+        notificationLabelTapNotifier.value = null;
+      }
+    });
+  }
+
+  GlobalKey _labelKeyFor(String labelName) {
+    return _labelChipKeys.putIfAbsent(labelName, GlobalKey.new);
+  }
+
+  void _scrollLabelIntoView(String labelName) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final chipContext = _labelChipKeys[labelName]?.currentContext;
+      if (chipContext == null) return;
+      Scrollable.ensureVisible(
+        chipContext,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+        alignment: 0.5,
+      );
+    });
   }
 
   void _disposePendingControllers() {
@@ -89,8 +139,9 @@ class _HomeBodyState extends State<_HomeBody> {
 
   int _totalCards(int articleCount) {
     if (articleCount == 0) return 0;
-    final adCount =
-        articleCount >= _adInterval ? (articleCount / _adInterval).floor() : 0;
+    final adCount = articleCount >= _adInterval
+        ? (articleCount / _adInterval).floor()
+        : 0;
     return articleCount + adCount;
   }
 
@@ -134,8 +185,9 @@ class _HomeBodyState extends State<_HomeBody> {
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: theme.colorScheme.onSurfaceVariant
-                    .withValues(alpha: 0.25),
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.25,
+                ),
                 borderRadius: BorderRadius.circular(2.5),
               ),
             ),
@@ -144,8 +196,7 @@ class _HomeBodyState extends State<_HomeBody> {
               leading: Icon(
                 article.isBookmarked ? Icons.bookmark : Icons.bookmark_border,
               ),
-              title:
-                  Text(article.isBookmarked ? l.removeBookmark : l.bookmark),
+              title: Text(article.isBookmarked ? l.removeBookmark : l.bookmark),
               onTap: () {
                 Navigator.pop(ctx);
                 bloc.add(HomeToggleBookmark(article));
@@ -155,8 +206,11 @@ class _HomeBodyState extends State<_HomeBody> {
               leading: const Icon(Icons.edit_note),
               title: Text(article.memo != null ? l.editMemo : l.addMemo),
               subtitle: article.memo != null
-                  ? Text(article.memo!,
-                      maxLines: 1, overflow: TextOverflow.ellipsis)
+                  ? Text(
+                      article.memo!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )
                   : null,
               onTap: () {
                 Navigator.pop(ctx);
@@ -205,9 +259,7 @@ class _HomeBodyState extends State<_HomeBody> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xl)),
       ),
       builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom,
-        ),
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
         child: SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -217,8 +269,9 @@ class _HomeBodyState extends State<_HomeBody> {
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.onSurfaceVariant
-                      .withValues(alpha: 0.25),
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.25,
+                  ),
                   borderRadius: BorderRadius.circular(2.5),
                 ),
               ),
@@ -226,8 +279,7 @@ class _HomeBodyState extends State<_HomeBody> {
               Text(l.memo, style: theme.textTheme.titleSmall),
               const SizedBox(height: Spacing.lg),
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: Spacing.xxl),
+                padding: const EdgeInsets.symmetric(horizontal: Spacing.xxl),
                 child: TextField(
                   controller: controller,
                   maxLength: 100,
@@ -252,7 +304,11 @@ class _HomeBodyState extends State<_HomeBody> {
               const SizedBox(height: Spacing.lg),
               Padding(
                 padding: const EdgeInsets.fromLTRB(
-                    Spacing.xxl, 0, Spacing.xxl, Spacing.lg),
+                  Spacing.xxl,
+                  0,
+                  Spacing.xxl,
+                  Spacing.lg,
+                ),
                 child: Row(
                   children: [
                     if (article.memo != null) ...[
@@ -261,10 +317,13 @@ class _HomeBodyState extends State<_HomeBody> {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: theme.colorScheme.error,
                             side: BorderSide(
-                                color: theme.colorScheme.error
-                                    .withValues(alpha: 0.3)),
+                              color: theme.colorScheme.error.withValues(
+                                alpha: 0.3,
+                              ),
+                            ),
                             shape: RoundedRectangleBorder(
-                                borderRadius: Radii.borderMd),
+                              borderRadius: Radii.borderMd,
+                            ),
                           ),
                           onPressed: () {
                             Navigator.pop(ctx);
@@ -281,7 +340,8 @@ class _HomeBodyState extends State<_HomeBody> {
                           backgroundColor: theme.colorScheme.secondary,
                           foregroundColor: theme.colorScheme.onSecondary,
                           shape: RoundedRectangleBorder(
-                              borderRadius: Radii.borderMd),
+                            borderRadius: Radii.borderMd,
+                          ),
                         ),
                         onPressed: () {
                           final text = controller.text;
@@ -320,15 +380,11 @@ class _HomeBodyState extends State<_HomeBody> {
               child: Icon(
                 Icons.inbox_outlined,
                 size: 56,
-                color:
-                    theme.colorScheme.secondary.withValues(alpha: 0.4),
+                color: theme.colorScheme.secondary.withValues(alpha: 0.4),
               ),
             ),
             const SizedBox(height: Spacing.xl),
-            Text(
-              l.noArticlesToSwipe,
-              style: theme.textTheme.titleSmall,
-            ),
+            Text(l.noArticlesToSwipe, style: theme.textTheme.titleSmall),
             const SizedBox(height: Spacing.sm),
             Text(
               selectedLabels.isEmpty ? l.addLinksHint : l.noUnreadInLabel,
@@ -354,8 +410,9 @@ class _HomeBodyState extends State<_HomeBody> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final allLabelNames =
-            state.allLabels.map((label) => label.name).toList();
+        final allLabelNames = state.allLabels
+            .map((label) => label.name)
+            .toList();
         final selectedLabels = state.selectedLabelNames;
         final labelCountText = selectedLabels.isEmpty
             ? l.articleCountText(state.articles.length)
@@ -397,33 +454,46 @@ class _HomeBodyState extends State<_HomeBody> {
                           ),
                         ),
                         Expanded(
-                          child: ListView.builder(
+                          child: SingleChildScrollView(
+                            controller: _labelScrollController,
                             scrollDirection: Axis.horizontal,
-                            itemCount: allLabelNames.length,
-                            itemBuilder: (context, index) => Padding(
-                              padding: EdgeInsets.only(
-                                right: index < allLabelNames.length - 1
-                                    ? Spacing.sm
-                                    : 0,
-                              ),
-                              child: _FilterChip(
-                                label: allLabelNames[index],
-                                selected: selectedLabels
-                                    .contains(allLabelNames[index]),
-                                onTap: () =>
-                                    _toggleLabel(allLabelNames[index]),
-                              ),
+                            child: Row(
+                              children: [
+                                for (
+                                  var index = 0;
+                                  index < allLabelNames.length;
+                                  index++
+                                )
+                                  Padding(
+                                    padding: EdgeInsets.only(
+                                      right: index < allLabelNames.length - 1
+                                          ? Spacing.sm
+                                          : 0,
+                                    ),
+                                    child: _FilterChip(
+                                      key: _labelKeyFor(allLabelNames[index]),
+                                      label: allLabelNames[index],
+                                      selected: selectedLabels.contains(
+                                        allLabelNames[index],
+                                      ),
+                                      onTap: () =>
+                                          _toggleLabel(allLabelNames[index]),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ),
                         GestureDetector(
                           behavior: HitTestBehavior.opaque,
-                          onTap: () => context
-                              .read<HomeBloc>()
-                              .add(const HomeToggleExpand()),
+                          onTap: () => context.read<HomeBloc>().add(
+                            const HomeToggleExpand(),
+                          ),
                           child: Padding(
                             padding: const EdgeInsets.only(
-                                left: Spacing.md, right: Spacing.lg),
+                              left: Spacing.md,
+                              right: Spacing.lg,
+                            ),
                             child: AnimatedRotation(
                               turns: state.isExpanded ? 0.5 : 0,
                               duration: const Duration(milliseconds: 200),
@@ -432,16 +502,16 @@ class _HomeBodyState extends State<_HomeBody> {
                                 height: 26,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .surfaceContainerHighest,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHighest,
                                 ),
                                 child: Icon(
                                   Icons.keyboard_arrow_down,
                                   size: 16,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ),
@@ -455,14 +525,14 @@ class _HomeBodyState extends State<_HomeBody> {
                     curve: Curves.easeInOut,
                     child: state.isExpanded
                         ? ConstrainedBox(
-                            constraints:
-                                const BoxConstraints(maxHeight: 160),
+                            constraints: const BoxConstraints(maxHeight: 160),
                             child: SingleChildScrollView(
                               padding: const EdgeInsets.fromLTRB(
-                                  Spacing.lg,
-                                  Spacing.sm,
-                                  Spacing.lg,
-                                  Spacing.xs),
+                                Spacing.lg,
+                                Spacing.sm,
+                                Spacing.lg,
+                                Spacing.xs,
+                              ),
                               child: Wrap(
                                 spacing: Spacing.sm,
                                 runSpacing: Spacing.sm,
@@ -470,8 +540,7 @@ class _HomeBodyState extends State<_HomeBody> {
                                   for (final name in allLabelNames)
                                     _FilterChip(
                                       label: name,
-                                      selected:
-                                          selectedLabels.contains(name),
+                                      selected: selectedLabels.contains(name),
                                       onTap: () => _toggleLabel(name),
                                     ),
                                 ],
@@ -500,16 +569,14 @@ class _HomeBodyState extends State<_HomeBody> {
                       height: 28,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
                       ),
                       child: Icon(
                         Icons.add_rounded,
                         size: 18,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurfaceVariant,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -529,22 +596,20 @@ class _HomeBodyState extends State<_HomeBody> {
                 child: Stack(
                   children: [
                     Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 20),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: CardSwiper(
                         key: ValueKey(state.deckVersion),
                         controller: _swiperController,
                         cardsCount: totalCards,
-                        numberOfCardsDisplayed:
-                            totalCards < 3 ? totalCards : 3,
+                        numberOfCardsDisplayed: totalCards < 3 ? totalCards : 3,
                         backCardOffset: const Offset(0, 36),
                         scale: 0.95,
                         padding: const EdgeInsets.only(bottom: 56),
                         isLoop: totalCards > 1,
                         allowedSwipeDirection:
                             const AllowedSwipeDirection.symmetric(
-                          horizontal: true,
-                        ),
+                              horizontal: true,
+                            ),
                         onSwipe: (previousIndex, currentIndex, direction) {
                           return _onSwipe(
                             previousIndex: previousIndex,
@@ -560,26 +625,29 @@ class _HomeBodyState extends State<_HomeBody> {
                           if (_isAdSlot(index, state.articles.length)) {
                             return const SwipeAdCard();
                           }
-                          final artIdx =
-                              _articleIndex(index, state.articles.length);
+                          final artIdx = _articleIndex(
+                            index,
+                            state.articles.length,
+                          );
                           if (artIdx >= state.articles.length) {
                             return const SizedBox.shrink();
                           }
 
-                          final onVariant = Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant;
+                          final onVariant = Theme.of(
+                            context,
+                          ).colorScheme.onSurfaceVariant;
                           Color? borderColor;
                           if (pctX > 20) {
                             borderColor = AppColors.swipeRead.withValues(
-                                alpha: (pctX / 100).clamp(0, 1));
+                              alpha: (pctX / 100).clamp(0, 1),
+                            );
                           } else if (pctX < -20) {
                             borderColor = onVariant.withValues(
-                                alpha: (pctX.abs() / 100).clamp(0, 1));
+                              alpha: (pctX.abs() / 100).clamp(0, 1),
+                            );
                           }
 
-                          WidgetsBinding.instance
-                              .addPostFrameCallback((_) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
                             if (mounted) {
                               _thresholdNotifier.value = pctX.toDouble();
                             }
@@ -591,8 +659,10 @@ class _HomeBodyState extends State<_HomeBody> {
                               // M-4: http/https 스킴만 허용 (legacy 또는 변조된 DB 방어)
                               final uri = parseAllowedUrl(article.url);
                               if (uri == null) return;
-                              await launchUrl(uri,
-                                  mode: LaunchMode.externalApplication);
+                              await launchUrl(
+                                uri,
+                                mode: LaunchMode.externalApplication,
+                              );
                             },
                             onLongPress: () {
                               HapticFeedback.heavyImpact();
@@ -602,8 +672,7 @@ class _HomeBodyState extends State<_HomeBody> {
                               decoration: BoxDecoration(
                                 borderRadius: Radii.borderXl,
                                 border: borderColor != null
-                                    ? Border.all(
-                                        color: borderColor, width: 2.5)
+                                    ? Border.all(color: borderColor, width: 2.5)
                                     : null,
                               ),
                               child: ArticleCard(article: article),
@@ -632,29 +701,25 @@ class _HomeBodyState extends State<_HomeBody> {
                             const base = 0.3;
                             final laterOpacity = threshold < -20
                                 ? (base +
-                                        (1 - base) *
-                                            ((threshold.abs() - 20) / 40))
-                                    .clamp(base, 1.0)
+                                          (1 - base) *
+                                              ((threshold.abs() - 20) / 40))
+                                      .clamp(base, 1.0)
                                 : base;
                             final readOpacity = threshold > 20
-                                ? (base +
-                                        (1 - base) *
-                                            ((threshold - 20) / 40))
-                                    .clamp(base, 1.0)
+                                ? (base + (1 - base) * ((threshold - 20) / 40))
+                                      .clamp(base, 1.0)
                                 : base;
                             final theme = Theme.of(context);
 
                             return Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Opacity(
                                   opacity: laterOpacity,
                                   child: _SwipeHint(
                                     text: l.swipeLater,
                                     icon: Icons.schedule_rounded,
-                                    color:
-                                        theme.colorScheme.onSurfaceVariant,
+                                    color: theme.colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                                 Opacity(
@@ -698,8 +763,8 @@ class _HomeBodyState extends State<_HomeBody> {
     } else if (direction == CardSwiperDirection.left) {
       HapticFeedback.lightImpact();
       context.read<HomeBloc>().add(
-            HomeSwipeLater(article, reachedEnd: currentIndex == null),
-          );
+        HomeSwipeLater(article, reachedEnd: currentIndex == null),
+      );
     }
     return true;
   }
@@ -711,6 +776,7 @@ class _FilterChip extends StatelessWidget {
   final VoidCallback onTap;
 
   const _FilterChip({
+    super.key,
     required this.label,
     required this.selected,
     required this.onTap,

@@ -16,6 +16,7 @@ import 'package:clib/services/notification_service.dart';
 import 'package:clib/services/ad_service.dart';
 import 'package:clib/services/demo_data_service.dart';
 import 'package:clib/services/share_service.dart';
+import 'package:clib/state/app_notifiers.dart';
 import 'package:clib/theme/app_theme.dart';
 import 'package:clib/theme/design_tokens.dart';
 import 'package:clib/screens/onboarding_screen.dart';
@@ -24,7 +25,11 @@ import 'package:clib/widgets/home_overlay_guide.dart';
 
 // 기존 `package:clib/main.dart` show ... 경로 호환을 위한 re-export.
 export 'package:clib/state/app_notifiers.dart'
-    show articlesChangedNotifier, labelsChangedNotifier;
+    show
+        articlesChangedNotifier,
+        labelsChangedNotifier,
+        notificationLabelTapNotifier,
+        NotificationLabelTapRequest;
 
 void main() async {
   await bootstrap(forTest: false);
@@ -52,8 +57,7 @@ Future<void> bootstrap({required bool forTest}) async {
   // - 프로덕션: 기존 동작(예외 발생 시 크래시)을 유지.
   if (forTest) {
     try {
-      await Firebase.initializeApp()
-          .timeout(const Duration(seconds: 10));
+      await Firebase.initializeApp().timeout(const Duration(seconds: 10));
     } catch (e) {
       debugPrint('Firebase init skipped in test: $e');
     }
@@ -128,9 +132,7 @@ class ClibApp extends StatelessWidget {
             home: showOnboarding
                 ? const OnboardingScreen()
                 : const MainScreen(),
-            routes: {
-              '/main': (_) => const MainScreen(),
-            },
+            routes: {'/main': (_) => const MainScreen()},
           );
         },
       ),
@@ -166,7 +168,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       SettingsScreen(onShowGuide: _showGuideFromSettings),
     ];
     WidgetsBinding.instance.addObserver(this);
+    notificationLabelTapNotifier.addListener(_onNotificationLabelTap);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _onNotificationLabelTap();
       _checkPendingShares();
       if (!DatabaseService.hasSeenHomeGuide) {
         setState(() => _showOverlayGuide = true);
@@ -176,8 +180,20 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    notificationLabelTapNotifier.removeListener(_onNotificationLabelTap);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _onNotificationLabelTap() {
+    if (notificationLabelTapNotifier.value == null || !mounted) return;
+    Navigator.of(
+      context,
+      rootNavigator: true,
+    ).popUntil((route) => route.isFirst);
+    if (_currentIndex != 0) {
+      setState(() => _currentIndex = 0);
+    }
   }
 
   @override
@@ -216,9 +232,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     return Stack(
       children: [
         Scaffold(
-          body: SafeArea(
-            child: _screens[_currentIndex],
-          ),
+          body: SafeArea(child: _screens[_currentIndex]),
           bottomNavigationBar: SafeArea(
             child: Container(
               margin: const EdgeInsets.fromLTRB(24, 0, 24, 16),
