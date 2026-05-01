@@ -1,4 +1,4 @@
-CLAUDE.md의 "코드 품질 & 재검증" 단계를 수행해줘.
+AGENTS.md의 "검증" 단계를 수행해줘.
 
 1. `flutter analyze` 실행 — warning/error 0건 확인
 2. 변경된 파일에서 하드코딩된 한국어/영어 UI 문자열이 있는지 확인 (ARB 미사용)

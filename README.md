@@ -32,7 +32,7 @@ Flutter + Dart · Hive(local DB) · `flutter_bloc` + Equatable(상태 관리) ·
 
 | 문서 | 내용 |
 |------|------|
-| [`CLAUDE.md`](CLAUDE.md) | 에이전트(Claude Code) 작업 가이드 — 함정·진입점·6단계 재검증 |
+| [`AGENTS.md`](AGENTS.md) | 에이전트 작업 가이드 — 운영 규칙·핵심 주의사항·검증 |
 | [`docs/architecture.md`](docs/architecture.md) | 데이터 모델 · 서비스 · 전역 상태 · 부팅 흐름 · 네이티브 설정 |
 | [`docs/conventions.md`](docs/conventions.md) | 코딩 · 상태관리 · 디자인 시스템 · i18n 워크플로 |
 | [`docs/security.md`](docs/security.md) | 보안 가드 시리즈(M-1~M-10 / H-1~H-3) + 운영 절차 |

@@ -1,7 +1,7 @@
 # Architecture
 
 > Clib 데이터 모델·서비스·전역 상태·부팅 흐름·네이티브 설정 정리.
-> 함정·운영 규칙은 `/CLAUDE.md`. 코드 컨벤션·디자인 토큰·i18n 워크플로는 `conventions.md`.
+> 운영 규칙은 `/AGENTS.md`. 코드 컨벤션·디자인 토큰·i18n 워크플로는 `conventions.md`.
 
 ## 1. 폴더 구조
 

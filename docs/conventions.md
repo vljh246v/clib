@@ -1,6 +1,6 @@
 # Conventions
 
-> 코딩·상태관리·디자인 시스템·i18n 워크플로. 함정·진입점은 `/CLAUDE.md`, 구조·서비스는 `architecture.md`.
+> 코딩·상태관리·디자인 시스템·i18n 워크플로. 운영 규칙은 `/AGENTS.md`, 구조·서비스는 `architecture.md`.
 
 ## 1. 코딩 일반
 
@@ -135,7 +135,7 @@ Flutter 공식 `gen-l10n` (ARB, `l10n.yaml` 템플릿=`app_ko.arb`).
 
 ## 5. 코드 품질 6단계 (`/check`)
 
-`/CLAUDE.md` §7 참조. 요약:
+`/AGENTS.md` §검증 참조. 요약:
 
 1. 영향 범위 — Read + grep
 2. `flutter analyze` 0건 (훅 자동 실행 — 명시 재실행은 이 단계에서만)
