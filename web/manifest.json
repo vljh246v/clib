@@ -5,7 +5,7 @@
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "저장한 링크를 스와이프로 다시 읽게 만드는 지식 도서관",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
